@@ -166,23 +166,33 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 security_mode = update.security_mode
                 space = self.account.spaces.get(space_id)
                 if space:
-                    # Map security mode to our internal state
-                    mode_str = str(security_mode.mode).split("_")[-1].upper()
-                    if "DISARMED" in mode_str:
-                        space.security_state = SecurityState.DISARMED
-                    elif "ARMED" in mode_str:
-                        space.security_state = SecurityState.ARMED
-                    elif "NIGHT" in mode_str:
-                        space.security_state = SecurityState.NIGHT_MODE
+                    try:
+                        # Map security mode to our internal state
+                        if hasattr(security_mode, "mode"):
+                            mode_str = str(security_mode.mode).split("_")[-1].upper()
+                            _LOGGER.debug("Security mode raw value: %s -> %s", security_mode.mode, mode_str)
 
-                    _LOGGER.info(
-                        "Real-time security state update for space %s: %s",
-                        space_id,
-                        space.security_state
-                    )
+                            if "DISARMED" in mode_str:
+                                space.security_state = SecurityState.DISARMED
+                            elif "ARMED" in mode_str:
+                                space.security_state = SecurityState.ARMED
+                            elif "NIGHT" in mode_str:
+                                space.security_state = SecurityState.NIGHT_MODE
+                            else:
+                                _LOGGER.warning("Unknown security mode: %s", mode_str)
 
-                    # Notify Home Assistant of the change
-                    self.async_set_updated_data(self.account)
+                            _LOGGER.info(
+                                "Real-time security state update for space %s: %s",
+                                space_id,
+                                space.security_state
+                            )
+
+                            # Notify Home Assistant of the change
+                            self.async_set_updated_data(self.account)
+                        else:
+                            _LOGGER.error("security_mode has no 'mode' attribute. Available: %s", dir(security_mode))
+                    except Exception as mode_err:
+                        _LOGGER.error("Error parsing security mode: %s", mode_err, exc_info=True)
 
             # Device update
             elif update.HasField("device"):
@@ -198,7 +208,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 _LOGGER.debug("Group update received")
 
         except Exception as err:
-            _LOGGER.error("Error handling update: %s", err)
+            _LOGGER.error("Error handling update: %s", err, exc_info=True)
 
     async def _async_init_account(self) -> None:
         """Initialize the account data."""
