@@ -183,23 +183,36 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                             mode_str = str(mode_value).split("_")[-1].upper()
                             _LOGGER.debug("Security mode raw value: %s -> %s", mode_value, mode_str)
 
-                            if "DISARMED" in mode_str or "DISARM" in mode_str:
+                            # Skip transition states (REQUESTED, COMPLETED)
+                            # These indicate a mode change is in progress but don't tell us the actual mode
+                            if "REQUESTED" in mode_str or "COMPLETED" in mode_str:
+                                _LOGGER.debug("Ignoring transition state: %s", mode_str)
+                            elif "DISARMED" in mode_str or "DISARM" in mode_str:
                                 space.security_state = SecurityState.DISARMED
+                                _LOGGER.info(
+                                    "Real-time security state update for space %s: %s",
+                                    space_id,
+                                    space.security_state
+                                )
+                                self.async_set_updated_data(self.account)
                             elif "ARMED" in mode_str or "ARM" in mode_str:
                                 space.security_state = SecurityState.ARMED
+                                _LOGGER.info(
+                                    "Real-time security state update for space %s: %s",
+                                    space_id,
+                                    space.security_state
+                                )
+                                self.async_set_updated_data(self.account)
                             elif "NIGHT" in mode_str:
                                 space.security_state = SecurityState.NIGHT_MODE
+                                _LOGGER.info(
+                                    "Real-time security state update for space %s: %s",
+                                    space_id,
+                                    space.security_state
+                                )
+                                self.async_set_updated_data(self.account)
                             else:
                                 _LOGGER.warning("Unknown security mode: %s", mode_str)
-
-                            _LOGGER.info(
-                                "Real-time security state update for space %s: %s",
-                                space_id,
-                                space.security_state
-                            )
-
-                            # Notify Home Assistant of the change
-                            self.async_set_updated_data(self.account)
                         else:
                             _LOGGER.error("security_mode has no usable mode attribute. Available: %s", dir(security_mode))
                     except Exception as mode_err:
