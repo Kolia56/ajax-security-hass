@@ -20,7 +20,7 @@ API_BASE_URL = "mobile-gw.prod.ajax.systems"
 API_PORT = 443
 
 # Update intervals (seconds)
-UPDATE_INTERVAL = 10  # Poll every 10 seconds (balance between responsiveness and API load)
+UPDATE_INTERVAL = 30  # Poll every 30 seconds (real-time updates via streaming, polling is backup only)
 
 # Device classes
 DEVICE_CLASS_MOTION = "motion"
