@@ -136,7 +136,7 @@ The integration will automatically discover all your Ajax devices and create ent
 
 ### Security Recommendations
 - Use a strong, unique password for your Ajax account
-- Enable two-factor authentication on your Ajax account if available
+- ⚠️ **Two-factor authentication (2FA) is not yet supported** - you must disable 2FA on your Ajax account to use this integration
 - Ensure your Home Assistant instance is properly secured (HTTPS, strong passwords, firewall)
 - Keep Home Assistant and this integration up to date
 
@@ -459,7 +459,7 @@ L'intégration découvrira automatiquement tous vos appareils Ajax et créera de
 
 ### Recommandations de Sécurité
 - Utilisez un mot de passe fort et unique pour votre compte Ajax
-- Activez l'authentification à deux facteurs sur votre compte Ajax si disponible
+- ⚠️ **L'authentification à deux facteurs (2FA) n'est pas encore supportée** - vous devez désactiver le 2FA sur votre compte Ajax pour utiliser cette intégration
 - Assurez-vous que votre instance Home Assistant est correctement sécurisée (HTTPS, mots de passe forts, pare-feu)
 - Maintenez Home Assistant et cette intégration à jour
 
