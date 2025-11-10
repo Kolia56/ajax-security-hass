@@ -233,6 +233,22 @@
       "panic": {
         "name": "Panic Button"
       }
+    },
+    "switch": {
+      "socket": {
+        "name": "Socket",
+        "state_attributes": {
+          "channel_id": {
+            "name": "Channel ID"
+          },
+          "output_mode": {
+            "name": "Output mode"
+          },
+          "operating_mode": {
+            "name": "Operating mode"
+          }
+        }
+      }
     }
   },
   "services": {

@@ -71,6 +71,18 @@ from custom_components.ajax.systems.ajax.api.mobile.v2.notificationlog import (
     stream_notification_log_pb2,
 )
 
+# Import device control services for sockets/relays
+from custom_components.ajax.v3.mobilegwsvc.service.device_command_device_on import (
+    endpoint_pb2_grpc as device_on_pb2_grpc,
+    request_pb2 as device_on_request_pb2,
+    response_pb2 as device_on_response_pb2,
+)
+from custom_components.ajax.v3.mobilegwsvc.service.device_command_device_off import (
+    endpoint_pb2_grpc as device_off_pb2_grpc,
+    request_pb2 as device_off_request_pb2,
+    response_pb2 as device_off_response_pb2,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -883,11 +895,35 @@ class AjaxApi:
                             _LOGGER.debug("Hardware versions: %s", device_data["hardware_version"])
 
                 # Check for spread_properties and device_specific_properties
-                # These might contain arming mode information
+                # These might contain arming mode information or socket/relay states
                 if hasattr(hub_dev, "spread_properties") and hub_dev.spread_properties:
                     _LOGGER.debug("Device %s has %d spread_properties", profile.name, len(hub_dev.spread_properties))
                     for idx, prop in enumerate(hub_dev.spread_properties):
                         _LOGGER.debug("  spread_property[%d]: %s", idx, prop)
+
+                        # Parse socket/relay channel information
+                        if hasattr(prop, "channel") and prop.channel:
+                            channel = prop.channel
+                            channel_data = {}
+
+                            if hasattr(channel, "channel_id"):
+                                channel_data["channel_id"] = channel.channel_id
+                            if hasattr(channel, "is_channel_enabled"):
+                                channel_data["is_enabled"] = channel.is_channel_enabled
+                            if hasattr(channel, "is_channel_on"):
+                                channel_data["is_on"] = channel.is_channel_on
+                            else:
+                                # If is_channel_on is missing, it means the channel is OFF
+                                channel_data["is_on"] = False
+
+                            if hasattr(channel, "output_mode"):
+                                channel_data["output_mode"] = str(channel.output_mode)
+                            if hasattr(channel, "operating_mode"):
+                                channel_data["operating_mode"] = str(channel.operating_mode)
+
+                            if channel_data:
+                                attributes["channel"] = channel_data
+                                _LOGGER.debug("Socket/Relay channel data: %s", channel_data)
 
                 if hasattr(hub_dev, "device_specific_properties") and hub_dev.device_specific_properties:
                     _LOGGER.debug("Device %s has %d device_specific_properties", profile.name, len(hub_dev.device_specific_properties))
@@ -1588,6 +1624,142 @@ class AjaxApi:
         except Exception as err:
             _LOGGER.exception("Error parsing groups from space: %s", err)
             return result
+
+    async def async_turn_on_device(self, space_id: str, device_id: str, hub_id: str, channel_id: int = 1) -> None:
+        """Turn on a device (socket/relay).
+
+        Args:
+            space_id: The space ID containing the device
+            device_id: The device ID to control
+            hub_id: The hub ID that the device is connected to
+            channel_id: The channel number to turn on (default: 1)
+        """
+        if not self.session_token:
+            raise AjaxAuthError("Not authenticated")
+
+        try:
+            _LOGGER.info("Turning on device %s (channel %d)", device_id, channel_id)
+
+            # Get device type - need to fetch device info
+            # For now, assume socket type
+            from custom_components.ajax.systems.ajax.api.ecosystem.v2.hubsvc.commonmodels import object_type_pb2
+
+            # Create device type for socket
+            device_type = object_type_pb2.ObjectType()
+            device_type.socket.CopyFrom(object_type_pb2.ObjectType.Socket())
+
+            # Map channel_id to Channel enum
+            channel_enum = device_on_request_pb2.DeviceCommandDeviceOnRequest.CHANNEL_1
+            if channel_id == 2:
+                channel_enum = device_on_request_pb2.DeviceCommandDeviceOnRequest.CHANNEL_2
+            elif channel_id == 3:
+                channel_enum = device_on_request_pb2.DeviceCommandDeviceOnRequest.CHANNEL_3
+            elif channel_id == 4:
+                channel_enum = device_on_request_pb2.DeviceCommandDeviceOnRequest.CHANNEL_4
+
+            # Create request
+            request = device_on_request_pb2.DeviceCommandDeviceOnRequest(
+                hub_id=hub_id,
+                device_id=device_id,
+                device_type=device_type,
+                channels=[channel_enum],
+            )
+
+            # Create stub and call service
+            stub = device_on_pb2_grpc.DeviceCommandDeviceOnServiceStub(self.channel)
+            response = await stub.device_command_device_on(request, metadata=self._get_metadata(include_auth=True))
+
+            # Check response
+            if response.HasField("success"):
+                _LOGGER.info("Successfully turned on device %s", device_id)
+            elif response.HasField("failure"):
+                failure = response.failure
+                error_msg = "Unknown error"
+
+                if hasattr(failure, "hub_offline") and failure.HasField("hub_offline"):
+                    error_msg = "Hub is offline"
+                elif hasattr(failure, "device_offline") and failure.HasField("device_offline"):
+                    error_msg = "Device is offline"
+                elif hasattr(failure, "permission_denied") and failure.HasField("permission_denied"):
+                    error_msg = "Permission denied"
+
+                _LOGGER.error("Failed to turn on device: %s", error_msg)
+                raise AjaxApiError(f"Failed to turn on device: {error_msg}")
+
+        except grpc.RpcError as err:
+            _LOGGER.exception("gRPC error turning on device: %s", err)
+            raise AjaxApiError(f"Failed to turn on device: {err}")
+        except Exception as err:
+            _LOGGER.exception("Error turning on device: %s", err)
+            raise AjaxApiError(f"Failed to turn on device: {err}")
+
+    async def async_turn_off_device(self, space_id: str, device_id: str, hub_id: str, channel_id: int = 1) -> None:
+        """Turn off a device (socket/relay).
+
+        Args:
+            space_id: The space ID containing the device
+            device_id: The device ID to control
+            hub_id: The hub ID that the device is connected to
+            channel_id: The channel number to turn off (default: 1)
+        """
+        if not self.session_token:
+            raise AjaxAuthError("Not authenticated")
+
+        try:
+            _LOGGER.info("Turning off device %s (channel %d)", device_id, channel_id)
+
+            # Get device type - need to fetch device info
+            # For now, assume socket type
+            from custom_components.ajax.systems.ajax.api.ecosystem.v2.hubsvc.commonmodels import object_type_pb2
+
+            # Create device type for socket
+            device_type = object_type_pb2.ObjectType()
+            device_type.socket.CopyFrom(object_type_pb2.ObjectType.Socket())
+
+            # Map channel_id to Channel enum
+            channel_enum = device_off_request_pb2.DeviceCommandDeviceOffRequest.CHANNEL_1
+            if channel_id == 2:
+                channel_enum = device_off_request_pb2.DeviceCommandDeviceOffRequest.CHANNEL_2
+            elif channel_id == 3:
+                channel_enum = device_off_request_pb2.DeviceCommandDeviceOffRequest.CHANNEL_3
+            elif channel_id == 4:
+                channel_enum = device_off_request_pb2.DeviceCommandDeviceOffRequest.CHANNEL_4
+
+            # Create request
+            request = device_off_request_pb2.DeviceCommandDeviceOffRequest(
+                hub_id=hub_id,
+                device_id=device_id,
+                device_type=device_type,
+                channels=[channel_enum],
+            )
+
+            # Create stub and call service
+            stub = device_off_pb2_grpc.DeviceCommandDeviceOffServiceStub(self.channel)
+            response = await stub.device_command_device_off(request, metadata=self._get_metadata(include_auth=True))
+
+            # Check response
+            if response.HasField("success"):
+                _LOGGER.info("Successfully turned off device %s", device_id)
+            elif response.HasField("failure"):
+                failure = response.failure
+                error_msg = "Unknown error"
+
+                if hasattr(failure, "hub_offline") and failure.HasField("hub_offline"):
+                    error_msg = "Hub is offline"
+                elif hasattr(failure, "device_offline") and failure.HasField("device_offline"):
+                    error_msg = "Device is offline"
+                elif hasattr(failure, "permission_denied") and failure.HasField("permission_denied"):
+                    error_msg = "Permission denied"
+
+                _LOGGER.error("Failed to turn off device: %s", error_msg)
+                raise AjaxApiError(f"Failed to turn off device: {error_msg}")
+
+        except grpc.RpcError as err:
+            _LOGGER.exception("gRPC error turning off device: %s", err)
+            raise AjaxApiError(f"Failed to turn off device: {err}")
+        except Exception as err:
+            _LOGGER.exception("Error turning off device: %s", err)
+            raise AjaxApiError(f"Failed to turn off device: {err}")
 
     async def close(self) -> None:
         """Close the gRPC channel."""

@@ -274,6 +274,22 @@
       "panic": {
         "name": "Bouton Panique"
       }
+    },
+    "switch": {
+      "socket": {
+        "name": "Prise",
+        "state_attributes": {
+          "channel_id": {
+            "name": "ID de canal"
+          },
+          "output_mode": {
+            "name": "Mode de sortie"
+          },
+          "operating_mode": {
+            "name": "Mode de fonctionnement"
+          }
+        }
+      }
     }
   },
   "services": {
