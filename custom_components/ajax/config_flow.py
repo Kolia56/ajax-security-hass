@@ -86,6 +86,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self._user_input: dict[str, Any] = {}
+        self._spaces: list[dict[str, Any]] = []
+        self._info: dict[str, Any] = {}
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -107,23 +113,72 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(info["user_id"])
                 self._abort_if_unique_id_configured()
 
-                # Create config entry
-                return self.async_create_entry(
-                    title=info["title"],
-                    data={
-                        CONF_EMAIL: user_input[CONF_EMAIL],
-                        CONF_PASSWORD: user_input[CONF_PASSWORD],
-                        CONF_DEVICE_ID: info["device_id"],
-                    },
-                    options={
-                        CONF_PERSISTENT_NOTIFICATION: user_input.get(CONF_PERSISTENT_NOTIFICATION, False),
-                        CONF_NOTIFICATION_FILTER: user_input.get(CONF_NOTIFICATION_FILTER, NOTIFICATION_FILTER_NONE),
-                    },
-                )
+                # Store user input and info for next step
+                self._user_input = user_input
+                self._info = info
+
+                # Get list of spaces for selection
+                try:
+                    from .api import AjaxApi
+                    api = AjaxApi(user_input[CONF_EMAIL], user_input[CONF_PASSWORD], info["device_id"])
+                    await api.async_login()
+                    self._spaces = await api.async_get_spaces()
+                    await api.close()
+
+                    # If only one space, skip selection step
+                    if len(self._spaces) == 1:
+                        return await self.async_step_select_spaces({
+                            "spaces": [self._spaces[0]["id"]]
+                        })
+
+                    # Go to space selection step
+                    return await self.async_step_select_spaces()
+
+                except Exception as err:
+                    _LOGGER.exception("Error fetching spaces: %s", err)
+                    errors["base"] = "cannot_connect"
 
         return self.async_show_form(
             step_id="user",
             data_schema=get_user_data_schema(self.hass),
+            errors=errors,
+        )
+
+    async def async_step_select_spaces(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle space selection step."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            selected_spaces = user_input.get("spaces", [])
+
+            if not selected_spaces:
+                errors["base"] = "no_spaces_selected"
+            else:
+                # Create config entry with selected spaces
+                return self.async_create_entry(
+                    title=self._info["title"],
+                    data={
+                        CONF_EMAIL: self._user_input[CONF_EMAIL],
+                        CONF_PASSWORD: self._user_input[CONF_PASSWORD],
+                        CONF_DEVICE_ID: self._info["device_id"],
+                        "selected_spaces": selected_spaces,
+                    },
+                    options={
+                        CONF_PERSISTENT_NOTIFICATION: self._user_input.get(CONF_PERSISTENT_NOTIFICATION, False),
+                        CONF_NOTIFICATION_FILTER: self._user_input.get(CONF_NOTIFICATION_FILTER, NOTIFICATION_FILTER_NONE),
+                    },
+                )
+
+        # Build space selection schema
+        space_options = {space["id"]: space["name"] for space in self._spaces}
+
+        return self.async_show_form(
+            step_id="select_spaces",
+            data_schema=vol.Schema({
+                vol.Required("spaces", default=list(space_options.keys())): cv.multi_select(space_options),
+            }),
             errors=errors,
         )
 
@@ -136,12 +191,51 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for Ajax integration."""
 
+    def __init__(self) -> None:
+        """Initialize options flow."""
+        self._spaces: list[dict[str, Any]] = []
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
         if user_input is not None:
+            # Check if spaces selection changed
+            if "spaces" in user_input:
+                # Update config entry data with new space selection
+                new_data = dict(self.config_entry.data)
+                new_data["selected_spaces"] = user_input.pop("spaces")
+
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data=new_data,
+                )
+
             return self.async_create_entry(title="", data=user_input)
+
+        # Fetch available spaces
+        try:
+            from .api import AjaxApi
+            api = AjaxApi(
+                self.config_entry.data[CONF_EMAIL],
+                self.config_entry.data[CONF_PASSWORD],
+                self.config_entry.data[CONF_DEVICE_ID]
+            )
+            await api.async_login()
+            self._spaces = await api.async_get_spaces()
+            await api.close()
+        except Exception as err:
+            _LOGGER.exception("Error fetching spaces in options: %s", err)
+            self._spaces = []
+
+        # Get currently selected spaces (default to all if not set)
+        selected_spaces = self.config_entry.data.get("selected_spaces")
+        if not selected_spaces and self._spaces:
+            # Legacy support: if no selected_spaces, default to all
+            selected_spaces = [space["id"] for space in self._spaces]
+
+        # Build options schema
+        space_options = {space["id"]: space["name"] for space in self._spaces}
 
         options_schema = vol.Schema(
             {
@@ -166,6 +260,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 ),
             }
         )
+
+        # Add space selection if spaces are available
+        if space_options:
+            options_schema = options_schema.extend({
+                vol.Optional(
+                    "spaces",
+                    default=selected_spaces or list(space_options.keys()),
+                ): cv.multi_select(space_options),
+            })
 
         return self.async_show_form(step_id="init", data_schema=options_schema)
 

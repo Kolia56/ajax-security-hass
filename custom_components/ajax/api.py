@@ -1590,34 +1590,20 @@ class AjaxApi:
         rooms = {}
 
         try:
-            _LOGGER.debug("_parse_rooms_from_space: Starting to parse rooms")
-            _LOGGER.debug("_parse_rooms_from_space: space type = %s", type(space))
-            _LOGGER.debug("_parse_rooms_from_space: hasattr(space, 'rooms') = %s", hasattr(space, "rooms"))
-
             # Check if space has rooms field
             if not hasattr(space, "rooms"):
-                _LOGGER.warning("Space has no 'rooms' attribute")
                 return rooms
-
-            _LOGGER.debug("_parse_rooms_from_space: space.rooms = %s", space.rooms)
-            _LOGGER.debug("_parse_rooms_from_space: type(space.rooms) = %s", type(space.rooms))
-            _LOGGER.debug("_parse_rooms_from_space: len(space.rooms) = %s", len(space.rooms) if space.rooms else 0)
 
             if not space.rooms:
-                _LOGGER.info("Space has rooms field but it's empty (no rooms configured)")
+                _LOGGER.debug("Space has no rooms configured")
                 return rooms
 
-            _LOGGER.info("Found %d rooms in space", len(space.rooms))
-
-            for idx, room in enumerate(space.rooms):
-                _LOGGER.debug("_parse_rooms_from_space: Processing room #%d", idx + 1)
+            for room in space.rooms:
                 room_id = room.id if hasattr(room, "id") else None
                 if not room_id:
-                    _LOGGER.warning("Room #%d has no ID, skipping", idx + 1)
                     continue
 
                 room_name = room.name if hasattr(room, "name") else f"Room {room_id}"
-                _LOGGER.debug("_parse_rooms_from_space: Room %s name = %s", room_id, room_name)
 
                 # Extract image ID if available
                 image_id = None
@@ -1633,9 +1619,8 @@ class AjaxApi:
                     "image_id": image_id,
                     "image_url": image_url,
                 }
-                _LOGGER.debug("_parse_rooms_from_space: Added room %s to dictionary", room_id)
 
-            _LOGGER.info("Successfully parsed %d rooms from space", len(rooms))
+            _LOGGER.info("Parsed %d rooms from space", len(rooms))
             return rooms
 
         except Exception as err:

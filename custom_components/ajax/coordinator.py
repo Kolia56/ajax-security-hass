@@ -349,13 +349,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             space_protobuf: The Space protobuf message
         """
         try:
-            _LOGGER.debug("_async_parse_rooms_from_snapshot: Called for space %s", space_id)
-            _LOGGER.debug("_async_parse_rooms_from_snapshot: space_protobuf type = %s", type(space_protobuf))
-
             # Use the API client's parsing method
             rooms_data = self.api._parse_rooms_from_space(space_protobuf)
-
-            _LOGGER.debug("_async_parse_rooms_from_snapshot: Received %d rooms from parser", len(rooms_data))
 
             # Get the space from our account
             if not self.account or space_id not in self.account.spaces:
@@ -363,11 +358,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 return
 
             space = self.account.spaces[space_id]
-            _LOGGER.debug("_async_parse_rooms_from_snapshot: Space found, current rooms count = %d", len(space.rooms))
 
             # Convert parsed rooms to AjaxRoom objects
             for room_id, room_data in rooms_data.items():
-                _LOGGER.debug("_async_parse_rooms_from_snapshot: Creating AjaxRoom for %s", room_id)
                 # Create or update the room
                 ajax_room = AjaxRoom(
                     id=room_id,
@@ -394,34 +387,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             # Check if it's a snapshot (initial data) or an update
             if success.HasField("snapshot"):
                 _LOGGER.debug("Received snapshot for space %s", space_id)
-                _LOGGER.debug("Snapshot type: %s", type(success.snapshot))
-                _LOGGER.debug("Snapshot has 'space' attr: %s", hasattr(success.snapshot, "space"))
-
-                # List all fields in snapshot to see what's available
-                if hasattr(success.snapshot, "DESCRIPTOR"):
-                    snapshot_fields = [f.name for f in success.snapshot.DESCRIPTOR.fields]
-                    _LOGGER.debug("Snapshot available fields: %s", snapshot_fields)
-
-                    # Check which fields are actually set (skip fields that don't support HasField)
-                    set_fields = []
-                    for field in success.snapshot.DESCRIPTOR.fields:
-                        try:
-                            if success.snapshot.HasField(field.name):
-                                set_fields.append(field.name)
-                        except ValueError:
-                            # Field doesn't support HasField (repeated or scalar field)
-                            # Check if it has a value
-                            value = getattr(success.snapshot, field.name, None)
-                            if value:
-                                set_fields.append(f"{field.name} (no presence)")
-                    _LOGGER.debug("Snapshot fields that are set: %s", set_fields)
-
                 # The snapshot IS the Space object, parse it directly
-                _LOGGER.debug("Parsing groups and rooms from snapshot")
                 await self._async_parse_groups_from_snapshot(space_id, success.snapshot)
-                _LOGGER.debug("Groups parsed, now parsing rooms")
                 await self._async_parse_rooms_from_snapshot(space_id, success.snapshot)
-                _LOGGER.debug("Rooms parsed")
                 # Trigger a refresh to ensure consistency
                 self.async_set_updated_data(self.account)
 
@@ -669,9 +637,21 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         spaces_data = await self.api.async_get_spaces()
 
+        # Get selected spaces from config entry (default to all if not specified)
+        selected_spaces = self.config_entry.data.get("selected_spaces")
+        if selected_spaces:
+            _LOGGER.debug("Filtering spaces: only loading %s", selected_spaces)
+        else:
+            _LOGGER.debug("No space filter configured, loading all spaces")
+
         for space_data in spaces_data:
             space_id = space_data.get("id")
             if not space_id:
+                continue
+
+            # Skip spaces not in selection (if selection is defined)
+            if selected_spaces and space_id not in selected_spaces:
+                _LOGGER.debug("Skipping space %s (not in selected spaces)", space_data.get("name"))
                 continue
 
             # Create or update space

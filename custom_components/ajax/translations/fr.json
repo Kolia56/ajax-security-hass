@@ -14,12 +14,23 @@
           "persistent_notification": "Créer des notifications persistantes dans Home Assistant",
           "notification_filter": "Choisir quel type de notifications afficher"
         }
+      },
+      "select_spaces": {
+        "title": "Sélectionner les espaces",
+        "description": "Sélectionnez les espaces Ajax (hubs/systèmes) à ajouter à Home Assistant",
+        "data": {
+          "spaces": "Espaces à ajouter"
+        },
+        "data_description": {
+          "spaces": "Choisissez un ou plusieurs espaces à surveiller dans Home Assistant"
+        }
       }
     },
     "error": {
       "cannot_connect": "Échec de la connexion au serveur Ajax. Vérifiez votre connexion Internet.",
       "invalid_auth": "Identifiants incorrects. Vérifiez votre adresse e-mail et votre mot de passe.",
-      "unknown": "Erreur inattendue. Consultez les journaux pour plus de détails."
+      "unknown": "Erreur inattendue. Consultez les journaux pour plus de détails.",
+      "no_spaces_selected": "Veuillez sélectionner au moins un espace."
     },
     "abort": {
       "already_configured": "Ce compte Ajax est déjà configuré."
@@ -32,7 +43,11 @@
         "description": "Configurez les options de votre intégration Ajax",
         "data": {
           "persistent_notification": "Afficher les notifications persistantes",
-          "notification_filter": "Filtre de notifications"
+          "notification_filter": "Filtre de notifications",
+          "spaces": "Espaces à surveiller"
+        },
+        "data_description": {
+          "spaces": "Sélectionnez les espaces (hubs/systèmes) à surveiller. Modifier ceci rechargera l'intégration."
         }
       }
     }
