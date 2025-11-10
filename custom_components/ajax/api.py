@@ -1360,8 +1360,14 @@ class AjaxApi:
                 return notifications
 
             elif response.HasField("failure"):
-                _LOGGER.error("Failed to get notifications: %s", response.failure)
-                raise AjaxApiError("Failed to get notifications")
+                failure = response.failure
+                # Check if it's a "not_found" error (user doesn't have access to notifications)
+                if hasattr(failure, "not_found") and failure.HasField("not_found"):
+                    _LOGGER.info("User does not have access to notifications for space %s", space_id)
+                    return []
+                else:
+                    _LOGGER.error("Failed to get notifications: %s", failure)
+                    raise AjaxApiError("Failed to get notifications")
             else:
                 _LOGGER.warning("Unknown response type received")
                 return []
