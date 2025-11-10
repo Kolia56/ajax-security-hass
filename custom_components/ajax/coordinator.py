@@ -119,18 +119,39 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
     async def _async_stream_space(self, space_id: str) -> None:
         """Stream updates for a specific space in the background."""
-        try:
-            async for success in self.api.async_stream_space_updates(space_id):
-                # Process the update
-                await self._async_process_stream_update(space_id, success)
+        retry_count = 0
+        max_retries = 10
 
-        except asyncio.CancelledError:
-            _LOGGER.info("Streaming cancelled for space %s", space_id)
-            raise
-        except Exception as err:
-            _LOGGER.error("Error in streaming task for space %s: %s", space_id, err)
-            # Wait a bit before coordinator tries to restart it
-            await asyncio.sleep(5)
+        while retry_count < max_retries:
+            try:
+                _LOGGER.debug("Space streaming loop started for %s (attempt %d/%d)", space_id, retry_count + 1, max_retries)
+                async for success in self.api.async_stream_space_updates(space_id):
+                    # Reset retry count on successful message
+                    retry_count = 0
+                    # Process the update
+                    await self._async_process_stream_update(space_id, success)
+
+            except asyncio.CancelledError:
+                _LOGGER.info("Streaming cancelled for space %s", space_id)
+                raise
+            except Exception as err:
+                retry_count += 1
+                _LOGGER.error(
+                    "Error in streaming task for space %s (attempt %d/%d): %s",
+                    space_id,
+                    retry_count,
+                    max_retries,
+                    err,
+                    exc_info=True
+                )
+                if retry_count < max_retries:
+                    # Exponential backoff: 5s, 10s, 20s, 40s, then 60s max
+                    wait_time = min(5 * (2 ** (retry_count - 1)), 60)
+                    _LOGGER.info("Retrying space streaming for %s in %d seconds", space_id, wait_time)
+                    await asyncio.sleep(wait_time)
+                else:
+                    _LOGGER.error("Max retries reached for space streaming %s, giving up", space_id)
+                    break
 
     async def _async_stream_notifications(self, space_id: str) -> None:
         """Stream real-time notification updates for a specific space."""
@@ -313,6 +334,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         try:
             # Security mode update
             if update.HasField("security_mode"):
+                _LOGGER.debug("Received security mode update for space %s", space_id)
                 security_mode = update.security_mode
                 space = self.account.spaces.get(space_id)
                 if space:
@@ -390,13 +412,21 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
                                 # Update if state changed
                                 if new_state and space.security_state != new_state:
+                                    old_state = space.security_state
                                     space.security_state = new_state
                                     _LOGGER.info(
-                                        "Security mode changed: %s -> %s",
+                                        "Security state changed for %s: %s -> %s (from regular_mode)",
                                         space.name,
-                                        space.security_state.value
+                                        old_state.value,
+                                        new_state.value
                                     )
                                     self.async_set_updated_data(self.account)
+                                else:
+                                    _LOGGER.debug(
+                                        "Security state unchanged for %s: %s (from regular_mode)",
+                                        space.name,
+                                        space.security_state.value if new_state else "unknown"
+                                    )
 
                         # Check displayed_security_state as fallback
                         elif hasattr(security_mode, "displayed_security_state"):
@@ -416,13 +446,21 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                     new_state = None
 
                                 if new_state and space.security_state != new_state:
+                                    old_state = space.security_state
                                     space.security_state = new_state
                                     _LOGGER.info(
-                                        "Security mode changed: %s -> %s",
+                                        "Security state changed for %s: %s -> %s (from displayed_security_state)",
                                         space.name,
-                                        space.security_state.value
+                                        old_state.value,
+                                        new_state.value
                                     )
                                     self.async_set_updated_data(self.account)
+                                else:
+                                    _LOGGER.debug(
+                                        "Security state unchanged for %s: %s (from displayed_security_state)",
+                                        space.name,
+                                        space.security_state.value if new_state else "unknown"
+                                    )
 
                     except Exception as mode_err:
                         _LOGGER.error("Error parsing security mode: %s", mode_err)
