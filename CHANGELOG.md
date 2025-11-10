@@ -5,6 +5,24 @@ All notable changes to the Ajax Security System integration will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2025-11-10
+
+### Added
+- **Support for Ajax wired input modules**
+  - WireInput MT - Module for connecting third-party wired detectors (17 devices supported)
+  - WireInput RS - Wired input module with relay functionality (6 devices supported)
+  - LineSplit Fibra - Fibra line splitter/multiplexer (1 device supported)
+  - These modules allow integration of existing wired security systems with Ajax
+
+### Fixed
+- Improved device type parsing to handle protobuf formatting artifacts
+- Device types with formatting like `"wire_input_mt {\n}\n"` now correctly recognized
+
+### Technical
+- Added `WIRE_INPUT` and `LINE_SPLITTER` device types to DeviceType enum
+- Enhanced `_parse_device_type()` to clean up raw type strings before mapping
+- Added device type mappings for all wire input and line splitter variants
+
 ## [0.4.4] - 2025-11-10
 
 ### Added
@@ -17,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `ajax.generate_device_info` service now includes `raw_type` for each device to help identify unsupported device types
+
+### Fixed
+- Fixed dataclass field ordering issue that prevented integration from loading
 
 ## [0.4.3] - 2025-11-10
 
