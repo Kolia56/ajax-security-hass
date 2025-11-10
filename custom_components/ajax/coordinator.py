@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import AjaxApi, AjaxApiError, AjaxAuthError
+from .api import AjaxApi, AjaxApiError, AjaxAuthError, AjaxConnectionError
 from .const import (
     CONF_NOTIFICATION_FILTER,
     CONF_PERSISTENT_NOTIFICATION,
@@ -96,12 +96,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             # Start real-time streaming tasks for each space (if not already started)
             await self._async_start_streaming_tasks()
 
-            _LOGGER.debug(
-                "Updated Ajax data: %d spaces, %d devices",
-                len(self.account.spaces),
-                self.account.get_total_devices(),
-            )
-
             return self.account
 
         except AjaxAuthError as err:
@@ -131,11 +125,16 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         """Stream updates for a specific space in the background."""
         retry_count = 0
         max_retries = 10
+        was_disconnected = False
 
         while retry_count < max_retries:
             try:
-                _LOGGER.debug("Space streaming loop started for %s (attempt %d/%d)", space_id, retry_count + 1, max_retries)
                 async for success in self.api.async_stream_space_updates(space_id):
+                    # Log successful reconnection if we were previously disconnected
+                    if was_disconnected:
+                        _LOGGER.info("Successfully reconnected space stream for %s", space_id)
+                        was_disconnected = False
+
                     # Reset retry count on successful message
                     retry_count = 0
                     # Process the update
@@ -144,8 +143,41 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             except asyncio.CancelledError:
                 _LOGGER.info("Streaming cancelled for space %s", space_id)
                 raise
-            except Exception as err:
+
+            except AjaxConnectionError as err:
+                # Temporary network error - adjust log level based on retry count
                 retry_count += 1
+                was_disconnected = True
+
+                # First 3 attempts: WARNING (it's probably temporary)
+                if retry_count <= 3:
+                    _LOGGER.warning(
+                        "Connection lost for space %s (attempt %d/%d), retrying...",
+                        space_id,
+                        retry_count,
+                        max_retries,
+                    )
+                # After 3 attempts: ERROR (it's becoming a problem)
+                else:
+                    _LOGGER.error(
+                        "Connection still lost for space %s (attempt %d/%d)",
+                        space_id,
+                        retry_count,
+                        max_retries,
+                    )
+
+                if retry_count < max_retries:
+                    # Exponential backoff: 5s, 10s, 20s, 40s, then 60s max
+                    wait_time = min(5 * (2 ** (retry_count - 1)), 60)
+                    await asyncio.sleep(wait_time)
+                else:
+                    _LOGGER.error("Max retries reached for space streaming %s, giving up", space_id)
+                    break
+
+            except Exception as err:
+                # Real error (not just network issue) - always log as ERROR with traceback
+                retry_count += 1
+                was_disconnected = True
                 _LOGGER.error(
                     "Error in streaming task for space %s (attempt %d/%d): %s",
                     space_id,
@@ -155,7 +187,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     exc_info=True
                 )
                 if retry_count < max_retries:
-                    # Exponential backoff: 5s, 10s, 20s, 40s, then 60s max
                     wait_time = min(5 * (2 ** (retry_count - 1)), 60)
                     _LOGGER.info("Retrying space streaming for %s in %d seconds", space_id, wait_time)
                     await asyncio.sleep(wait_time)
@@ -165,20 +196,76 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
     async def _async_stream_notifications(self, space_id: str) -> None:
         """Stream real-time notification updates for a specific space."""
-        try:
-            _LOGGER.info("Starting notification streaming for space %s", space_id)
+        retry_count = 0
+        max_retries = 10
+        was_disconnected = False
 
-            async for event in self.api.async_stream_notification_updates(space_id):
-                # Process notification event
-                await self._async_process_notification_event(space_id, event)
+        _LOGGER.info("Starting notification streaming for space %s", space_id)
 
-        except asyncio.CancelledError:
-            _LOGGER.info("Notification streaming cancelled for space %s", space_id)
-            raise
-        except Exception as err:
-            _LOGGER.error("Error in notification streaming for space %s: %s", space_id, err)
-            # Wait a bit before coordinator tries to restart it
-            await asyncio.sleep(5)
+        while retry_count < max_retries:
+            try:
+                async for event in self.api.async_stream_notification_updates(space_id):
+                    # Log successful reconnection if we were previously disconnected
+                    if was_disconnected:
+                        _LOGGER.info("Successfully reconnected notification stream for %s", space_id)
+                        was_disconnected = False
+                        retry_count = 0
+
+                    # Process notification event
+                    await self._async_process_notification_event(space_id, event)
+
+            except asyncio.CancelledError:
+                _LOGGER.info("Notification streaming cancelled for space %s", space_id)
+                raise
+
+            except AjaxConnectionError as err:
+                # Temporary network error - adjust log level based on retry count
+                retry_count += 1
+                was_disconnected = True
+
+                # First 3 attempts: WARNING (it's probably temporary)
+                if retry_count <= 3:
+                    _LOGGER.warning(
+                        "Connection lost for notification stream %s (attempt %d/%d), retrying...",
+                        space_id,
+                        retry_count,
+                        max_retries,
+                    )
+                # After 3 attempts: ERROR (it's becoming a problem)
+                else:
+                    _LOGGER.error(
+                        "Connection still lost for notification stream %s (attempt %d/%d)",
+                        space_id,
+                        retry_count,
+                        max_retries,
+                    )
+
+                if retry_count < max_retries:
+                    # Exponential backoff: 5s, 10s, 20s, 40s, then 60s max
+                    wait_time = min(5 * (2 ** (retry_count - 1)), 60)
+                    await asyncio.sleep(wait_time)
+                else:
+                    _LOGGER.error("Max retries reached for notification streaming %s, giving up", space_id)
+                    break
+
+            except Exception as err:
+                # Real error (not just network issue) - always log as ERROR with traceback
+                retry_count += 1
+                was_disconnected = True
+                _LOGGER.error(
+                    "Error in notification streaming for space %s (attempt %d/%d): %s",
+                    space_id,
+                    retry_count,
+                    max_retries,
+                    err,
+                    exc_info=True
+                )
+                if retry_count < max_retries:
+                    wait_time = min(5 * (2 ** (retry_count - 1)), 60)
+                    await asyncio.sleep(wait_time)
+                else:
+                    _LOGGER.error("Max retries reached for notification streaming %s, giving up", space_id)
+                    break
 
     async def _async_process_notification_event(self, space_id: str, event) -> None:
         """Process a notification event from the stream."""
@@ -192,7 +279,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             # Check event type
             if event.HasField("notification_created"):
                 notification_proto = event.notification_created
-                _LOGGER.debug("Received new notification for space %s", space_id)
 
                 # Parse notification
                 notification_data = self.api._parse_notification(notification_proto)
@@ -271,13 +357,12 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
             elif event.HasField("notification_updated"):
                 # Notification was updated (e.g., marked as read)
-                _LOGGER.debug("Notification updated for space %s", space_id)
                 # We could update the notification in our list, but for now just log it
+                pass
 
             elif event.HasField("counters_updated"):
                 # Unread counter updated
-                counters = event.counters_updated
-                _LOGGER.debug("Notification counters updated for space %s", space_id)
+                pass
 
         except Exception as err:
             _LOGGER.error("Error processing notification event for space %s: %s", space_id, err, exc_info=True)
@@ -386,7 +471,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         try:
             # Check if it's a snapshot (initial data) or an update
             if success.HasField("snapshot"):
-                _LOGGER.debug("Received snapshot for space %s", space_id)
                 # The snapshot IS the Space object, parse it directly
                 await self._async_parse_groups_from_snapshot(space_id, success.snapshot)
                 await self._async_parse_rooms_from_snapshot(space_id, success.snapshot)
@@ -410,7 +494,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         try:
             # Security mode update
             if update.HasField("security_mode"):
-                _LOGGER.debug("Received security mode update for space %s", space_id)
                 security_mode = update.security_mode
                 space = self.account.spaces.get(space_id)
                 if space:
@@ -452,8 +535,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                             desired = transition.desired_state
                                             if hasattr(desired, "night_mode_enabled"):
                                                 group.night_mode_enabled = desired.night_mode_enabled
-
-                                _LOGGER.debug("Updated %d group states", len(group_mode.groups))
 
                             # Determine overall space security state based on armed groups
                             armed_groups = [g for g in space.groups.values() if g.state == GroupState.ARMED]
@@ -497,12 +578,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                         new_state.value
                                     )
                                     self.async_set_updated_data(self.account)
-                                else:
-                                    _LOGGER.debug(
-                                        "Security state unchanged for %s: %s (from regular_mode)",
-                                        space.name,
-                                        space.security_state.value if new_state else "unknown"
-                                    )
 
                         # Check displayed_security_state as fallback
                         elif hasattr(security_mode, "displayed_security_state"):
@@ -531,12 +606,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                         new_state.value
                                     )
                                     self.async_set_updated_data(self.account)
-                                else:
-                                    _LOGGER.debug(
-                                        "Security state unchanged for %s: %s (from displayed_security_state)",
-                                        space.name,
-                                        space.security_state.value if new_state else "unknown"
-                                    )
 
                     except Exception as mode_err:
                         _LOGGER.error("Error parsing security mode: %s", mode_err)
@@ -595,7 +664,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 group.bulk_arm_involved = bulk_arm
                 group.bulk_disarm_involved = bulk_disarm
                 group.image_id = image_id
-                _LOGGER.debug("Updated group %s in space %s", group_name, space.name)
             else:
                 # Create new group (state will be updated later via security_mode updates)
                 group = AjaxGroup(
@@ -618,8 +686,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
     async def _async_init_account(self) -> None:
         """Initialize the account data."""
-        _LOGGER.debug("Initializing Ajax account")
-
         # Get account info
         account_data = await self.api.async_get_account()
 
@@ -633,16 +699,12 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
     async def _async_update_spaces(self) -> None:
         """Update all spaces (hubs/systems)."""
-        _LOGGER.debug("Updating spaces")
-
         spaces_data = await self.api.async_get_spaces()
 
         # Get selected spaces from config entry (default to all if not specified)
         selected_spaces = self.config_entry.data.get("selected_spaces")
         if selected_spaces:
-            _LOGGER.debug("Filtering spaces: only loading %s", selected_spaces)
-        else:
-            _LOGGER.debug("No space filter configured, loading all spaces")
+            _LOGGER.info("Loading selected spaces: %s", selected_spaces)
 
         for space_data in spaces_data:
             space_id = space_data.get("id")
@@ -651,7 +713,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
             # Skip spaces not in selection (if selection is defined)
             if selected_spaces and space_id not in selected_spaces:
-                _LOGGER.debug("Skipping space %s (not in selected spaces)", space_data.get("name"))
                 continue
 
             # Create or update space
@@ -680,7 +741,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
     async def _async_update_devices(self, space_id: str) -> None:
         """Update devices for a specific space."""
-        _LOGGER.debug("Updating devices for space %s", space_id)
 
         space = self.account.spaces.get(space_id)
         if not space:
@@ -735,7 +795,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             # For Hub devices, try to get additional data via streamHubObject
             if device.type == DeviceType.HUB:
                 try:
-                    _LOGGER.debug("Fetching HubObject data for hub %s", device.id)
                     hub_obj_data = await self.api.async_stream_hub_object(device.id)
                     if hub_obj_data:
                         _LOGGER.info("Received HubObject data: %s", hub_obj_data)
@@ -758,8 +817,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         self, space_id: str, limit: int = 50
     ) -> None:
         """Update notifications for a specific space."""
-        _LOGGER.debug("Updating notifications for space %s", space_id)
-
         space = self.account.spaces.get(space_id)
         if not space:
             return
@@ -767,7 +824,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         try:
             # Fetch notifications from API
             notifications_data = await self.api.async_find_notifications(space_id, limit)
-            _LOGGER.debug("Received %d notifications for space %s", len(notifications_data), space_id)
 
             # Clear existing notifications and add new ones
             space.notifications.clear()
@@ -904,35 +960,29 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             device.attributes["motion_detected_at"] = notification.timestamp
             device.last_trigger_time = notification.timestamp
             device.last_notification = notification
-            _LOGGER.debug("Device %s: motion detected at %s", device.name, notification.timestamp)
 
         elif "door" in event_type and "opened" in event_type:
             device.attributes["door_opened"] = True
             device.last_trigger_time = notification.timestamp
             device.last_notification = notification
-            _LOGGER.debug("Device %s: door opened at %s", device.name, notification.timestamp)
 
         elif "door" in event_type and "closed" in event_type:
             device.attributes["door_opened"] = False
-            _LOGGER.debug("Device %s: door closed at %s", device.name, notification.timestamp)
 
         elif "smoke" in event_type:
             device.attributes["smoke_detected"] = True
             device.last_trigger_time = notification.timestamp
             device.last_notification = notification
-            _LOGGER.debug("Device %s: smoke detected at %s", device.name, notification.timestamp)
 
         elif "leak" in event_type:
             device.attributes["leak_detected"] = True
             device.last_trigger_time = notification.timestamp
             device.last_notification = notification
-            _LOGGER.debug("Device %s: leak detected at %s", device.name, notification.timestamp)
 
         elif "tamper" in event_type:
             device.attributes["tampered"] = True
             device.last_trigger_time = notification.timestamp
             device.last_notification = notification
-            _LOGGER.debug("Device %s: tamper detected at %s", device.name, notification.timestamp)
 
     def _parse_security_state(self, state_value: Any) -> SecurityState:
         """Parse security state from API response."""
@@ -1057,12 +1107,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         # Try partial match
         for key, device_type in type_map.items():
             if key in type_lower or type_lower in key:
-                _LOGGER.debug(
-                    "Device type '%s' matched to %s via partial match with '%s'",
-                    type_str,
-                    device_type.value,
-                    key,
-                )
                 return device_type
 
         # Log unknown types to help improve mapping
@@ -1141,6 +1185,59 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             _LOGGER.error("Failed to activate night mode for space %s: %s", space_id, err)
             raise
 
+    async def async_arm_group(self, space_id: str, group_id: str, force: bool = False) -> None:
+        """Arm a specific group/zone.
+
+        Args:
+            space_id: The space ID
+            group_id: The group ID to arm
+            force: If True, ignore alarms and force arm even with open sensors or problems
+        """
+        _LOGGER.info("Arming group %s in space %s (force=%s)", group_id, space_id, force)
+
+        try:
+            await self.api.async_arm_group(space_id, group_id, force=force)
+
+            # Update local state optimistically
+            if space_id in self.account.spaces:
+                space = self.account.spaces[space_id]
+                if group_id in space.groups:
+                    from .models import GroupState
+                    space.groups[group_id].state = GroupState.ARMED
+
+            # Request immediate data refresh
+            await self.async_request_refresh()
+
+        except AjaxApiError as err:
+            _LOGGER.error("Failed to arm group %s in space %s: %s", group_id, space_id, err)
+            raise
+
+    async def async_disarm_group(self, space_id: str, group_id: str) -> None:
+        """Disarm a specific group/zone.
+
+        Args:
+            space_id: The space ID
+            group_id: The group ID to disarm
+        """
+        _LOGGER.info("Disarming group %s in space %s", group_id, space_id)
+
+        try:
+            await self.api.async_disarm_group(space_id, group_id)
+
+            # Update local state optimistically
+            if space_id in self.account.spaces:
+                space = self.account.spaces[space_id]
+                if group_id in space.groups:
+                    from .models import GroupState
+                    space.groups[group_id].state = GroupState.DISARMED
+
+            # Request immediate data refresh
+            await self.async_request_refresh()
+
+        except AjaxApiError as err:
+            _LOGGER.error("Failed to disarm group %s in space %s: %s", group_id, space_id, err)
+            raise
+
     async def async_press_panic_button(self, space_id: str) -> None:
         """Press panic button (trigger panic alarm) for a space."""
         _LOGGER.warning("PANIC BUTTON pressed for space %s", space_id)
@@ -1180,7 +1277,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         # Stop all streaming tasks
         for space_id, task in self._streaming_tasks.items():
             if not task.done():
-                _LOGGER.debug("Cancelling streaming task for space %s", space_id)
                 task.cancel()
                 try:
                     await task
@@ -1192,7 +1288,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         # Stop all notification streaming tasks
         for space_id, task in self._notification_streaming_tasks.items():
             if not task.done():
-                _LOGGER.debug("Cancelling notification streaming task for space %s", space_id)
                 task.cancel()
                 try:
                     await task

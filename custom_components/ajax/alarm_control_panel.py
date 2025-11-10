@@ -16,7 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import AjaxDataCoordinator
-from .models import SecurityState
+from .models import SecurityState, GroupState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,12 +29,24 @@ async def async_setup_entry(
     """Set up Ajax alarm control panels from a config entry."""
     coordinator: AjaxDataCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    # Create an alarm control panel for each space
     entities = []
 
     if coordinator.account:
         for space_id, space in coordinator.account.spaces.items():
+            # Create main alarm control panel for the space (hub)
             entities.append(AjaxAlarmControlPanel(coordinator, entry, space_id))
+
+            # Create alarm control panel for each group/zone
+            if space.groups:
+                for group_id, group in space.groups.items():
+                    entities.append(
+                        AjaxGroupAlarmControlPanel(coordinator, entry, space_id, group_id)
+                    )
+                _LOGGER.info(
+                    "Created %d group alarm panel(s) for space %s",
+                    len(space.groups),
+                    space.name,
+                )
 
     if entities:
         async_add_entities(entities)
@@ -180,3 +192,129 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
             "model": "Security Hub",
             "sw_version": None,  # TODO: Add hub firmware version when available
         }
+
+
+class AjaxGroupAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControlPanelEntity):
+    """Representation of an Ajax group/zone alarm control panel."""
+
+    _attr_supported_features = (
+        AlarmControlPanelEntityFeature.ARM_AWAY
+        | AlarmControlPanelEntityFeature.ARM_NIGHT
+    )
+    _attr_code_arm_required = False
+
+    def __init__(
+        self,
+        coordinator: AjaxDataCoordinator,
+        entry: ConfigEntry,
+        space_id: str,
+        group_id: str,
+    ) -> None:
+        """Initialize the group alarm control panel."""
+        super().__init__(coordinator)
+        self._entry = entry
+        self._space_id = space_id
+        self._group_id = group_id
+
+        # Get initial group data
+        space = coordinator.get_space(space_id)
+        if space and group_id in space.groups:
+            group = space.groups[group_id]
+            self._attr_name = f"Ajax Alarm - {group.name}"
+            self._attr_unique_id = f"{entry.entry_id}_alarm_group_{group_id}"
+        else:
+            self._attr_name = f"Ajax Alarm - Group {group_id}"
+            self._attr_unique_id = f"{entry.entry_id}_alarm_group_{group_id}"
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        """Return device information."""
+        space = self.coordinator.get_space(self._space_id)
+        if not space:
+            return {}
+
+        return {
+            "identifiers": {(DOMAIN, self._space_id)},
+            "name": f"Ajax Hub - {space.name}",
+            "manufacturer": "Ajax Systems",
+            "model": "Security Hub",
+        }
+
+    @property
+    def alarm_state(self) -> AlarmControlPanelState | None:
+        """Return the state of the alarm for this group."""
+        space = self.coordinator.get_space(self._space_id)
+        if not space or self._group_id not in space.groups:
+            return None
+
+        group = space.groups[self._group_id]
+
+        # Map GroupState to AlarmControlPanelState
+        if group.state == GroupState.ARMED:
+            # Check if night mode is enabled for this group
+            if group.night_mode_enabled:
+                return AlarmControlPanelState.ARMED_NIGHT
+            else:
+                return AlarmControlPanelState.ARMED_AWAY
+        elif group.state == GroupState.DISARMED:
+            return AlarmControlPanelState.DISARMED
+        else:
+            return AlarmControlPanelState.DISARMED
+
+    async def async_alarm_disarm(self, code: str | None = None) -> None:
+        """Send disarm command for this group."""
+        _LOGGER.info("Disarming Ajax group %s in space %s", self._group_id, self._space_id)
+
+        try:
+            await self.coordinator.async_disarm_group(self._space_id, self._group_id)
+        except Exception as err:
+            _LOGGER.error("Failed to disarm group: %s", err)
+            raise
+
+    async def async_alarm_arm_away(self, code: str | None = None) -> None:
+        """Send arm away command for this group."""
+        _LOGGER.info("Arming Ajax group %s (away) in space %s", self._group_id, self._space_id)
+
+        try:
+            await self.coordinator.async_arm_group(self._space_id, self._group_id)
+        except Exception as err:
+            _LOGGER.error("Failed to arm group: %s", err)
+            raise
+
+    async def async_alarm_arm_night(self, code: str | None = None) -> None:
+        """Send arm night command for this group."""
+        _LOGGER.info("Arming Ajax group %s (night) in space %s", self._group_id, self._space_id)
+
+        try:
+            # Arm the group (night mode is handled by the group's night_mode_enabled property)
+            await self.coordinator.async_arm_group(self._space_id, self._group_id)
+        except Exception as err:
+            _LOGGER.error("Failed to arm group in night mode: %s", err)
+            raise
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.async_write_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the state attributes."""
+        space = self.coordinator.get_space(self._space_id)
+        if not space or self._group_id not in space.groups:
+            return {}
+
+        group = space.groups[self._group_id]
+
+        attributes = {
+            "group_id": group.id,
+            "group_name": group.name,
+            "space_id": space.id,
+            "space_name": space.name,
+            "night_mode_enabled": group.night_mode_enabled,
+            "bulk_arm_involved": group.bulk_arm_involved,
+            "bulk_disarm_involved": group.bulk_disarm_involved,
+            "device_count": len(group.device_ids),
+        }
+
+        return attributes

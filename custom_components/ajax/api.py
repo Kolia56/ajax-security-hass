@@ -42,6 +42,10 @@ from custom_components.ajax.systems.ajax.api.mobile.v2.space.security import (
     disarm_request_pb2,
     arm_to_night_mode_request_pb2,
 )
+from custom_components.ajax.systems.ajax.api.mobile.v2.space.security.group import (
+    arm_group_request_pb2,
+    disarm_group_request_pb2,
+)
 from custom_components.ajax.systems.ajax.api.mobile.v2.common.space import space_locator_pb2
 
 # Import space service for panic button and streaming
@@ -92,6 +96,10 @@ class AjaxApiError(Exception):
 
 class AjaxAuthError(AjaxApiError):
     """Exception for authentication errors."""
+
+
+class AjaxConnectionError(AjaxApiError):
+    """Exception for temporary network connection errors."""
 
 
 class AjaxApi:
@@ -149,8 +157,6 @@ class AjaxApi:
         try:
             # Hash password with SHA256
             password_hash = hashlib.sha256(self.password.encode()).hexdigest()
-
-            _LOGGER.debug("Attempting to login to Ajax")
 
             # Create login request
             request = login_request_pb2.LoginByPasswordRequest(
@@ -287,8 +293,6 @@ class AjaxApi:
             raise AjaxAuthError("Not authenticated. Call async_login() first.")
 
         try:
-            _LOGGER.debug("Fetching devices for space_id: %s", space_id)
-
             # Create request for streaming light devices
             request = light_devices_request_pb2.StreamLightDevicesRequest(
                 space_id=space_id
@@ -306,7 +310,6 @@ class AjaxApi:
             # Read the stream - first message should be a snapshot
             async for response in response_stream:
                 response_count += 1
-                _LOGGER.debug("Received response #%d from device stream", response_count)
 
                 if response.HasField("success"):
                     if response.success.HasField("snapshot"):
@@ -318,18 +321,13 @@ class AjaxApi:
 
                         # Process snapshot with all devices
                         for idx, light_device in enumerate(snapshot.light_devices):
-                            _LOGGER.debug("Processing light_device #%d", idx + 1)
                             device_data = self._parse_light_device(light_device)
                             if device_data:
                                 devices.append(device_data)
-                            else:
-                                _LOGGER.debug("light_device #%d returned no data (unsupported type or parsing error)", idx + 1)
 
                         # After receiving snapshot, we can break (updates would follow in real streaming)
-                        _LOGGER.debug("Snapshot processed, stopping stream")
                         break
                     elif response.success.HasField("updates"):
-                        _LOGGER.debug("Received updates (skipping)")
                         # Skip updates for now - we only need initial snapshot
                         continue
                 elif response.HasField("failure"):
@@ -358,8 +356,6 @@ class AjaxApi:
             raise AjaxAuthError("Not authenticated. Call async_login() first.")
 
         try:
-            _LOGGER.debug("Streaming HubObject for hub_id: %s", hub_id)
-
             # Create request for streaming hub object
             request = stream_hub_object_request_pb2.StreamHubObjectRequest(
                 hex_id=hub_id
@@ -377,11 +373,9 @@ class AjaxApi:
             # Read the stream - first message should be a snapshot
             async for response in response_stream:
                 response_count += 1
-                _LOGGER.debug("Received HubObject response #%d", response_count)
 
                 # Check which type of response (snapshot, update, create, delete)
                 which = response.WhichOneof('item')
-                _LOGGER.debug("HubObject response type: %s", which)
 
                 if which in ('snapshot', 'update', 'create'):
                     hub_obj = getattr(response, which)
@@ -393,7 +387,6 @@ class AjaxApi:
                     # For snapshot, we can break after first response
                     # For update/create, we continue streaming for real-time updates
                     if which == 'snapshot':
-                        _LOGGER.debug("Snapshot received, stopping stream")
                         break
 
                 elif which == 'delete':
@@ -1041,6 +1034,122 @@ class AjaxApi:
                 raise AjaxAuthError("Session expired") from err
             raise AjaxApiError(f"gRPC error: {err}") from err
 
+    async def async_arm_group(self, space_id: str, group_id: str, force: bool = False) -> None:
+        """Arm a specific group/zone.
+
+        Args:
+            space_id: The space ID
+            group_id: The group ID to arm
+            force: If True, ignore alarms and force arm even with open sensors or problems
+        """
+        if not self.session_token:
+            raise AjaxAuthError("Not authenticated")
+
+        try:
+            _LOGGER.info("Arming group %s in space %s (force=%s)", group_id, space_id, force)
+
+            # Create space locator
+            space_locator = space_locator_pb2.SpaceLocator(space_id=space_id)
+
+            # Create arm group request
+            request = arm_group_request_pb2.ArmGroupRequest(
+                space_locator=space_locator,
+                group_id=group_id,
+                ignore_alarms=force,
+            )
+
+            # Create stub and call service
+            stub = space_security_endpoints_pb2_grpc.SpaceSecurityServiceStub(self.channel)
+            response = await stub.armGroup(request, metadata=self._get_metadata(include_auth=True))
+
+            # Check response
+            if response.HasField("success"):
+                _LOGGER.info("Successfully armed group %s in space %s", group_id, space_id)
+            elif response.HasField("failure"):
+                failure = response.failure
+                error_msg = "Unknown error"
+
+                if failure.HasField("hub_offline"):
+                    error_msg = "Hub is offline"
+                elif failure.HasField("hub_busy"):
+                    error_msg = "Hub is busy"
+                elif failure.HasField("hub_detected_malfunctions"):
+                    error_msg = "Hub detected malfunctions"
+                elif failure.HasField("permission_denied"):
+                    error_msg = "Permission denied"
+                elif failure.HasField("already_in_the_requested_security_state"):
+                    _LOGGER.info("Group %s is already armed", group_id)
+                    return
+                elif failure.HasField("space_locked"):
+                    error_msg = "Space is locked"
+                elif failure.HasField("group_not_found"):
+                    error_msg = "Group not found"
+
+                _LOGGER.error("Failed to arm group: %s", error_msg)
+                raise AjaxApiError(f"Failed to arm group: {error_msg}")
+
+        except grpc.RpcError as err:
+            _LOGGER.error("gRPC error arming group: %s", err)
+            if err.code() == grpc.StatusCode.UNAUTHENTICATED:
+                raise AjaxAuthError("Session expired") from err
+            raise AjaxApiError(f"gRPC error: {err}") from err
+
+    async def async_disarm_group(self, space_id: str, group_id: str) -> None:
+        """Disarm a specific group/zone.
+
+        Args:
+            space_id: The space ID
+            group_id: The group ID to disarm
+        """
+        if not self.session_token:
+            raise AjaxAuthError("Not authenticated")
+
+        try:
+            _LOGGER.info("Disarming group %s in space %s", group_id, space_id)
+
+            # Create space locator
+            space_locator = space_locator_pb2.SpaceLocator(space_id=space_id)
+
+            # Create disarm group request
+            request = disarm_group_request_pb2.DisarmGroupRequest(
+                space_locator=space_locator,
+                group_id=group_id,
+            )
+
+            # Create stub and call service
+            stub = space_security_endpoints_pb2_grpc.SpaceSecurityServiceStub(self.channel)
+            response = await stub.disarmGroup(request, metadata=self._get_metadata(include_auth=True))
+
+            # Check response
+            if response.HasField("success"):
+                _LOGGER.info("Successfully disarmed group %s in space %s", group_id, space_id)
+            elif response.HasField("failure"):
+                failure = response.failure
+                error_msg = "Unknown error"
+
+                if failure.HasField("hub_offline"):
+                    error_msg = "Hub is offline"
+                elif failure.HasField("hub_busy"):
+                    error_msg = "Hub is busy"
+                elif failure.HasField("permission_denied"):
+                    error_msg = "Permission denied"
+                elif failure.HasField("already_in_the_requested_security_state"):
+                    _LOGGER.info("Group %s is already disarmed", group_id)
+                    return
+                elif failure.HasField("space_locked"):
+                    error_msg = "Space is locked"
+                elif failure.HasField("group_not_found"):
+                    error_msg = "Group not found"
+
+                _LOGGER.error("Failed to disarm group: %s", error_msg)
+                raise AjaxApiError(f"Failed to disarm group: {error_msg}")
+
+        except grpc.RpcError as err:
+            _LOGGER.error("gRPC error disarming group: %s", err)
+            if err.code() == grpc.StatusCode.UNAUTHENTICATED:
+                raise AjaxAuthError("Session expired") from err
+            raise AjaxApiError(f"gRPC error: {err}") from err
+
     async def async_press_panic_button(self, space_id: str) -> None:
         """Press the panic button (trigger panic alarm)."""
         if not self.session_token:
@@ -1134,10 +1243,20 @@ class AjaxApi:
                     raise AjaxApiError(f"Stream error: {error_msg}")
 
         except grpc.RpcError as err:
-            _LOGGER.error("gRPC error in space stream: %s", err)
+            # Handle authentication errors
             if err.code() == grpc.StatusCode.UNAUTHENTICATED:
+                _LOGGER.error("Session expired for space %s", space_id)
                 raise AjaxAuthError("Session expired") from err
-            raise AjaxApiError(f"gRPC error: {err}") from err
+
+            # Handle temporary connection errors (server unavailable, connection lost, etc.)
+            elif err.code() in (grpc.StatusCode.UNAVAILABLE, grpc.StatusCode.DEADLINE_EXCEEDED):
+                # Don't log error here - coordinator will handle it based on retry count
+                raise AjaxConnectionError("Connection lost to Ajax server") from err
+
+            # Other gRPC errors (real problems)
+            else:
+                _LOGGER.error("gRPC error in space stream for %s: %s (code: %s)", space_id, err, err.code())
+                raise AjaxApiError(f"gRPC error: {err}") from err
 
     async def async_stream_device_updates(self, hub_id: str, device_id: str):
         """Stream real-time updates for a specific device.
@@ -1332,14 +1451,25 @@ class AjaxApi:
                     raise AjaxApiError("Notification stream failed")
 
         except grpc.RpcError as err:
-            _LOGGER.error("gRPC error in notification streaming: %s", err)
+            # Handle authentication errors
             if err.code() == grpc.StatusCode.UNAUTHENTICATED:
+                _LOGGER.error("Session expired for notification stream (space %s)", space_id)
                 raise AjaxAuthError("Session expired") from err
-            raise AjaxApiError(f"gRPC error: {err}") from err
-        except (AjaxAuthError, AjaxApiError):
+
+            # Handle temporary connection errors
+            elif err.code() in (grpc.StatusCode.UNAVAILABLE, grpc.StatusCode.DEADLINE_EXCEEDED):
+                # Don't log error here - coordinator will handle it based on retry count
+                raise AjaxConnectionError("Connection lost to Ajax server") from err
+
+            # Other gRPC errors (real problems)
+            else:
+                _LOGGER.error("gRPC error in notification stream for %s: %s (code: %s)", space_id, err, err.code())
+                raise AjaxApiError(f"gRPC error: {err}") from err
+
+        except (AjaxAuthError, AjaxApiError, AjaxConnectionError):
             raise
         except Exception as err:
-            _LOGGER.exception("Unexpected error in notification streaming")
+            _LOGGER.exception("Unexpected error in notification streaming for space %s", space_id)
             raise AjaxApiError(f"Failed to stream notifications: {err}") from err
 
     def _parse_notification(self, notification) -> dict[str, Any] | None:
