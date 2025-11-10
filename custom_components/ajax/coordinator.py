@@ -17,7 +17,17 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import AjaxApi, AjaxApiError, AjaxAuthError
-from .const import DOMAIN, UPDATE_INTERVAL, get_event_message
+from .const import (
+    CONF_NOTIFICATION_FILTER,
+    CONF_PERSISTENT_NOTIFICATION,
+    DOMAIN,
+    NOTIFICATION_FILTER_ALL,
+    NOTIFICATION_FILTER_ALARMS_ONLY,
+    NOTIFICATION_FILTER_NONE,
+    NOTIFICATION_FILTER_SECURITY_EVENTS,
+    UPDATE_INTERVAL,
+    get_event_message,
+)
 from .models import (
     AjaxAccount,
     AjaxDevice,
@@ -245,6 +255,11 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 # Update device state based on notification
                 if device_id and event_type:
                     self._update_device_from_notification(space, notification)
+
+                # Create persistent notification if enabled
+                await self._create_persistent_notification(
+                    notification, formatted_message, notif_type
+                )
 
                 # Trigger update
                 _LOGGER.info(
@@ -765,6 +780,54 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             return NotificationType.SYSTEM_EVENT
         else:
             return NotificationType.INFO
+
+    async def _create_persistent_notification(
+        self,
+        notification: AjaxNotification,
+        formatted_message: str,
+        notif_type: NotificationType,
+    ) -> None:
+        """Create a persistent notification in Home Assistant if enabled and passes filter.
+
+        Args:
+            notification: The Ajax notification object
+            formatted_message: The formatted notification message
+            notif_type: The notification type (ALARM, WARNING, etc.)
+        """
+        # Get config options
+        config_entry = self.config_entry
+        options = config_entry.options if config_entry else {}
+
+        # Check if persistent notifications are enabled
+        if not options.get(CONF_PERSISTENT_NOTIFICATION, False):
+            return
+
+        # Get notification filter
+        notification_filter = options.get(CONF_NOTIFICATION_FILTER, NOTIFICATION_FILTER_NONE)
+
+        # Check if notification passes filter
+        if notification_filter == NOTIFICATION_FILTER_NONE:
+            return
+        elif notification_filter == NOTIFICATION_FILTER_ALARMS_ONLY:
+            # Only show alarms
+            if notif_type != NotificationType.ALARM:
+                return
+        elif notification_filter == NOTIFICATION_FILTER_SECURITY_EVENTS:
+            # Show alarms and security events (arming/disarming)
+            if notif_type not in [NotificationType.ALARM, NotificationType.SECURITY_EVENT]:
+                return
+        # NOTIFICATION_FILTER_ALL: show all notifications (no filter)
+
+        # Create persistent notification in Home Assistant
+        await self.hass.services.async_call(
+            "persistent_notification",
+            "create",
+            {
+                "title": "Ajax Security",
+                "message": formatted_message,
+                "notification_id": f"ajax_{notification.id}",
+            },
+        )
 
     def _update_device_from_notification(self, space: AjaxSpace, notification: AjaxNotification) -> None:
         """Update device state based on notification event."""

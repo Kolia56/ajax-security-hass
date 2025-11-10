@@ -9,6 +9,16 @@ CONF_EMAIL = "email"
 CONF_PASSWORD = "password"
 CONF_DEVICE_ID = "device_id"
 
+# Options
+CONF_PERSISTENT_NOTIFICATION = "persistent_notification"
+CONF_NOTIFICATION_FILTER = "notification_filter"
+
+# Notification filter options
+NOTIFICATION_FILTER_NONE = "none"
+NOTIFICATION_FILTER_ALARMS_ONLY = "alarms_only"
+NOTIFICATION_FILTER_SECURITY_EVENTS = "security_events"
+NOTIFICATION_FILTER_ALL = "all"
+
 # Default values
 DEFAULT_DEVICE_MODEL = "Home Assistant"
 DEFAULT_VERSION = "3.34"

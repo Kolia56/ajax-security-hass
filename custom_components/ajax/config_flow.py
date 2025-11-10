@@ -14,7 +14,16 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
 from .api import AjaxApi, AjaxApiError, AjaxAuthError
-from .const import DOMAIN, CONF_DEVICE_ID
+from .const import (
+    DOMAIN,
+    CONF_DEVICE_ID,
+    CONF_PERSISTENT_NOTIFICATION,
+    CONF_NOTIFICATION_FILTER,
+    NOTIFICATION_FILTER_NONE,
+    NOTIFICATION_FILTER_ALARMS_ONLY,
+    NOTIFICATION_FILTER_SECURITY_EVENTS,
+    NOTIFICATION_FILTER_ALL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -102,6 +111,52 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
         )
+
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return OptionsFlowHandler(config_entry)
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow for Ajax integration."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        options_schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_PERSISTENT_NOTIFICATION,
+                    default=self.config_entry.options.get(
+                        CONF_PERSISTENT_NOTIFICATION, False
+                    ),
+                ): bool,
+                vol.Optional(
+                    CONF_NOTIFICATION_FILTER,
+                    default=self.config_entry.options.get(
+                        CONF_NOTIFICATION_FILTER, NOTIFICATION_FILTER_NONE
+                    ),
+                ): vol.In(
+                    {
+                        NOTIFICATION_FILTER_NONE: "None",
+                        NOTIFICATION_FILTER_ALARMS_ONLY: "Alarms only",
+                        NOTIFICATION_FILTER_SECURITY_EVENTS: "Security events (alarms + arming)",
+                        NOTIFICATION_FILTER_ALL: "All notifications",
+                    }
+                ),
+            }
+        )
+
+        return self.async_show_form(step_id="init", data_schema=options_schema)
 
 
 class CannotConnect(HomeAssistantError):

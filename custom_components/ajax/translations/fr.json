@@ -25,7 +25,8 @@
         "title": "Options Ajax",
         "description": "Configurez les options de votre intégration Ajax",
         "data": {
-          "update_interval": "Intervalle de mise à jour (secondes)"
+          "persistent_notification": "Afficher les notifications persistantes",
+          "notification_filter": "Filtre de notifications"
         }
       }
     }
