@@ -5,6 +5,15 @@ All notable changes to the Ajax Security System integration will be documented i
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2025-11-11
+
+### Changed
+- Added comprehensive debug logging for night mode detection (Issue #18)
+  - Logs armed groups count vs total groups
+  - Shows each group's state and night_mode_enabled flag
+  - Displays which security state is being set and why
+  - Helps diagnose alarm control panel state update issues
+
 ## [0.4.7] - 2025-11-11
 
 ### Added
