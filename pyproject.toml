@@ -37,6 +37,7 @@ lint.select = [
 # Ignore specific rules that may be too strict for this project
 lint.ignore = [
     "E501",    # Line too long (handled by formatter)
+    "PLR0911", # Too many return statements
     "PLR0913", # Too many arguments
     "PLR0912", # Too many branches
     "PLR0915", # Too many statements
@@ -46,8 +47,10 @@ lint.ignore = [
     "ARG001",  # Unused function argument (required by Home Assistant interfaces)
     "ARG002",  # Unused method argument (required by Home Assistant interfaces)
     "B007",    # Loop variable not used (common in dict.items() iterations)
+    "B904",    # raise ... from err (not always needed for API errors)
     "PLC0415", # Import should be at top level (sometimes needed for circular imports)
     "PTH123",  # Use pathlib.Path.open() (not always necessary)
+    "SIM102",  # Use single if statement (sometimes clearer with nested)
 ]
 
 # Exclude patterns
@@ -65,6 +68,8 @@ exclude = [
 [tool.ruff.lint.per-file-ignores]
 # Allow unused imports in __init__.py
 "__init__.py" = ["F401"]
+# Allow unused imports in api.py for protobuf dependency ordering
+"api.py" = ["F401"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["custom_components.ajax"]

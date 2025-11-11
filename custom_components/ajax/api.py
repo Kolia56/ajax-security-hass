@@ -8,6 +8,9 @@ from typing import Any
 
 import grpc
 
+# Import log_marker first as it's a dependency for other protobuf files
+from custom_components.ajax.systems.ajax.logging.proto import log_marker_pb2  # isort: skip
+
 from custom_components.ajax.systems.ajax.api.mobile.v2.common.space import (
     space_locator_pb2,
 )
