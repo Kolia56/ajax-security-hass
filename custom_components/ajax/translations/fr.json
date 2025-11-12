@@ -335,6 +335,9 @@
             "name": "Liste des dispositifs"
           }
         }
+      },
+      "externally_powered": {
+        "name": "Alimentation externe"
       }
     },
     "button": {

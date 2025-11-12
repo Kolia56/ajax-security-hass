@@ -294,6 +294,9 @@
             "name": "Problem devices list"
           }
         }
+      },
+      "externally_powered": {
+        "name": "External power supply"
       }
     },
     "button": {

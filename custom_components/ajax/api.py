@@ -1078,10 +1078,19 @@ class AjaxApi:
                     if hasattr(device_specific, 'external_contact_always_active'):
                         attributes["always_active"] = device_specific.external_contact_always_active
 
+                    # RangeExtender, MotionProtectOutdoor: externally_powered
+                    if hasattr(device_specific, 'externally_powered'):
+                        # externally_powered is a BoolValue wrapper
+                        ext_powered = device_specific.externally_powered
+                        if hasattr(ext_powered, 'value'):
+                            attributes["externally_powered"] = ext_powered.value
+                        else:
+                            attributes["externally_powered"] = bool(ext_powered)
+
                 # Add default values for always_active and armed_in_night_mode if not set
                 # (these fields only appear when True, but we want to show them as False when absent)
-                # Note: These attributes only apply to detectors, not to hubs
-                if "hub" not in object_type_str.lower():
+                # Note: These attributes only apply to detectors, not to hubs/repeaters/range_extenders
+                if "hub" not in object_type_str.lower() and "repeater" not in object_type_str.lower() and "range_extender" not in object_type_str.lower():
                     if "always_active" not in attributes:
                         attributes["always_active"] = False
                     if "armed_in_night_mode" not in attributes:

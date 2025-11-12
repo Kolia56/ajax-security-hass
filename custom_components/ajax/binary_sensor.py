@@ -147,6 +147,16 @@ BINARY_SENSORS: tuple[AjaxBinarySensorDescription, ...] = (
         should_create=lambda device: True,  # Create for all devices
         enabled_by_default=True,
     ),
+    # External power supply (for range extenders, motion detectors outdoor, etc.)
+    AjaxBinarySensorDescription(
+        key="externally_powered",
+        translation_key="externally_powered",
+        device_class=BinarySensorDeviceClass.PLUG,
+        icon="mdi:power-plug",
+        value_fn=lambda device: device.attributes.get("externally_powered", False),
+        should_create=lambda device: "externally_powered" in device.attributes,
+        enabled_by_default=True,
+    ),
 )
 
 
