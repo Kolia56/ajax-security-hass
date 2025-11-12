@@ -381,6 +381,26 @@ class AjaxApi:
                     if hasattr(space, "hub_id") and space.hub_id:
                         space_data["hub_id"] = space.hub_id
 
+                    # Parse security state if available
+                    if hasattr(space, "security_state"):
+                        security_state_int = int(space.security_state)
+                        # Map DisplayedSpaceSecurityState enum to string
+                        # 0=NONE, 1=ARMED, 2=DISARMED, 3=NIGHT_MODE, 4=PARTIALLY_ARMED, etc.
+                        security_state_map = {
+                            0: "NONE",
+                            1: "ARMED",
+                            2: "DISARMED",
+                            3: "NIGHT_MODE",
+                            4: "PARTIALLY_ARMED",
+                            5: "AWAITING_APP_EXIT_TIMER",
+                            6: "AWAITING_SECOND_STAGE_CONFIRMATION",
+                            7: "TWO_STAGE_ARMING_INCOMPLETE",
+                            8: "AWAITING_VDS_ARMING_COMPLETION",
+                        }
+                        security_state_str = security_state_map.get(security_state_int, "NONE")
+                        space_data["security_state"] = security_state_str
+                        _LOGGER.debug("Space %s initial security state: %s", space_data["name"], security_state_str)
+
                     spaces.append(space_data)
 
                 _LOGGER.info("Found %d spaces", len(spaces))

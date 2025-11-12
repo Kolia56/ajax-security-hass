@@ -1291,14 +1291,15 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         """Parse security state from API response."""
         if isinstance(state_value, str):
             state_str = state_value.upper()
-            if "ARMED" in state_str and "PARTIALLY" not in state_str:
-                return SecurityState.ARMED
-            elif "DISARMED" in state_str:
+            # Check DISARMED first, before ARMED, since "DISARMED" contains "ARMED"
+            if "DISARMED" in state_str:
                 return SecurityState.DISARMED
-            elif "NIGHT" in state_str:
-                return SecurityState.NIGHT_MODE
             elif "PARTIALLY" in state_str:
                 return SecurityState.PARTIALLY_ARMED
+            elif "NIGHT" in state_str:
+                return SecurityState.NIGHT_MODE
+            elif "ARMED" in state_str:
+                return SecurityState.ARMED
 
         return SecurityState.NONE
 
