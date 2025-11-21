@@ -1,27 +1,25 @@
 """The Ajax Security System integration."""
 from __future__ import annotations
 
-import hashlib
 import logging
 from typing import TYPE_CHECKING
 
-import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, Platform
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.const import Platform
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv
 
 from .api import AjaxRestApi, AjaxRestApiError, AjaxRestAuthError
 from .const import (
-    DOMAIN,
-    CONF_SESSION_TOKEN,
+    CONF_API_KEY,
     CONF_AWS_ACCESS_KEY,
-    CONF_AWS_SECRET_KEY,
-    CONF_AWS_QUEUE_NAME,
     CONF_AWS_REGION,
+    CONF_AWS_SECRET_KEY,
+    CONF_EVENTS_QUEUE,
+    CONF_INTEGRATION_ID,
     DEFAULT_AWS_REGION,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
 )
 from .coordinator import AjaxDataCoordinator
 from .sqs_client import AjaxSQSClient
@@ -45,69 +43,30 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
-async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate config entry to new version."""
-    _LOGGER.info("Migrating Ajax config entry from version %s", entry.version)
-
-    if entry.version == 1:
-        # Version 1 -> 2: Hash the password if it's not already hashed
-        new_data = {**entry.data}
-        password = new_data.get(CONF_PASSWORD, "")
-
-        # Check if password is already a SHA256 hash (64 hex characters)
-        if len(password) != 64 or not all(c in "0123456789abcdef" for c in password.lower()):
-            # Password is plain text, hash it
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
-            new_data[CONF_PASSWORD] = password_hash
-            _LOGGER.info("Migrated password to SHA256 hash for security")
-        else:
-            _LOGGER.info("Password already appears to be hashed, skipping migration")
-
-        hass.config_entries.async_update_entry(entry, data=new_data, version=2)
-        _LOGGER.info("Migration to version 2 successful")
-
-    return True
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Ajax Security System from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
-    email = entry.data[CONF_EMAIL]
-    password = entry.data[CONF_PASSWORD]
-    device_id = entry.entry_id  # Use entry ID as unique device ID
-    session_token = entry.data.get(CONF_SESSION_TOKEN)
+    # Get API credentials
+    integration_id = entry.data[CONF_INTEGRATION_ID]
+    api_key = entry.data[CONF_API_KEY]
 
     # Get AWS SQS configuration (optional)
     aws_access_key = entry.data.get(CONF_AWS_ACCESS_KEY)
     aws_secret_key = entry.data.get(CONF_AWS_SECRET_KEY)
-    aws_queue_name = entry.data.get(CONF_AWS_QUEUE_NAME)
+    events_queue = entry.data.get(CONF_EVENTS_QUEUE)
     aws_region = entry.data.get(CONF_AWS_REGION, DEFAULT_AWS_REGION)
 
     # Create REST API instance
-    # Password is already hashed (SHA256) in config entry
-    # Use session token if available to avoid 2FA requirement
     api = AjaxRestApi(
-        email=email,
-        password=password,
-        device_id=device_id,
-        password_is_hashed=True,
-        session_token=session_token,
+        integration_id=integration_id,
+        api_key=api_key,
     )
 
     try:
-        # Authenticate only if we don't have a valid session token
-        # If session token is available, it will be used automatically in API calls
-        if not session_token:
-            await api.async_login()
-            _LOGGER.info("Successfully authenticated with Ajax API")
-
-            # Store the session token for future use
-            new_data = dict(entry.data)
-            new_data[CONF_SESSION_TOKEN] = api.session_token
-            hass.config_entries.async_update_entry(entry, data=new_data)
-        else:
-            _LOGGER.debug("Using existing session token for authentication")
+        # Test API connection by getting hubs
+        await api.async_get_hubs()
+        _LOGGER.info("Successfully connected to Ajax REST API")
 
     except AjaxRestAuthError as err:
         _LOGGER.error("Authentication failed: %s", err)
@@ -120,267 +79,55 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = AjaxDataCoordinator(hass, api)
 
     # Initialize AWS SQS client if credentials are provided
-    if aws_access_key and aws_secret_key and aws_queue_name:
+    if aws_access_key and aws_secret_key and events_queue:
         _LOGGER.info("Initializing AWS SQS client for real-time events")
-        sqs_client = AjaxSQSClient(
-            aws_access_key=aws_access_key,
-            aws_secret_key=aws_secret_key,
-            queue_name=aws_queue_name,
-            region=aws_region,
-        )
-        coordinator.sqs_client = sqs_client
+        try:
+            sqs_client = AjaxSQSClient(
+                aws_access_key=aws_access_key,
+                aws_secret_key=aws_secret_key,
+                queue_name=events_queue,
+                region=aws_region,
+            )
+            # Set event callback to coordinator's handle_event method
+            sqs_client.set_event_callback(coordinator.handle_event)
+            coordinator.sqs_client = sqs_client
+            # Start SQS listener
+            await sqs_client.start()
+            _LOGGER.info("AWS SQS listener started successfully")
+        except Exception as err:
+            _LOGGER.error("Failed to initialize AWS SQS client: %s", err)
+            _LOGGER.info("Will use polling fallback (%ss interval)", DEFAULT_SCAN_INTERVAL)
     else:
-        _LOGGER.info("AWS SQS not configured, using polling fallback (60s interval)")
+        _LOGGER.info(
+            "AWS SQS not configured, using polling fallback (%ss interval)",
+            DEFAULT_SCAN_INTERVAL,
+        )
 
-    # Store coordinator immediately so platforms can access it
+    # Store coordinator
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    # Fetch initial data - this will run in background via coordinator's built-in refresh mechanism
-    # No need to block startup waiting for all data
+    # Fetch initial data
     await coordinator.async_config_entry_first_refresh()
 
-    # Set up platforms - they will handle their own entity creation asynchronously
+    # Set up platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    # Register services
-    async def async_handle_force_arm(call: ServiceCall) -> None:
-        """Handle the force_arm service call."""
-        entity_id = call.data.get("entity_id")
-        if not entity_id:
-            _LOGGER.error("No entity_id provided for force_arm service")
-            return
-
-        # Get the alarm control panel entity
-        entity_registry = hass.helpers.entity_registry.async_get(hass)
-        entity_entry = entity_registry.async_get(entity_id)
-
-        if not entity_entry:
-            _LOGGER.error("Entity %s not found", entity_id)
-            return
-
-        # Get the space_id from the entity's unique_id
-        # Format: {entry_id}_alarm_{space_id}
-        unique_id_parts = entity_entry.unique_id.split("_")
-        if len(unique_id_parts) < 3 or unique_id_parts[1] != "alarm":
-            _LOGGER.error("Invalid entity unique_id format: %s", entity_entry.unique_id)
-            return
-
-        space_id = unique_id_parts[2]
-
-        # Call coordinator method with force=True
-        try:
-            await coordinator.async_arm_space(space_id, force=True)
-        except Exception as err:
-            _LOGGER.error("Failed to force arm: %s", err)
-
-    async def async_handle_force_arm_night(call: ServiceCall) -> None:
-        """Handle the force_arm_night service call."""
-        entity_id = call.data.get("entity_id")
-        if not entity_id:
-            _LOGGER.error("No entity_id provided for force_arm_night service")
-            return
-
-        # Get the alarm control panel entity
-        entity_registry = hass.helpers.entity_registry.async_get(hass)
-        entity_entry = entity_registry.async_get(entity_id)
-
-        if not entity_entry:
-            _LOGGER.error("Entity %s not found", entity_id)
-            return
-
-        # Get the space_id from the entity's unique_id
-        unique_id_parts = entity_entry.unique_id.split("_")
-        if len(unique_id_parts) < 3 or unique_id_parts[1] != "alarm":
-            _LOGGER.error("Invalid entity unique_id format: %s", entity_entry.unique_id)
-            return
-
-        space_id = unique_id_parts[2]
-
-        # Call coordinator method with force=True
-        try:
-            await coordinator.async_arm_night_mode(space_id, force=True)
-        except Exception as err:
-            _LOGGER.error("Failed to force arm night mode: %s", err)
-
-    async def async_handle_generate_device_info(call: ServiceCall) -> None:
-        """Generate device info diagnostic report (without sensitive data)."""
-        import json
-        from pathlib import Path
-
-        _LOGGER.info("Generating device info diagnostic report")
-
-        # Collect device information from all spaces
-        devices_info = []
-
-        for space_id, space in coordinator.account.spaces.items():
-            for device_id, device in space.devices.items():
-                # Get room name if available
-                room_name = None
-                if device.room_id and device.room_id in space.rooms:
-                    room_name = space.rooms[device.room_id].name
-
-                device_info = {
-                    "type": device.type.value if device.type else "unknown",
-                    "raw_type": device.raw_type or "unknown",
-                    "has_room": bool(room_name),
-                    "firmware_version": device.firmware_version or "unknown",
-                    "hardware_version": device.hardware_version or "unknown",
-                    "attributes": {
-                        "battery": device.battery_level is not None,
-                        "signal_strength": device.signal_strength is not None,
-                        "temperature": device.attributes.get("temperature") is not None,
-                        "humidity": device.attributes.get("humidity") is not None,
-                        "co2": device.attributes.get("co2") is not None,
-                        "tamper": device.attributes.get("tamper") is not None,
-                        "online": device.online,
-                        "bypassed": device.bypassed,
-                        "malfunctions": device.malfunctions > 0,
-                    },
-                }
-
-                # Add device-specific attributes based on type
-                if device.type:
-                    type_value = device.type.value
-                    if "motion" in type_value.lower():
-                        device_info["attributes"]["motion_detected"] = "motion_detected" in device.states
-                    elif "door" in type_value.lower() or "contact" in type_value.lower():
-                        device_info["attributes"]["opened"] = "opened" in device.states
-                    elif "smoke" in type_value.lower():
-                        device_info["attributes"]["smoke_detected"] = "smoke_detected" in device.states
-                    elif "leak" in type_value.lower() or "water" in type_value.lower():
-                        device_info["attributes"]["leak_detected"] = "leak_detected" in device.states
-
-                # Add any additional states
-                if device.states:
-                    device_info["states"] = device.states
-
-                devices_info.append(device_info)
-
-        # Generate report
-        report = {
-            "total_devices": len(devices_info),
-            "spaces": len(coordinator.account.spaces),
-            "devices_by_type": {},
-            "firmware_versions": {},
-            "hardware_versions": {},
-            "unknown_device_raw_types": {},  # Track raw types of unknown devices for debugging
-            "devices": devices_info,
-        }
-
-        # Count by type
-        for dev in devices_info:
-            dev_type = dev["type"]
-            report["devices_by_type"][dev_type] = report["devices_by_type"].get(dev_type, 0) + 1
-
-            # Track raw types for unknown devices
-            if dev_type == "unknown":
-                raw_type = dev.get("raw_type", "unknown")
-                report["unknown_device_raw_types"][raw_type] = report["unknown_device_raw_types"].get(raw_type, 0) + 1
-
-            # Count firmware versions
-            fw = dev["firmware_version"]
-            if fw != "unknown":
-                report["firmware_versions"][fw] = report["firmware_versions"].get(fw, 0) + 1
-
-            # Count hardware versions
-            hw = dev["hardware_version"]
-            if hw != "unknown":
-                report["hardware_versions"][hw] = report["hardware_versions"].get(hw, 0) + 1
-
-        # Save to file in config directory
-        config_path = Path(hass.config.config_dir)
-        report_path = config_path / "ajax_device_info.json"
-
-        def write_report():
-            """Write the report to file (runs in executor)."""
-            with open(report_path, "w", encoding="utf-8") as f:
-                json.dump(report, f, indent=2, ensure_ascii=False)
-
-        try:
-            await hass.async_add_executor_job(write_report)
-            _LOGGER.info("Device info report saved to: %s", report_path)
-
-            # Send persistent notification to user
-            unknown_count = report["devices_by_type"].get("unknown", 0)
-            message = (
-                f"Device information report has been generated.\n\n"
-                f"Location: {report_path}\n"
-                f"Total devices: {report['total_devices']}\n"
-                f"Device types: {len(report['devices_by_type'])}"
-            )
-
-            if unknown_count > 0:
-                message += f"\n\n⚠️ Warning: {unknown_count} unknown device(s) detected!\n"
-                message += "Raw types: " + ", ".join(report["unknown_device_raw_types"].keys())
-
-            await hass.services.async_call(
-                "persistent_notification",
-                "create",
-                {
-                    "title": "Ajax Device Info Generated",
-                    "message": message,
-                    "notification_id": "ajax_device_info_generated",
-                },
-            )
-
-        except Exception as err:
-            _LOGGER.error("Failed to save device info report: %s", err)
-            await hass.services.async_call(
-                "persistent_notification",
-                "create",
-                {
-                    "title": "Ajax Device Info Error",
-                    "message": f"Failed to generate device info report: {err}",
-                    "notification_id": "ajax_device_info_error",
-                },
-            )
-
-    # Register services
-    hass.services.async_register(
-        DOMAIN,
-        "force_arm",
-        async_handle_force_arm,
-        schema=vol.Schema({
-            vol.Required("entity_id"): cv.entity_id,
-        }),
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        "force_arm_night",
-        async_handle_force_arm_night,
-        schema=vol.Schema({
-            vol.Required("entity_id"): cv.entity_id,
-        }),
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        "generate_device_info",
-        async_handle_generate_device_info,
-        schema=vol.Schema({}),
-    )
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+    if unload_ok := await hass.config_entries.async_unload_platforms(
+        entry, PLATFORMS
+    ):
         coordinator: AjaxDataCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
 
         # Stop SQS client if running
-        if hasattr(coordinator, 'sqs_client') and coordinator.sqs_client:
+        if hasattr(coordinator, "sqs_client") and coordinator.sqs_client:
             _LOGGER.info("Stopping AWS SQS client")
             await coordinator.sqs_client.stop()
 
         # Close API connection
         await coordinator.api.close()
-
-        # Unregister services if this is the last config entry
-        if not hass.data[DOMAIN]:
-            hass.services.async_remove(DOMAIN, "force_arm")
-            hass.services.async_remove(DOMAIN, "force_arm_night")
-            hass.services.async_remove(DOMAIN, "generate_device_info")
 
     return unload_ok

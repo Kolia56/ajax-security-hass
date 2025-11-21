@@ -5,19 +5,14 @@ from enum import Enum
 DOMAIN = "ajax"
 
 # Configuration and defaults
-CONF_EMAIL = "email"
-CONF_PASSWORD = "password"
-CONF_DEVICE_ID = "device_id"
-CONF_SESSION_TOKEN = "session_token"
+CONF_INTEGRATION_ID = "integration_id"
+CONF_API_KEY = "api_key"
 
 # AWS SQS Configuration (optional)
 CONF_AWS_ACCESS_KEY = "aws_access_key"
 CONF_AWS_SECRET_KEY = "aws_secret_key"
-CONF_AWS_QUEUE_NAME = "aws_queue_name"
+CONF_EVENTS_QUEUE = "events_queue"
 CONF_AWS_REGION = "aws_region"
-
-# API mode selection
-CONF_USE_REST_API = "use_rest_api"  # Toggle between gRPC (old) and REST (new)
 
 # Options
 CONF_PERSISTENT_NOTIFICATION = "persistent_notification"
@@ -41,14 +36,15 @@ API_BASE_URL = "mobile-gw.prod.ajax.systems"
 API_PORT = 443
 
 # REST API endpoints (official)
-AJAX_REST_API_BASE_URL = "https://api.ajax.systems/api/v1"
+AJAX_REST_API_BASE_URL = "https://api.ajax.systems/api"
 AJAX_REST_API_TIMEOUT = 30  # seconds
 
 # AWS SQS defaults
-DEFAULT_AWS_REGION = "eu-west-1"  # Dublin
+DEFAULT_AWS_REGION = "eu-central-1"  # Frankfurt
+DEFAULT_SCAN_INTERVAL = 30  # seconds
 
 # Update intervals (seconds)
-UPDATE_INTERVAL = 60  # Poll every 60 seconds (real-time updates via streaming)
+UPDATE_INTERVAL = 30  # Poll every 30 seconds (real-time updates via SQS)
 
 # Device classes
 DEVICE_CLASS_MOTION = "motion"

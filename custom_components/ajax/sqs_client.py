@@ -28,7 +28,7 @@ class AjaxSQSClient:
         aws_access_key: str,
         aws_secret_key: str,
         queue_name: str,
-        region: str = "eu-west-1",
+        region: str = "eu-central-1",
     ):
         """Initialize the SQS client.
 
@@ -36,7 +36,7 @@ class AjaxSQSClient:
             aws_access_key: AWS access key ID
             aws_secret_key: AWS secret access key
             queue_name: SQS queue name (e.g., 'ajax-events-XXXXXXXX-prod.fifo')
-            region: AWS region (default: eu-west-1 for Dublin)
+            region: AWS region (default: eu-central-1 for Frankfurt)
         """
         if not HAS_AIOBOTOCORE:
             raise SQSClientError(

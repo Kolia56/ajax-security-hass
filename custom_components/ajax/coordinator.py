@@ -131,6 +131,14 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         except AjaxRestApiError as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
+    async def handle_event(self, event_data: dict[str, Any]) -> None:
+        """Public method to handle events from AWS SQS.
+
+        Args:
+            event_data: The event data from SQS
+        """
+        await self._handle_sqs_event(event_data)
+
     async def _handle_sqs_event(self, event_data: dict[str, Any]) -> None:
         """Handle an event received from AWS SQS.
 
