@@ -50,22 +50,6 @@ def get_device_color_name(color_code: int | None) -> str | None:
     return color_map.get(color_code, f"Unknown ({color_code})")
 
 
-def get_last_alert_timestamp(space: AjaxSpace) -> datetime | None:
-    """Get the last alert/security event timestamp with proper timezone."""
-    if not space.notifications:
-        return None
-
-    for notification in space.notifications:
-        if notification.type.value in ["alarm", "security_event"]:
-            timestamp = notification.timestamp
-            # Ensure timezone is set
-            if timestamp and timestamp.tzinfo is None:
-                return timestamp.replace(tzinfo=timezone.utc)
-            return timestamp
-
-    return None
-
-
 def format_timezone(tz_string: str | None) -> str | None:
     """Format timezone string to be more readable.
 
@@ -190,13 +174,6 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda space: len(space.get_bypassed_devices()),
-    ),
-    AjaxSpaceSensorDescription(
-        key="last_alert",
-        translation_key="last_alert",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        icon="mdi:bell-alert",
-        value_fn=get_last_alert_timestamp,
     ),
     # Hub hardware information
     AjaxSpaceSensorDescription(
