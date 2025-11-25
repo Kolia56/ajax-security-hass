@@ -27,12 +27,10 @@ from .const import (
     CONF_NOTIFICATION_FILTER,
     CONF_PERSISTENT_NOTIFICATION,
     DOMAIN,
-    NOTIFICATION_FILTER_ALL,
     NOTIFICATION_FILTER_ALARMS_ONLY,
     NOTIFICATION_FILTER_NONE,
     NOTIFICATION_FILTER_SECURITY_EVENTS,
     UPDATE_INTERVAL,
-    get_event_message,
 )
 from .models import (
     AjaxAccount,
@@ -736,8 +734,6 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         Args:
             space: The AjaxSpace to process
         """
-        from datetime import timedelta
-
         now = datetime.now(timezone.utc)
         expiry_seconds = 30  # Reset motion detection after 30 seconds
 
@@ -790,8 +786,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
             for notif_data in notifications_data:
                 # Parse notification data
-                from datetime import datetime
-                from .models import AjaxNotification, NotificationType
+                from .models import AjaxNotification
 
                 # Determine notification type based on event_type
                 event_type = notif_data.get("event_type", "")

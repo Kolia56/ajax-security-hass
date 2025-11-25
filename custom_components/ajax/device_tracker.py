@@ -63,9 +63,6 @@ class AjaxHubTracker(CoordinatorEntity[AjaxDataCoordinator], TrackerEntity):
         super().__init__(coordinator)
         self._space_id = space_id
 
-        space = coordinator.get_space(space_id)
-        space_name = space.name if space else "Hub"
-
         self._attr_unique_id = f"{space_id}_location"
         self._attr_name = "Position"
         self._attr_icon = "mdi:map-marker-radius"

@@ -18,7 +18,7 @@ from typing import Any, Callable
 
 try:
     from aiobotocore.session import get_session
-    from botocore.exceptions import BotoCoreError, ClientError
+    from botocore.exceptions import ClientError
     AIOBOTOCORE_AVAILABLE = True
 except ImportError:
     AIOBOTOCORE_AVAILABLE = False

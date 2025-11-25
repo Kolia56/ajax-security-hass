@@ -6,9 +6,8 @@ It acts as a bridge between real-time events and the REST API polling system.
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 from .event_parser import AjaxEventParser
 
