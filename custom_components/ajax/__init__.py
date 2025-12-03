@@ -89,13 +89,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     elif auth_mode == AUTH_MODE_PROXY_SECURE:
         # Proxy Secure: All requests via proxy, SSE for real-time events
         proxy_url = entry.data[CONF_PROXY_URL]
-        proxy_mode = "secure"
+        proxy_mode = AUTH_MODE_PROXY_SECURE
         _LOGGER.info("Using proxy secure authentication mode")
 
     elif auth_mode == AUTH_MODE_PROXY_HYBRID:
         # Proxy Hybrid: Login via proxy to get API key, then direct requests, SSE for events
         proxy_url = entry.data[CONF_PROXY_URL]
-        proxy_mode = "hybrid"
+        proxy_mode = AUTH_MODE_PROXY_HYBRID
         _LOGGER.info("Using proxy hybrid authentication mode")
 
     # Create REST API instance

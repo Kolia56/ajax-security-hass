@@ -104,7 +104,7 @@ class AjaxRestApi:
         """
         if self.proxy_mode == AUTH_MODE_PROXY_SECURE:
             # Secure mode: ALL requests go through proxy
-            return self.proxy_url if self.proxy_url else AJAX_REST_API_BASE_URL
+            return f"{self.proxy_url}/api" if self.proxy_url else AJAX_REST_API_BASE_URL
         elif self.proxy_mode and self.proxy_url and for_login:
             # Hybrid mode: only login goes through proxy
             return self.proxy_url

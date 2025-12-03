@@ -243,10 +243,6 @@ class AjaxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_PASSWORD: password_hash,
                 }
 
-                # If proxy returned an API key (hybrid mode), store it
-                if self._api.api_key:
-                    entry_data[CONF_API_KEY] = self._api.api_key
-
                 # Create entry
                 return self.async_create_entry(
                     title=f"Ajax - {user_input[CONF_EMAIL]}",
@@ -330,10 +326,8 @@ class AjaxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     if self._user_input.get(CONF_QUEUE_NAME):
                         entry_data[CONF_QUEUE_NAME] = self._user_input[CONF_QUEUE_NAME]
                 else:
-                    # Proxy mode: include proxy URL and optionally API key
+                    # Proxy mode: include proxy URL
                     entry_data[CONF_PROXY_URL] = self._user_input[CONF_PROXY_URL]
-                    if self._api.api_key:
-                        entry_data[CONF_API_KEY] = self._api.api_key
 
                 # Create entry
                 return self.async_create_entry(
@@ -370,10 +364,6 @@ class AjaxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class AjaxOptionsFlow(config_entries.OptionsFlow):
     """Handle Ajax options."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     def _mask_credential(self, value: str | None) -> str:
         """Mask a credential for display (show first 4 and last 4 chars)."""
