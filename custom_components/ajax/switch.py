@@ -24,6 +24,7 @@ from .devices import (
     MotionDetectorHandler,
     SirenHandler,
     SmokeDetectorHandler,
+    SocketHandler,
 )
 from .models import AjaxDevice, DeviceType
 
@@ -39,6 +40,9 @@ DEVICE_HANDLERS = {
     DeviceType.FLOOD_DETECTOR: FloodDetectorHandler,
     DeviceType.GLASS_BREAK: GlassBreakHandler,
     DeviceType.SIREN: SirenHandler,
+    DeviceType.SOCKET: SocketHandler,
+    DeviceType.RELAY: SocketHandler,
+    DeviceType.WALLSWITCH: SocketHandler,
 }
 
 
