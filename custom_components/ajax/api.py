@@ -312,10 +312,16 @@ class AjaxRestApi:
             "userId": self.user_id,
         }
 
+        # Include session token in headers (required by proxy even for refresh)
+        headers = {
+            **self._base_headers,
+            "X-Session-Token": self.session_token or "",
+        }
+
         try:
             async with session.post(
                 url,
-                headers=self._base_headers,
+                headers=headers,
                 json=payload,
                 timeout=aiohttp.ClientTimeout(total=AJAX_REST_API_TIMEOUT),
             ) as response:
