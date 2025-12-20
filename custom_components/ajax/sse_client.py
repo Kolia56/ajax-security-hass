@@ -38,6 +38,7 @@ class AjaxSSEClient:
         session_token: str,
         callback: Callable[[dict[str, Any]], None],
         hass_loop: asyncio.AbstractEventLoop | None = None,
+        on_auth_error: Callable[[], Any] | None = None,
     ):
         """Initialize the SSE client.
 
@@ -46,15 +47,18 @@ class AjaxSSEClient:
             session_token: Session token for authentication
             callback: Function to call when an event is received
             hass_loop: Home Assistant event loop for thread-safe callbacks
+            on_auth_error: Callback when 401/403 is received (to trigger token refresh)
         """
         self.sse_url = sse_url
         self.session_token = session_token
         self._callback = callback
         self._hass_loop = hass_loop
+        self._on_auth_error = on_auth_error
         self._running = False
         self._task: asyncio.Task | None = None
         self._session: aiohttp.ClientSession | None = None
         self._reconnect_delay = self.RECONNECT_DELAY
+        self._waiting_for_token_refresh = False
 
     async def start(self) -> bool:
         """Start receiving SSE events.
@@ -127,6 +131,14 @@ class AjaxSSEClient:
                 connect=self.CONNECTION_TIMEOUT,
             ),
         ) as response:
+            if response.status in (401, 403):
+                _LOGGER.warning(
+                    "SSE auth error: HTTP %d - requesting token refresh",
+                    response.status,
+                )
+                await self._handle_auth_error()
+                return
+
             if response.status != 200:
                 _LOGGER.error("SSE connection failed: HTTP %d", response.status)
                 return
@@ -204,7 +216,34 @@ class AjaxSSEClient:
             new_token: New session token
         """
         self.session_token = new_token
-        _LOGGER.debug("SSE session token updated")
+        self._waiting_for_token_refresh = False
+        _LOGGER.info("SSE session token updated, will reconnect with new token")
+
+    async def _handle_auth_error(self) -> None:
+        """Handle authentication error by requesting token refresh.
+
+        This is called when SSE receives 401/403. It notifies the coordinator
+        to refresh the token, then waits for the new token before reconnecting.
+        """
+        if self._waiting_for_token_refresh:
+            _LOGGER.debug("SSE already waiting for token refresh")
+            return
+
+        self._waiting_for_token_refresh = True
+
+        if self._on_auth_error:
+            _LOGGER.info("SSE requesting token refresh from coordinator")
+            try:
+                # Call the auth error callback (async or sync)
+                result = self._on_auth_error()
+                if asyncio.iscoroutine(result):
+                    await result
+            except Exception as err:
+                _LOGGER.error("SSE auth error callback failed: %s", err)
+                self._waiting_for_token_refresh = False
+        else:
+            _LOGGER.warning("SSE no auth error callback configured")
+            self._waiting_for_token_refresh = False
 
     @property
     def is_connected(self) -> bool:

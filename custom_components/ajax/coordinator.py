@@ -415,12 +415,13 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         try:
             _LOGGER.info("Initializing SSE for real-time events...")
 
-            # Create SSE client
+            # Create SSE client with auth error callback for token refresh
             sse_client = AjaxSSEClient(
                 sse_url=self._sse_url,
                 session_token=self.api.session_token,
                 callback=lambda event: None,  # Will be set by manager
                 hass_loop=self.hass.loop,
+                on_auth_error=self._handle_sse_auth_error,
             )
 
             # Create SSE manager
@@ -457,6 +458,30 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         finally:
             self._sse_initialized = True
+
+    async def _handle_sse_auth_error(self) -> None:
+        """Handle SSE authentication error by refreshing the token.
+
+        Called when SSE client receives 401/403. Refreshes the token via API
+        and updates the SSE client with the new token.
+        """
+        _LOGGER.info("SSE auth error - refreshing session token...")
+
+        try:
+            # Try to refresh the token via REST API
+            await self.api.async_refresh_token()
+            new_token = self.api.session_token
+
+            if new_token and self.sse_manager and self.sse_manager.sse_client:
+                # Update SSE client with new token
+                self.sse_manager.sse_client.update_session_token(new_token)
+                _LOGGER.info("SSE token refreshed successfully")
+            else:
+                _LOGGER.warning("Token refresh succeeded but no SSE client to update")
+
+        except Exception as err:
+            _LOGGER.error("Failed to refresh token for SSE: %s", err)
+            # Don't raise - SSE client will retry with exponential backoff
 
     async def _async_update_spaces_from_hubs(self) -> None:
         """Update spaces by fetching hubs directly (use hub_id as space_id)."""
