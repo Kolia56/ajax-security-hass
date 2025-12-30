@@ -466,10 +466,18 @@
         "name": "Batterie Hub"
       },
       "hub_tamper": {
-        "name": "Couvercle Hub"
+        "name": "Couvercle Hub",
+        "state": {
+          "open": "Ouvert",
+          "closed": "Fermé"
+        }
       },
       "hub_external_power": {
-        "name": "Alimentation externe Hub"
+        "name": "Alimentation externe Hub",
+        "state": {
+          "connected": "Connecté",
+          "disconnected": "Déconnecté"
+        }
       },
       "hub_ethernet_ip": {
         "name": "IP Ethernet Hub"

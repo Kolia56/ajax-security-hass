@@ -276,9 +276,9 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         key="hub_tamper",
         translation_key="hub_tamper",
         icon="mdi:lock-open-alert",
-        value_fn=lambda space: "Ouvert"
+        value_fn=lambda space: "open"
         if space.hub_details.get("tampered")
-        else "Fermé"
+        else "closed"
         if space.hub_details
         else None,
     ),
@@ -286,9 +286,9 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         key="hub_external_power",
         translation_key="hub_external_power",
         icon="mdi:power-plug",
-        value_fn=lambda space: "Connecté"
+        value_fn=lambda space: "connected"
         if space.hub_details.get("externallyPowered")
-        else "Déconnecté"
+        else "disconnected"
         if space.hub_details
         else None,
     ),

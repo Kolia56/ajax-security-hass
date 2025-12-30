@@ -54,6 +54,13 @@
         "data_description": {
           "code": "Código de 6 dígitos de su aplicación de autenticación o SMS"
         }
+      },
+      "reauth_confirm": {
+        "title": "Re-autenticación",
+        "description": "Su sesión ha expirado. Por favor, ingrese nuevamente su contraseña para {email}.",
+        "data": {
+          "password": "Contraseña"
+        }
       }
     },
     "error": {
@@ -66,7 +73,9 @@
       "unknown": "Error inesperado. Consulte los registros para más detalles."
     },
     "abort": {
-      "already_configured": "Esta integración Ajax ya está configurada."
+      "already_configured": "Esta integración Ajax ya está configurada.",
+      "reauth_successful": "Re-autenticación exitosa.",
+      "reauth_failed": "Re-autenticación fallida. Por favor, reconfigure la integración."
     }
   },
   "options": {
@@ -442,10 +451,18 @@
         "name": "Batería Hub"
       },
       "hub_tamper": {
-        "name": "Tapa Hub"
+        "name": "Tapa Hub",
+        "state": {
+          "open": "Abierto",
+          "closed": "Cerrado"
+        }
       },
       "hub_external_power": {
-        "name": "Alimentación externa Hub"
+        "name": "Alimentación externa Hub",
+        "state": {
+          "connected": "Conectado",
+          "disconnected": "Desconectado"
+        }
       },
       "hub_ethernet_ip": {
         "name": "IP Ethernet Hub"

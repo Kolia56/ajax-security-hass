@@ -387,10 +387,18 @@
         "name": "Hub battery"
       },
       "hub_tamper": {
-        "name": "Hub tamper"
+        "name": "Hub tamper",
+        "state": {
+          "open": "Open",
+          "closed": "Closed"
+        }
       },
       "hub_external_power": {
-        "name": "Hub external power"
+        "name": "Hub external power",
+        "state": {
+          "connected": "Connected",
+          "disconnected": "Disconnected"
+        }
       },
       "hub_ethernet_ip": {
         "name": "Internal IP Address"
