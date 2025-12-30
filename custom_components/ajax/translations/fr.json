@@ -204,6 +204,72 @@
             "name": "Liste des dispositifs"
           }
         }
+      },
+      "tamper": {
+        "name": "Couvercle",
+        "state": {
+          "on": "Ouvert",
+          "off": "Fermé"
+        }
+      },
+      "moisture": {
+        "name": "Humidité"
+      },
+      "external_power": {
+        "name": "Alimentation externe"
+      },
+      "tampered": {
+        "name": "Sabotage"
+      },
+      "always_active": {
+        "name": "Toujours actif"
+      },
+      "armed_in_night_mode": {
+        "name": "Armé en mode nuit"
+      },
+      "tilt": {
+        "name": "Capteur d'inclinaison"
+      },
+      "shock": {
+        "name": "Capteur de choc"
+      },
+      "problem": {
+        "name": "Problème détecté",
+        "state_attributes": {
+          "total_malfunctions": {
+            "name": "Total dysfonctionnements"
+          },
+          "devices_with_problems": {
+            "name": "Dispositifs avec problèmes"
+          },
+          "problem_devices": {
+            "name": "Liste des dispositifs"
+          }
+        }
+      },
+      "externally_powered": {
+        "name": "Alimentation externe"
+      },
+      "battery_connected": {
+        "name": "Batterie Hub"
+      },
+      "cellular_signal": {
+        "name": "Signal cellulaire"
+      },
+      "gsm_antenna": {
+        "name": "Antenne GSM"
+      },
+      "jeweller_radio": {
+        "name": "Radio Jeweller"
+      },
+      "wings_radio": {
+        "name": "Radio Wings"
+      },
+      "system_health": {
+        "name": "État du système"
+      },
+      "cms_connection": {
+        "name": "Connexion CMS"
       }
     },
     "sensor": {
@@ -615,80 +681,6 @@
       },
       "led_indication": {
         "name": "Indication LED"
-      }
-    },
-    "binary_sensor": {
-      "system_problems": {
-        "name": "Problèmes système"
-      },
-      "tamper": {
-        "name": "Couvercle",
-        "state": {
-          "on": "Ouvert",
-          "off": "Fermé"
-        }
-      },
-      "moisture": {
-        "name": "Humidité"
-      },
-      "external_power": {
-        "name": "Alimentation externe"
-      },
-      "tampered": {
-        "name": "Sabotage"
-      },
-      "always_active": {
-        "name": "Toujours actif"
-      },
-      "armed_in_night_mode": {
-        "name": "Armé en mode nuit"
-      },
-      "tilt": {
-        "name": "Capteur d'inclinaison"
-      },
-      "shock": {
-        "name": "Capteur de choc"
-      },
-      "problem": {
-        "name": "Problème détecté",
-        "state_attributes": {
-          "total_malfunctions": {
-            "name": "Total dysfonctionnements"
-          },
-          "devices_with_problems": {
-            "name": "Dispositifs avec problèmes"
-          },
-          "problem_devices": {
-            "name": "Liste des dispositifs"
-          }
-        }
-      },
-      "externally_powered": {
-        "name": "Alimentation externe"
-      },
-      "battery_connected": {
-        "name": "Batterie Hub"
-      },
-      "external_power": {
-        "name": "Alimentation externe"
-      },
-      "cellular_signal": {
-        "name": "Signal cellulaire"
-      },
-      "gsm_antenna": {
-        "name": "Antenne GSM"
-      },
-      "jeweller_radio": {
-        "name": "Radio Jeweller"
-      },
-      "wings_radio": {
-        "name": "Radio Wings"
-      },
-      "system_health": {
-        "name": "État du système"
-      },
-      "cms_connection": {
-        "name": "Connexion CMS"
       }
     },
     "button": {
