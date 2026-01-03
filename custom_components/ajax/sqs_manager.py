@@ -417,6 +417,8 @@ class SQSManager:
         if state_changed and not ha_action_pending:
             space.security_state = new_state
             self._last_state_update[space.hub_id] = time.time()
+            # Update polling interval based on new state
+            self.coordinator._update_polling_interval(new_state)
 
         # Always create notification from SQS (even if state unchanged)
         # because SQS contains user info that REST doesn't have
