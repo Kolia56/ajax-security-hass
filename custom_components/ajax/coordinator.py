@@ -734,6 +734,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             groups_enabled = hub_details.get("groupsEnabled", False)
             space.group_mode_enabled = groups_enabled
             if groups_enabled:
+                # Check if HA recently triggered an action (protect optimistic updates)
+                ha_action_pending = self.has_pending_ha_action(hub_id)
                 try:
                     groups_data = await self.api.async_get_groups(hub_id)
                     for group_data in groups_data:
@@ -747,6 +749,18 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                 group_state = GroupState.DISARMED
                             else:
                                 group_state = GroupState.NONE
+
+                            # Check if group already exists
+                            existing_group = space.groups.get(group_id)
+                            if existing_group and ha_action_pending:
+                                # Protect optimistic update - keep existing state
+                                _LOGGER.debug(
+                                    "Group %s: REST has %s but HA action pending, keeping %s",
+                                    group_id,
+                                    group_state.value,
+                                    existing_group.state.value,
+                                )
+                                group_state = existing_group.state
 
                             space.groups[group_id] = AjaxGroup(
                                 id=group_id,
