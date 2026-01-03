@@ -112,6 +112,13 @@ BUTTON_EVENTS = {
     "emergencybuttonpressed": ("emergency", True),
 }
 
+# Scenario events that might be triggered by a Button
+SCENARIO_EVENTS = {
+    "relayonbyscenario": "scenario_triggered",
+    "relayoffbyscenario": "scenario_triggered",
+    "scenarioexecuted": "scenario_triggered",
+}
+
 # Map event tags to action keys for security events
 SECURITY_EVENT_ACTIONS = {
     "arm": "armed",
@@ -196,6 +203,7 @@ class SQSManager:
             room_name = event.get("sourceRoomName", "")
             timestamp = event.get("timestamp", 0)
             transition = event.get("transition", "")  # TRIGGERED/RECOVERED/IMPULSE
+            additional_data_v2 = event.get("additionalDataV2", [])
 
             _LOGGER.info(
                 "SQS event: type=%s, tag=%s, code=%s, source=%s (%s), transition=%s",
@@ -262,6 +270,10 @@ class SQSManager:
             elif event_tag in BUTTON_EVENTS:
                 await self._handle_button_event(
                     space, event_tag, source_name, source_id
+                )
+            elif event_tag in SCENARIO_EVENTS:
+                await self._handle_scenario_event(
+                    space, event_tag, source_name, additional_data_v2
                 )
             elif event_tag in TAMPER_EVENTS or event_tag in DEVICE_STATUS_EVENTS:
                 await self._handle_device_status_event(
@@ -550,6 +562,50 @@ class SQSManager:
 
         _LOGGER.warning("SQS: Button device %s not found", source_name)
         return False
+
+    async def _handle_scenario_event(
+        self, space, event_tag: str, source_name: str, additional_data_v2: list
+    ) -> bool:
+        """Handle scenario events that might be triggered by a Button.
+
+        When a Button is configured in 'Control' mode, Ajax doesn't send a direct
+        button press event. Instead, it sends a scenario event (e.g., RelayOnByScenario).
+        We extract the initiator info to identify the button and fire an HA event.
+        """
+        # Extract initiator info from additionalDataV2
+        initiator_name = None
+        initiator_type = None
+        for data in additional_data_v2:
+            if data.get("additionalDataV2Type") == "INITIATOR_INFO":
+                initiator_name = data.get("objectName")
+                initiator_type = data.get("objectType")
+                break
+
+        if not initiator_name:
+            _LOGGER.debug("SQS scenario: no initiator info found")
+            return False
+
+        _LOGGER.info(
+            "SQS scenario: %s triggered by %s (type=%s)",
+            event_tag,
+            initiator_name,
+            initiator_type,
+        )
+
+        # Fire a Home Assistant event for automations
+        # This allows users to trigger automations based on scenario execution
+        self.coordinator.hass.bus.async_fire(
+            "ajax_scenario_triggered",
+            {
+                "scenario_name": initiator_name,
+                "initiator_type": initiator_type,
+                "target_name": source_name,
+                "event_tag": event_tag,
+                "space_name": space.name,
+            },
+        )
+
+        return True
 
     async def _handle_device_status_event(
         self, space, event_tag: str, source_name: str, source_id: str
