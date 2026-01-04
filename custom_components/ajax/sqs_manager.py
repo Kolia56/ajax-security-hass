@@ -40,8 +40,10 @@ _LOGGER = logging.getLogger(__name__)
 # Map SQS event tags to SecurityState
 EVENT_TAG_TO_STATE = {
     "arm": SecurityState.ARMED,
+    "armwithmalfunctions": SecurityState.ARMED,
     "disarm": SecurityState.DISARMED,
     "nightmodeon": SecurityState.NIGHT_MODE,
+    "nightmodeonwithmalfunctions": SecurityState.NIGHT_MODE,
     "nightmodeoff": SecurityState.DISARMED,
     "partialarm": SecurityState.PARTIALLY_ARMED,
 }
