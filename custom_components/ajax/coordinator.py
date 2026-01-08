@@ -1078,10 +1078,21 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 )
             # Multitransmitter state (externalContactState -> door_opened)
             if "externalContactState" in device_data:
-                # externalContactState=!OK means door is opened, so door_opened=True
-                device.attributes["door_opened"] = (
-                    device_data.get("externalContactState") != "OK"
-                )
+                ext_state = device_data.get("externalContactState")
+                # externalContactState: OK=closed, TRIGGERED=open
+                door_opened = ext_state != "OK"
+
+                # For TWO_EOL wiring, also check contactTwoDetails.contactState
+                # contactTwoDetails is the actual door contact (contactOneDetails is tamper)
+                wiring_details = device_data.get("wiringSchemeSpecificDetails", {})
+                if wiring_details.get("wiringSchemeType") == "TWO_EOL":
+                    contact_two = wiring_details.get("contactTwoDetails", {})
+                    contact_state = contact_two.get("contactState")
+                    if contact_state:
+                        # Use contactTwoDetails.contactState as primary for TWO_EOL
+                        door_opened = contact_state != "OK"
+
+                device.attributes["door_opened"] = door_opened
 
             # Sensitivity (GlassProtect, MotionProtect, etc.)
             if "sensitivity" in device_data:
@@ -1204,10 +1215,19 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 "door_opened" not in normalized
                 and "externalContactState" in api_attributes
             ):
-                # externalContactState: "OK" = closed, anything else = open
-                normalized["door_opened"] = (
-                    api_attributes["externalContactState"] != "OK"
-                )
+                ext_state = api_attributes["externalContactState"]
+                # externalContactState: "OK" = closed, "TRIGGERED" = open
+                door_opened = ext_state != "OK"
+
+                # For TWO_EOL wiring, use contactTwoDetails.contactState
+                wiring_details = api_attributes.get("wiringSchemeSpecificDetails", {})
+                if wiring_details.get("wiringSchemeType") == "TWO_EOL":
+                    contact_two = wiring_details.get("contactTwoDetails", {})
+                    contact_state = contact_two.get("contactState")
+                    if contact_state:
+                        door_opened = contact_state != "OK"
+
+                normalized["door_opened"] = door_opened
 
             # External contact: Support both formats
             if (
