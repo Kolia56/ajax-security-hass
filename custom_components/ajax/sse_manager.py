@@ -143,17 +143,39 @@ class SSEManager:
 
             # Extract event details
             event_code = event.get("eventCode", "")
+
+            # Try multiple ways to get source info (different proxy formats)
             source = event.get("source", {})
+            device = event.get("device", {})
+
+            # Source name: try device.name, source.name, sourceObjectName, sourceName
             source_name = (
-                source.get("name")
-                if isinstance(source, dict)
-                else event.get("sourceName", "")
+                device.get("name")
+                if isinstance(device, dict) and device.get("name")
+                else (source.get("name") if isinstance(source, dict) else None)
             )
+            if not source_name:
+                source_name = event.get("sourceObjectName") or event.get(
+                    "sourceName", ""
+                )
+
+            # Source ID: try device.id, sourceObjectId, deviceId
+            source_id = (
+                device.get("id")
+                if isinstance(device, dict) and device.get("id")
+                else event.get("sourceObjectId") or event.get("deviceId", "")
+            )
+
+            # Source type: try device.type, source.type, sourceObjectType, sourceType
             source_type = (
-                source.get("type")
-                if isinstance(source, dict)
-                else event.get("sourceType", "")
+                device.get("type")
+                if isinstance(device, dict) and device.get("type")
+                else (source.get("type") if isinstance(source, dict) else None)
             )
+            if not source_type:
+                source_type = event.get("sourceObjectType") or event.get(
+                    "sourceType", ""
+                )
 
             # Parse event code for type info
             code_info = parse_event_code(event_code)
@@ -163,12 +185,13 @@ class SSEManager:
             )
 
             _LOGGER.info(
-                "SSE event: type=%s, tag=%s, code=%s, source=%s (%s), transition=%s",
+                "SSE event: type=%s, tag=%s, code=%s, source=%s (%s), id=%s, transition=%s",
                 event_type,
                 event_tag,
                 event_code,
                 source_name,
                 source_type,
+                source_id,
                 transition,
             )
 
@@ -187,25 +210,35 @@ class SSEManager:
             if event_tag in EVENT_TAG_TO_STATE:
                 self._handle_security_event(space, event_tag, source_name)
             elif event_tag in DOOR_EVENTS:
-                self._handle_door_event(space, event, event_tag)
+                self._handle_door_event(
+                    space, event_tag, source_name, source_id, transition
+                )
             elif event_tag in MOTION_EVENTS:
-                self._handle_motion_event(space, event, event_tag)
+                self._handle_motion_event(space, event_tag, source_name, source_id)
             elif event_tag in SMOKE_EVENTS:
-                self._handle_smoke_event(space, event, event_tag)
+                self._handle_smoke_event(space, event_tag, source_name, source_id)
             elif event_tag in FLOOD_EVENTS:
-                self._handle_flood_event(space, event, event_tag)
+                self._handle_flood_event(space, event_tag, source_name, source_id)
             elif event_tag in GLASS_EVENTS:
-                self._handle_glass_event(space, event, event_tag)
+                self._handle_glass_event(space, event_tag, source_name, source_id)
             elif event_tag in TAMPER_EVENTS:
-                self._handle_tamper_event(space, event, event_tag)
+                self._handle_tamper_event(space, event_tag, source_name, source_id)
             elif event_tag in DEVICE_STATUS_EVENTS:
-                self._handle_device_status_event(space, event, event_tag)
+                self._handle_device_status_event(
+                    space, event_tag, source_name, source_id
+                )
             elif event_tag in RELAY_EVENTS:
-                self._handle_relay_event(space, event, event_tag)
+                self._handle_relay_event(space, event_tag, source_name, source_id)
             elif event_tag in SCENARIO_EVENTS:
                 self._handle_scenario_event(space, event, event_tag)
             else:
-                _LOGGER.debug("SSE: Unhandled event tag: %s", event_tag)
+                _LOGGER.warning(
+                    "SSE event not handled: tag=%s, type=%s, source=%s (id=%s)",
+                    event_tag,
+                    source_type,
+                    source_name,
+                    source_id,
+                )
 
             # Notify HA of update
             self.coordinator.async_set_updated_data(self.coordinator.account)
@@ -258,123 +291,178 @@ class SSEManager:
             )
         )
 
-    def _handle_door_event(self, space, event: dict, event_tag: str) -> None:
+    def _find_device(self, space, source_name: str, source_id: str):
+        """Find device by name or ID.
+
+        Tries multiple matching strategies similar to SQS manager.
+        """
+        # Try by exact ID match first
+        if source_id:
+            if source_id in space.devices:
+                return space.devices[source_id]
+
+            # For WireInput devices: try matching by suffix (wire input index)
+            if len(source_id) == 8:
+                for device in space.devices.values():
+                    if len(device.id) == 16 and device.id.endswith(source_id):
+                        _LOGGER.debug(
+                            "SSE: Matched device %s by suffix %s",
+                            device.name,
+                            source_id,
+                        )
+                        return device
+
+        # Fall back to name match
+        if source_name:
+            for device in space.devices.values():
+                if device.name == source_name:
+                    return device
+
+        return None
+
+    def _handle_door_event(
+        self, space, event_tag: str, source_name: str, source_id: str, transition: str
+    ) -> None:
         """Handle door opened/closed events."""
         action_key, is_triggered = DOOR_EVENTS[event_tag]
-        device = event.get("device", {})
-        device_id = (
-            device.get("id") if isinstance(device, dict) else event.get("deviceId")
-        )
 
-        if device_id and device_id in space.devices:
-            dev = space.devices[device_id]
+        # Use transition to determine actual state
+        if transition == "RECOVERED":
+            is_triggered = False
+        elif transition == "TRIGGERED":
+            is_triggered = True
+
+        dev = self._find_device(space, source_name, source_id)
+        if dev:
             dev.attributes["door_opened"] = is_triggered
             dev.attributes["door_opened_at"] = datetime.now(timezone.utc).isoformat()
-            _LOGGER.debug("SSE: %s %s", dev.name, action_key)
+            _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
+        else:
+            _LOGGER.warning(
+                "SSE: Door device not found: name=%s, id=%s", source_name, source_id
+            )
 
-    def _handle_motion_event(self, space, event: dict, event_tag: str) -> None:
+    def _handle_motion_event(
+        self, space, event_tag: str, source_name: str, source_id: str
+    ) -> None:
         """Handle motion detected events."""
         action_key, is_triggered = MOTION_EVENTS[event_tag]
-        device = event.get("device", {})
-        device_id = (
-            device.get("id") if isinstance(device, dict) else event.get("deviceId")
-        )
 
-        if device_id and device_id in space.devices:
-            dev = space.devices[device_id]
+        dev = self._find_device(space, source_name, source_id)
+        if dev:
             dev.attributes["motion_detected"] = is_triggered
             dev.attributes["motion_detected_at"] = datetime.now(
                 timezone.utc
             ).isoformat()
-            _LOGGER.debug("SSE: %s %s", dev.name, action_key)
+            _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
+        else:
+            _LOGGER.warning(
+                "SSE: Motion device not found: name=%s, id=%s", source_name, source_id
+            )
 
-    def _handle_smoke_event(self, space, event: dict, event_tag: str) -> None:
+    def _handle_smoke_event(
+        self, space, event_tag: str, source_name: str, source_id: str
+    ) -> None:
         """Handle smoke/fire detector events."""
         action_key, is_triggered = SMOKE_EVENTS[event_tag]
-        device = event.get("device", {})
-        device_id = (
-            device.get("id") if isinstance(device, dict) else event.get("deviceId")
-        )
 
-        if device_id and device_id in space.devices:
-            dev = space.devices[device_id]
+        dev = self._find_device(space, source_name, source_id)
+        if dev:
             if "smoke" in action_key:
                 dev.attributes["smoke_detected"] = is_triggered
             elif "temp" in action_key:
                 dev.attributes["temperature_alert"] = is_triggered
             elif "co" in action_key:
                 dev.attributes["co_detected"] = is_triggered
-            _LOGGER.debug("SSE: %s %s", dev.name, action_key)
+            _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
+        else:
+            _LOGGER.warning(
+                "SSE: Smoke device not found: name=%s, id=%s", source_name, source_id
+            )
 
-    def _handle_flood_event(self, space, event: dict, event_tag: str) -> None:
+    def _handle_flood_event(
+        self, space, event_tag: str, source_name: str, source_id: str
+    ) -> None:
         """Handle flood/leak detector events."""
         action_key, is_triggered = FLOOD_EVENTS[event_tag]
-        device = event.get("device", {})
-        device_id = (
-            device.get("id") if isinstance(device, dict) else event.get("deviceId")
-        )
 
-        if device_id and device_id in space.devices:
-            dev = space.devices[device_id]
+        dev = self._find_device(space, source_name, source_id)
+        if dev:
             dev.attributes["leak_detected"] = is_triggered
-            _LOGGER.debug("SSE: %s %s", dev.name, action_key)
+            _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
+        else:
+            _LOGGER.warning(
+                "SSE: Flood device not found: name=%s, id=%s", source_name, source_id
+            )
 
-    def _handle_glass_event(self, space, event: dict, event_tag: str) -> None:
+    def _handle_glass_event(
+        self, space, event_tag: str, source_name: str, source_id: str
+    ) -> None:
         """Handle glass break events."""
         action_key, is_triggered = GLASS_EVENTS[event_tag]
-        device = event.get("device", {})
-        device_id = (
-            device.get("id") if isinstance(device, dict) else event.get("deviceId")
-        )
 
-        if device_id and device_id in space.devices:
-            dev = space.devices[device_id]
+        dev = self._find_device(space, source_name, source_id)
+        if dev:
             dev.attributes["glass_break_detected"] = is_triggered
-            _LOGGER.debug("SSE: %s %s", dev.name, action_key)
+            _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
+        else:
+            _LOGGER.warning(
+                "SSE: Glass device not found: name=%s, id=%s", source_name, source_id
+            )
 
-    def _handle_tamper_event(self, space, event: dict, event_tag: str) -> None:
+    def _handle_tamper_event(
+        self, space, event_tag: str, source_name: str, source_id: str
+    ) -> None:
         """Handle tamper events."""
         action_key, is_triggered = TAMPER_EVENTS[event_tag]
-        device = event.get("device", {})
-        device_id = (
-            device.get("id") if isinstance(device, dict) else event.get("deviceId")
-        )
 
-        if device_id and device_id in space.devices:
-            dev = space.devices[device_id]
+        dev = self._find_device(space, source_name, source_id)
+        if dev:
             dev.attributes["tampered"] = is_triggered
-            _LOGGER.debug("SSE: %s %s", dev.name, action_key)
+            _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
+        else:
+            _LOGGER.warning(
+                "SSE: Device not found for tamper: name=%s, id=%s",
+                source_name,
+                source_id,
+            )
 
-    def _handle_device_status_event(self, space, event: dict, event_tag: str) -> None:
+    def _handle_device_status_event(
+        self, space, event_tag: str, source_name: str, source_id: str
+    ) -> None:
         """Handle device status events (online/offline, battery)."""
         action_key, is_problem = DEVICE_STATUS_EVENTS[event_tag]
-        device = event.get("device", {})
-        device_id = (
-            device.get("id") if isinstance(device, dict) else event.get("deviceId")
-        )
 
-        if device_id and device_id in space.devices:
-            dev = space.devices[device_id]
+        dev = self._find_device(space, source_name, source_id)
+        if dev:
             if "online" in action_key or "offline" in action_key:
                 dev.online = not is_problem
             elif "battery" in action_key:
                 dev.attributes["low_battery"] = is_problem
             elif "power" in action_key:
                 dev.attributes["external_power_lost"] = is_problem
-            _LOGGER.debug("SSE: %s %s", dev.name, action_key)
+            _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
+        else:
+            _LOGGER.warning(
+                "SSE: Device not found for status: name=%s, id=%s",
+                source_name,
+                source_id,
+            )
 
-    def _handle_relay_event(self, space, event: dict, event_tag: str) -> None:
+    def _handle_relay_event(
+        self, space, event_tag: str, source_name: str, source_id: str
+    ) -> None:
         """Handle relay/socket on/off events."""
         action_key, is_on = RELAY_EVENTS[event_tag]
-        device = event.get("device", {})
-        device_id = (
-            device.get("id") if isinstance(device, dict) else event.get("deviceId")
-        )
 
-        if device_id and device_id in space.devices:
-            dev = space.devices[device_id]
+        dev = self._find_device(space, source_name, source_id)
+        if dev:
             dev.attributes["is_on"] = is_on
-            _LOGGER.debug("SSE: %s %s", dev.name, action_key)
+            _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
+        else:
+            _LOGGER.warning(
+                "SSE: Relay device not found: name=%s, id=%s", source_name, source_id
+            )
 
     def _handle_scenario_event(self, space, event: dict, event_tag: str) -> None:
         """Handle scenario events that might be triggered by a Button.
