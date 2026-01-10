@@ -734,35 +734,45 @@ class AjaxRestApi:
         return await self._request("GET", f"devices/{device_id}/power")
 
     # Camera methods
-    async def async_get_cameras(self) -> list[dict[str, Any]]:
-        """Get all cameras.
+    async def async_get_cameras(self, hub_id: str) -> list[dict[str, Any]]:
+        """Get all cameras for a specific hub.
+
+        Args:
+            hub_id: Hub ID
 
         Returns:
             List of camera dictionaries
         """
-        return await self._request("GET", "cameras")
+        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/cameras")
 
-    async def async_get_camera(self, camera_id: str) -> dict[str, Any]:
+    async def async_get_camera(self, hub_id: str, camera_id: str) -> dict[str, Any]:
         """Get camera details.
 
         Args:
+            hub_id: Hub ID
             camera_id: Camera ID
 
         Returns:
             Camera details dictionary
         """
-        return await self._request("GET", f"cameras/{camera_id}")
+        return await self._request(
+            "GET", f"user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}"
+        )
 
-    async def async_get_camera_snapshot(self, camera_id: str) -> bytes:
+    async def async_get_camera_snapshot(self, hub_id: str, camera_id: str) -> bytes:
         """Get camera snapshot.
 
         Args:
+            hub_id: Hub ID
             camera_id: Camera ID
 
         Returns:
             Snapshot image data as bytes
         """
-        url = f"{self._get_base_url()}/cameras/{camera_id}/snapshot"
+        url = (
+            f"{self._get_base_url()}/user/{self.user_id}/hubs/{hub_id}"
+            f"/cameras/{camera_id}/snapshot"
+        )
         session = await self._get_session()
 
         headers = {
@@ -774,16 +784,19 @@ class AjaxRestApi:
             response.raise_for_status()
             return await response.read()
 
-    async def async_get_camera_stream_url(self, camera_id: str) -> str:
+    async def async_get_camera_stream_url(self, hub_id: str, camera_id: str) -> str:
         """Get camera stream URL.
 
         Args:
+            hub_id: Hub ID
             camera_id: Camera ID
 
         Returns:
             Stream URL string
         """
-        data = await self._request("GET", f"cameras/{camera_id}/stream")
+        data = await self._request(
+            "GET", f"user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}/stream"
+        )
         return data.get("url", "")
 
     # Light/Button methods

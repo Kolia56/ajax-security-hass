@@ -242,26 +242,33 @@ async def _async_setup_services(
                             "Failed to get devices for hub %s: %s", hub_id, err
                         )
 
-            # Fetch cameras (separate API endpoint)
-            try:
-                cameras_list = await coordinator.api.async_get_cameras()
-                for camera_summary in cameras_list:
-                    camera_id = camera_summary.get("id")
-                    if camera_id:
-                        try:
-                            full_camera = await coordinator.api.async_get_camera(
-                                camera_id
-                            )
-                            all_cameras.append(full_camera)
-                        except Exception as cam_err:
-                            _LOGGER.warning(
-                                "Failed to get camera %s: %s",
-                                camera_id,
-                                cam_err,
-                            )
-                            all_cameras.append(camera_summary)
-            except Exception as err:
-                _LOGGER.warning("Failed to get cameras: %s", err)
+            # Fetch cameras for each hub (same pattern as devices)
+            for _space_id, space in coordinator.account.spaces.items():
+                hub_id = space.hub_id
+                if hub_id:
+                    try:
+                        cameras_list = await coordinator.api.async_get_cameras(hub_id)
+                        for camera_summary in cameras_list:
+                            camera_id = camera_summary.get("id")
+                            if camera_id:
+                                try:
+                                    full_camera = (
+                                        await coordinator.api.async_get_camera(
+                                            hub_id, camera_id
+                                        )
+                                    )
+                                    all_cameras.append(full_camera)
+                                except Exception as cam_err:
+                                    _LOGGER.warning(
+                                        "Failed to get camera %s: %s",
+                                        camera_id,
+                                        cam_err,
+                                    )
+                                    all_cameras.append(camera_summary)
+                    except Exception as err:
+                        _LOGGER.warning(
+                            "Failed to get cameras for hub %s: %s", hub_id, err
+                        )
 
         # Write to file (include both devices and cameras)
         output_path = Path(hass.config.path("ajax_raw_devices.json"))
