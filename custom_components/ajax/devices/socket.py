@@ -159,6 +159,11 @@ class SocketHandler(AjaxDeviceHandler):
 
     def get_switches(self) -> list[dict]:
         """Return switch entities for sockets/relays."""
+        # Check if this is a multi-gang LightSwitch device
+        if self.device.attributes.get("is_multi_gang"):
+            return self._get_multi_gang_switches()
+
+        # Standard single switch (Socket, Relay, single-gang WallSwitch)
         return [
             {
                 "key": "socket",
@@ -170,3 +175,35 @@ class SocketHandler(AjaxDeviceHandler):
                 "enabled_by_default": True,
             }
         ]
+
+    def _get_multi_gang_switches(self) -> list[dict]:
+        """Return switch entities for multi-gang LightSwitch devices."""
+        switches = []
+
+        # Channel 1
+        channel_1_name = self.device.attributes.get("channel_1_name", "Channel 1")
+        switches.append(
+            {
+                "key": "channel_1",
+                "name": channel_1_name,
+                "value_fn": lambda: self.device.attributes.get("channel_1_on", False),
+                "icon": "mdi:light-switch",
+                "enabled_by_default": True,
+                "channel": 1,
+            }
+        )
+
+        # Channel 2
+        channel_2_name = self.device.attributes.get("channel_2_name", "Channel 2")
+        switches.append(
+            {
+                "key": "channel_2",
+                "name": channel_2_name,
+                "value_fn": lambda: self.device.attributes.get("channel_2_on", False),
+                "icon": "mdi:light-switch",
+                "enabled_by_default": True,
+                "channel": 2,
+            }
+        )
+
+        return switches

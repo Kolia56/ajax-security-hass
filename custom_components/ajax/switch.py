@@ -116,8 +116,13 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
         # Set unique ID
         self._attr_unique_id = f"{device_id}_{switch_key}"
 
-        # Set translation key (don't set _attr_name, let HA use translation)
-        self._attr_translation_key = switch_desc.get("translation_key", switch_key)
+        # Set entity name - use custom name if provided (for multi-gang channels),
+        # otherwise use translation key
+        if "name" in switch_desc:
+            self._attr_name = switch_desc["name"]
+            self._attr_translation_key = None
+        else:
+            self._attr_translation_key = switch_desc.get("translation_key", switch_key)
         self._attr_has_entity_name = True
 
         # Set icon if provided
@@ -177,6 +182,13 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
 
         # Handle Socket/Relay/WallSwitch using /command endpoint
         if device.type in (DeviceType.SOCKET, DeviceType.RELAY, DeviceType.WALLSWITCH):
+            # Check if this is a multi-gang channel switch
+            channel = self._switch_desc.get("channel")
+            if channel:
+                await self._set_channel_value(space, device, channel, value)
+                return
+
+            # Standard single switch (Socket, Relay, single-gang WallSwitch)
             # Optimistic update
             old_value = device.attributes.get("is_on")
             device.attributes["is_on"] = value
@@ -318,6 +330,45 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
             )
         except Exception as err:
             _LOGGER.error("Failed to set sirenTriggers: %s", err)
+            await self.coordinator.async_request_refresh()
+
+    async def _set_channel_value(
+        self, space, device, channel: int, value: bool
+    ) -> None:
+        """Set a channel value for multi-gang LightSwitch devices."""
+        attr_key = f"channel_{channel}_on"
+        old_value = device.attributes.get(attr_key)
+
+        # Optimistic update
+        device.attributes[attr_key] = value
+        self.async_write_ha_state()
+
+        try:
+            device_type_str = device.raw_type
+            await self.coordinator.api.async_set_channel_state(
+                space.hub_id,
+                self._device_id,
+                channel,
+                value,
+                device_type_str,
+            )
+            _LOGGER.info(
+                "Set %s channel %d=%s for device %s",
+                device_type_str,
+                channel,
+                "ON" if value else "OFF",
+                self._device_id,
+            )
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to set channel %d for device %s: %s",
+                channel,
+                self._device_id,
+                err,
+            )
+            # Revert optimistic update on error
+            device.attributes[attr_key] = old_value
+            self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
 
     @property
