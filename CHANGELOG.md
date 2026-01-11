@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.49] - 2026-01-11
+
+### Fixed
+- Video edge channels type validation to prevent `'str' object has no attribute 'get'` errors (#26)
+- Force full metadata refresh for group arm/disarm events (#32)
+
+### Added
+- Space selection for multi-space accounts - choose which spaces to load (#31)
+
 ## [0.7.48] - 2026-01-11
 
 ### Fixed
