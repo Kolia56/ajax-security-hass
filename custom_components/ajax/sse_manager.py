@@ -109,7 +109,7 @@ class SSEManager:
         last_update = self._last_state_update.get(hub_id, 0)
         return (time.time() - last_update) < 5
 
-    def _handle_event(self, event_data: dict[str, Any]) -> None:
+    async def _handle_event(self, event_data: dict[str, Any]) -> None:
         """Handle an SSE event.
 
         The proxy should send events in a format similar to SQS:
@@ -228,7 +228,7 @@ class SSEManager:
 
             # Process event by type
             if event_tag in EVENT_TAG_TO_STATE:
-                self._handle_security_event(space, event_tag, source_name)
+                await self._handle_security_event(space, event_tag, source_name)
             elif event_tag in DOOR_EVENTS:
                 self._handle_door_event(
                     space, event_tag, source_name, source_id, transition
@@ -268,7 +268,9 @@ class SSEManager:
         except Exception as err:
             _LOGGER.error("SSE event processing error: %s", err, exc_info=True)
 
-    def _handle_security_event(self, space, event_tag: str, source_name: str) -> None:
+    async def _handle_security_event(
+        self, space, event_tag: str, source_name: str
+    ) -> None:
         """Handle arm/disarm/night mode events."""
         new_state = EVENT_TAG_TO_STATE.get(event_tag)
         if not new_state:
@@ -296,9 +298,7 @@ class SSEManager:
                 "SSE: Group event %s detected, forcing metadata refresh for group states",
                 event_tag,
             )
-            import asyncio
-
-            asyncio.create_task(self.coordinator.async_force_metadata_refresh())
+            await self.coordinator.async_force_metadata_refresh()
 
         if state_changed and not is_group_event:
             space.security_state = new_state
@@ -314,14 +314,10 @@ class SSEManager:
         )
 
         # Create notification
-        import asyncio
-
-        asyncio.create_task(
-            self.coordinator._create_sqs_notification(
-                action=new_state.value,
-                source_name=source_name,
-                space_name=space.name,
-            )
+        await self.coordinator._create_sqs_notification(
+            action=new_state.value,
+            source_name=source_name,
+            space_name=space.name,
         )
 
     def _find_device(self, space, source_name: str, source_id: str):

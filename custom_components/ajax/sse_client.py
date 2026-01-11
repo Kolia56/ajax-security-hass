@@ -193,7 +193,10 @@ class AjaxSSEClient:
     async def _async_callback(self, event_data: dict[str, Any]) -> None:
         """Async wrapper for callback."""
         try:
-            self._callback(event_data)
+            result = self._callback(event_data)
+            # If callback returns a coroutine, await it
+            if asyncio.iscoroutine(result):
+                await result
         except Exception as err:
             _LOGGER.error("SSE callback error: %s", err)
 
