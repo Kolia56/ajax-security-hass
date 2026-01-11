@@ -442,16 +442,16 @@ class SQSManager:
             ha_action_pending,
         )
 
-        # Group arm/disarm events need a refresh to get the actual state
+        # Group arm/disarm events need a FULL refresh to update group states
         # because the final state depends on how many groups are armed
         is_group_event = event_tag in ("grouparm", "groupdisarm")
         if is_group_event:
             _LOGGER.debug(
-                "SQS: Group event %s detected, scheduling refresh for actual state",
+                "SQS: Group event %s detected, forcing metadata refresh for group states",
                 event_tag,
             )
-            # Schedule refresh to get actual hub state
-            await self.coordinator.async_request_refresh()
+            # Force full metadata refresh to update group states
+            await self.coordinator.async_force_metadata_refresh()
 
         # Skip state update if HA action is pending (protect optimistic update)
         # But still record the event in history and create notification
