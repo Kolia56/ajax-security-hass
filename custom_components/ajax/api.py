@@ -707,7 +707,9 @@ class AjaxRestApi:
     ) -> None:
         """Set multi-gang switch channel state.
 
-        Uses SWITCH_ON/SWITCH_OFF with channel parameter for LightSwitchTwoGang.
+        Uses channel-specific commands (e.g., SWITCH_CHANNEL_1_ON) for LightSwitchTwoGang.
+        The Ajax API uses channelStatuses like ["CHANNEL_1_ON", "CHANNEL_2_ON"],
+        so commands follow the same pattern.
 
         Args:
             hub_id: Hub ID
@@ -720,11 +722,13 @@ class AjaxRestApi:
             raise AjaxRestApiError("No user_id available. Call async_login() first.")
 
         endpoint = f"user/{self.user_id}/hubs/{hub_id}/devices/{device_id}/command"
-        command = "SWITCH_ON" if state else "SWITCH_OFF"
+        # Use channel-specific commands to match Ajax API pattern
+        # channelStatuses uses CHANNEL_1_ON/CHANNEL_2_ON format
+        action = "ON" if state else "OFF"
+        command = f"SWITCH_CHANNEL_{channel}_{action}"
         payload = {
             "command": command,
             "deviceType": device_type,
-            "channel": channel,
         }
         _LOGGER.info(
             "Sending channel command: POST %s with %s",
