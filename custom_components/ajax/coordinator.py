@@ -797,6 +797,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     or hub_details.get("deviceName")
                     or f"Hub {hub_id[:6]}"  # Use first 6 chars of hub_id as fallback
                 )
+                # Update all_discovered_spaces with the proper name
+                self.all_discovered_spaces[hub_id] = hub_name
+
                 # Parse security state from hub details
                 # Check night mode first - it can be active even when groups are disarmed
                 hub_state = hub_details.get("state", "DISARMED")
