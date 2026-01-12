@@ -994,6 +994,15 @@ class AjaxRestApi:
         "batteryLevel",
         "batteryChargeLevelPercentage",
         "signalLevel",
+        # Sensor state fields (read-only)
+        "temperature",
+        "tampered",
+        "reedClosed",
+        "extraContactClosed",
+        "estimatedArmingState",
+        "issuesCount",
+        "confirmsAlarm",
+        "verifiesAlarm",
         # Timestamps (read-only)
         "createdAt",
         "updatedAt",
