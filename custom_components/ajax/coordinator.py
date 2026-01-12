@@ -159,6 +159,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         # Door sensor fast polling option (disabled by default to reduce API calls)
         self._door_sensor_fast_poll_enabled: bool = False
 
+        # Flag to skip state change event creation when SQS already created the event
+        self._skip_state_change_event: bool = False
+
         super().__init__(
             hass,
             _LOGGER,
@@ -856,7 +859,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 space.real_space_id = real_space_id  # Update real space ID
                 space.hub_details = hub_details  # Update hub information
 
-            # Only update rooms, users, groups on full refresh
+            # Only update rooms, users on full refresh (they rarely change)
             if full_refresh or is_new_space:
                 # Store rooms mapping in space for device room name lookup
                 space._rooms_map = rooms_map  # type: ignore
@@ -880,66 +883,68 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 except Exception:
                     space._users = []  # type: ignore
 
-                # Fetch groups if groups mode is enabled
-                groups_enabled = hub_details.get("groupsEnabled", False)
-                space.group_mode_enabled = groups_enabled
-                if groups_enabled:
-                    # Check if HA recently triggered an action (protect optimistic updates)
-                    ha_action_pending = self.has_pending_ha_action(hub_id)
-                    try:
-                        groups_data = await self.api.async_get_groups(hub_id)
-                        for group_data in groups_data:
-                            group_id = group_data.get("id")
-                            if group_id:
-                                # Parse group state
-                                group_state_str = group_data.get("state", "DISARMED")
-                                if group_state_str == "ARMED":
-                                    group_state = GroupState.ARMED
-                                elif group_state_str == "DISARMED":
-                                    group_state = GroupState.DISARMED
-                                else:
-                                    group_state = GroupState.NONE
+            # Always fetch groups on every poll (group state changes frequently)
+            groups_enabled = hub_details.get("groupsEnabled", False)
+            space.group_mode_enabled = groups_enabled
+            if groups_enabled:
+                # Check if HA recently triggered an action (protect optimistic updates)
+                ha_action_pending = self.has_pending_ha_action(hub_id)
+                try:
+                    groups_data = await self.api.async_get_groups(hub_id)
+                    _LOGGER.debug(
+                        "Hub %s: API returned %d groups, raw states: %s",
+                        hub_id,
+                        len(groups_data),
+                        [(g.get("groupName"), g.get("state")) for g in groups_data],
+                    )
+                    for group_data in groups_data:
+                        group_id = group_data.get("id")
+                        if group_id:
+                            # Parse group state
+                            group_state_str = group_data.get("state", "DISARMED")
+                            if group_state_str == "ARMED":
+                                group_state = GroupState.ARMED
+                            elif group_state_str == "DISARMED":
+                                group_state = GroupState.DISARMED
+                            else:
+                                group_state = GroupState.NONE
 
-                                # Check if group already exists
-                                existing_group = space.groups.get(group_id)
-                                if existing_group and ha_action_pending:
-                                    # Protect optimistic update - keep existing state
-                                    _LOGGER.debug(
-                                        "Group %s: REST has %s but HA action pending, keeping %s",
-                                        group_id,
-                                        group_state.value,
-                                        existing_group.state.value,
-                                    )
-                                    group_state = existing_group.state
-
-                                space.groups[group_id] = AjaxGroup(
-                                    id=group_id,
-                                    name=group_data.get(
-                                        "groupName", f"Group {group_id}"
-                                    ),
-                                    space_id=space_id,
-                                    state=group_state,
-                                    bulk_arm_involved=group_data.get(
-                                        "bulkArmInvolved", False
-                                    ),
-                                    bulk_disarm_involved=group_data.get(
-                                        "bulkDisarmInvolved", False
-                                    ),
+                            # Check if group already exists
+                            existing_group = space.groups.get(group_id)
+                            if existing_group and ha_action_pending:
+                                # Protect optimistic update - keep existing state
+                                _LOGGER.debug(
+                                    "Group %s: REST has %s but HA action pending, keeping %s",
+                                    group_id,
+                                    group_state.value,
+                                    existing_group.state.value,
                                 )
-                        # Log group states for debugging
-                        group_states = [
-                            f"{g.name}={g.state.value}" for g in space.groups.values()
-                        ]
-                        _LOGGER.info(
-                            "Hub %s: Updated %d groups: %s",
-                            hub_id,
-                            len(space.groups),
-                            ", ".join(group_states) if group_states else "none",
-                        )
-                    except Exception as err:
-                        _LOGGER.warning(
-                            "Failed to get groups for hub %s: %s", hub_id, err
-                        )
+                                group_state = existing_group.state
+
+                            space.groups[group_id] = AjaxGroup(
+                                id=group_id,
+                                name=group_data.get("groupName", f"Group {group_id}"),
+                                space_id=space_id,
+                                state=group_state,
+                                bulk_arm_involved=group_data.get(
+                                    "bulkArmInvolved", False
+                                ),
+                                bulk_disarm_involved=group_data.get(
+                                    "bulkDisarmInvolved", False
+                                ),
+                            )
+                    # Log group states for debugging
+                    group_states = [
+                        f"{g.name}={g.state.value}" for g in space.groups.values()
+                    ]
+                    _LOGGER.debug(
+                        "Hub %s: Updated %d groups: %s",
+                        hub_id,
+                        len(space.groups),
+                        ", ".join(group_states) if group_states else "none",
+                    )
+                except Exception as err:
+                    _LOGGER.warning("Failed to get groups for hub %s: %s", hub_id, err)
 
             # Check if SQS/SSE recently updated this hub's state
             # If so, don't overwrite with potentially stale REST data
@@ -971,10 +976,15 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     # Update polling interval based on new state
                     self._update_polling_interval(security_state)
 
-                    # Create event from state change
-                    self._create_event_from_state_change(
-                        space, old_state, security_state
-                    )
+                    # Create event from state change (skip if SQS already created it)
+                    if self._skip_state_change_event:
+                        _LOGGER.debug(
+                            "Skipping state change event (SQS already created it)"
+                        )
+                    else:
+                        self._create_event_from_state_change(
+                            space, old_state, security_state
+                        )
 
     async def _async_update_devices(self, space_id: str) -> None:
         """Update devices for a specific space."""
@@ -1822,11 +1832,20 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         action = action_map.get(new_state, new_state.value.lower())
 
+        # Get translated message
+        from .event_codes import get_event_message
+
+        ha_language = self.hass.config.language or "en"
+        lang_map = {"fr": "fr", "es": "es", "en": "en"}
+        language = lang_map.get(ha_language[:2], "en")
+        message = get_event_message(action, language)
+
         # Create event
         # Note: source_name/user_name not included because REST API
         # doesn't tell us WHO triggered the action
         event = {
             "action": action,
+            "message": message,
             "hub_id": space.hub_id or space.id,
             "space_id": space.id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -1932,7 +1951,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 return SecurityState.DISARMED
             elif "PARTIALLY" in state_str:
                 return SecurityState.PARTIALLY_ARMED
-            elif "NIGHT" in state_str:
+            # Check for NIGHT_MODE_ON specifically, not just "NIGHT"
+            # because ARMED_NIGHT_MODE_OFF contains "NIGHT" but is actually ARMED
+            elif "NIGHT_MODE_ON" in state_str:
                 return SecurityState.NIGHT_MODE
             elif "ARMED" in state_str:
                 return SecurityState.ARMED

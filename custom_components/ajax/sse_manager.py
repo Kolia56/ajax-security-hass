@@ -12,6 +12,7 @@ Architecture:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import datetime, timezone
@@ -295,10 +296,13 @@ class SSEManager:
         is_group_event = event_tag in ("grouparm", "groupdisarm")
         if is_group_event:
             _LOGGER.info(
-                "SSE: Group event '%s' detected for hub %s, triggering metadata refresh",
+                "SSE: Group event '%s' detected for hub %s, waiting before refresh",
                 event_tag,
                 space.hub_id,
             )
+            # Wait for Ajax backend to process the change before refreshing
+            # Without this delay, the API may return stale state
+            await asyncio.sleep(1.0)
             try:
                 await self.coordinator.async_force_metadata_refresh()
                 _LOGGER.info("SSE: Metadata refresh completed after group event")

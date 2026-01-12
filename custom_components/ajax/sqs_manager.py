@@ -18,6 +18,7 @@ Event codes:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import datetime, timezone
@@ -145,6 +146,8 @@ SECURITY_EVENT_ACTIONS = {
     "nightmodeon": "night_mode",
     "nightmodeoff": "night_mode_off",
     "partialarm": "armed",
+    "grouparm": "group_armed",
+    "groupdisarm": "group_disarmed",
 }
 
 
@@ -445,17 +448,31 @@ class SQSManager:
         # Group arm/disarm events need a FULL refresh to update group states
         # because the final state depends on how many groups are armed
         is_group_event = event_tag in ("grouparm", "groupdisarm")
-        if is_group_event:
+
+        # Full arm/disarm also affects all groups - need refresh to update them
+        is_full_arm_disarm = event_tag in ("arm", "disarm")
+
+        if is_group_event or is_full_arm_disarm:
             _LOGGER.info(
-                "SQS: Group event '%s' detected for hub %s, triggering metadata refresh",
+                "SQS: Security event '%s' detected for hub %s, refreshing groups",
                 event_tag,
                 space.hub_id,
             )
+            # Wait for Ajax backend to process the change before refreshing
+            # Without this delay, the API may return stale state
+            await asyncio.sleep(1.0)
             try:
+                # Set flag to skip event creation during refresh (SQS already created it)
+                self.coordinator._skip_state_change_event = True
                 await self.coordinator.async_force_metadata_refresh()
-                _LOGGER.info("SQS: Metadata refresh completed after group event")
+                _LOGGER.info("SQS: Metadata refresh completed after security event")
             except Exception as err:
-                _LOGGER.error("SQS: Metadata refresh failed after group event: %s", err)
+                _LOGGER.error(
+                    "SQS: Metadata refresh failed after security event: %s", err
+                )
+            finally:
+                # Always reset the flag
+                self.coordinator._skip_state_change_event = False
 
         # Skip state update if HA action is pending (protect optimistic update)
         # But still record the event in history and create notification
@@ -467,16 +484,21 @@ class SQSManager:
 
         # Always create notification from SQS (even if state unchanged)
         # because SQS contains user info that REST doesn't have
+        # For group events, use specific action (group_armed/group_disarmed)
+        # instead of system state (partially_armed)
+        notification_action = SECURITY_EVENT_ACTIONS.get(event_tag, new_state.value)
+
         _LOGGER.info(
-            "SQS instant: %s -> %s par %s (state_changed=%s)",
+            "SQS instant: %s -> %s par %s (action=%s, state_changed=%s)",
             old_state.value,
             new_state.value,
             source_name or "inconnu",
+            notification_action,
             state_changed,
         )
 
         await self.coordinator._create_sqs_notification(
-            action=new_state.value,
+            action=notification_action,
             source_name=source_name,
             space_name=space.name,
         )

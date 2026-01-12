@@ -88,41 +88,49 @@ def format_event_text(event: dict) -> str:
     user_name = event.get("user_name") or source_name
     room_name = event.get("room_name")
 
-    # Map actions to English messages
-    action_messages = {
-        # Arming/Disarming (from SQS events)
-        "arm": "Armed",
-        "armed": "Armed",
-        "disarm": "Disarmed",
-        "disarmed": "Disarmed",
-        "nightmodeon": "Night mode on",
-        "nightmodeoff": "Night mode off",
-        "night_mode": "Night mode on",
-        "night_mode_on": "Night mode on",
-        "night_mode_off": "Night mode off",
-        "partiallyarmed": "Partially armed",
-        "partially_armed": "Partially armed",
-        # Alarms
-        "motion_detected": "Motion detected",
-        "door_opened": "Door opened",
-        "door_closed": "Door closed",
-        "glass_break_detected": "Glass break detected",
-        "smoke_detected": "Smoke detected",
-        "leak_detected": "Water leak detected",
-        "tamper": "Tamper detected",
-        "tampered": "Tamper detected",
-        "panic": "Panic alarm",
-        # Device status
-        "online": "Device online",
-        "offline": "Device offline",
-        "low_battery": "Low battery",
-        "external_power_on": "Power connected",
-        "external_power_off": "Power disconnected",
-    }
+    # Use translated message if available (from SQS/coordinator)
+    # Otherwise fall back to action-based lookup
+    message = event.get("message")
+    if not message:
+        # Fallback: Map actions to English messages
+        action_messages = {
+            # Arming/Disarming (from SQS events)
+            "arm": "Armed",
+            "armed": "Armed",
+            "disarm": "Disarmed",
+            "disarmed": "Disarmed",
+            "grouparm": "Group armed",
+            "group_armed": "Group armed",
+            "groupdisarm": "Group disarmed",
+            "group_disarmed": "Group disarmed",
+            "nightmodeon": "Night mode on",
+            "nightmodeoff": "Night mode off",
+            "night_mode": "Night mode on",
+            "night_mode_on": "Night mode on",
+            "night_mode_off": "Night mode off",
+            "partiallyarmed": "Partially armed",
+            "partially_armed": "Partially armed",
+            # Alarms
+            "motion_detected": "Motion detected",
+            "door_opened": "Door opened",
+            "door_closed": "Door closed",
+            "glass_break_detected": "Glass break detected",
+            "smoke_detected": "Smoke detected",
+            "leak_detected": "Water leak detected",
+            "tamper": "Tamper detected",
+            "tampered": "Tamper detected",
+            "panic": "Panic alarm",
+            # Device status
+            "online": "Device online",
+            "offline": "Device offline",
+            "low_battery": "Low battery",
+            "external_power_on": "Power connected",
+            "external_power_off": "Power disconnected",
+        }
 
-    # Get message from action (case-insensitive)
-    action_lower = action.lower() if action else ""
-    message = action_messages.get(action_lower, action or event_type or "Event")
+        # Get message from action (case-insensitive)
+        action_lower = action.lower() if action else ""
+        message = action_messages.get(action_lower, action or event_type or "Event")
 
     parts = [message]
     if device_name and device_name.strip():
@@ -130,7 +138,17 @@ def format_event_text(event: dict) -> str:
     if room_name and room_name.strip():
         parts.append(f"({room_name.strip()})")
     if user_name and user_name.strip():
-        parts.append(f"by {user_name.strip()}")
+        # Use French "par" if message appears to be French, otherwise "by"
+        french_words = (
+            "Armé",
+            "Désarmé",
+            "Groupe",
+            "Mode nuit",
+            "Armement",
+            "Ouverture",
+        )
+        by_word = "par" if any(fw in message for fw in french_words) else "by"
+        parts.append(f"{by_word} {user_name.strip()}")
 
     return " ".join(parts)
 

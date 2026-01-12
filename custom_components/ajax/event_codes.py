@@ -158,6 +158,17 @@ EVENT_MESSAGES: dict[str, dict[str, str]] = {
     # Security
     "armed": {"fr": "Armé", "en": "Armed", "es": "Armado"},
     "disarmed": {"fr": "Désarmé", "en": "Disarmed", "es": "Desarmado"},
+    "group_armed": {"fr": "Groupe armé", "en": "Group armed", "es": "Grupo armado"},
+    "group_disarmed": {
+        "fr": "Groupe désarmé",
+        "en": "Group disarmed",
+        "es": "Grupo desarmado",
+    },
+    "partially_armed": {
+        "fr": "Armement partiel",
+        "en": "Partially armed",
+        "es": "Parcialmente armado",
+    },
     "night_mode": {
         "fr": "Mode nuit activé",
         "en": "Night mode activated",
@@ -815,6 +826,9 @@ EVENT_CODES: dict[str, tuple[str, bool]] = {
     "M_22_24": ("armed", False),  # Unsuccessful arming attempt
     "M_22_26": ("armed", False),  # Armed with malfunctions
     "M_22_28": ("night_mode_off", False),
+    "M_22_29": ("group_disarmed", False),  # Group disarmed (actual code used by Ajax)
+    "M_22_2A": ("group_armed", False),
+    "M_22_2B": ("group_disarmed", False),  # Keep for compatibility
     "M_22_36": ("alarm_muted", False),
     "M_22_38": ("chime_on", False),
     "M_22_39": ("chime_off", False),
