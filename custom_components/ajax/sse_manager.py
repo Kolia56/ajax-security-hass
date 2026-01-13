@@ -35,6 +35,8 @@ from .sqs_manager import (
     SCENARIO_EVENTS,
     SMOKE_EVENTS,
     TAMPER_EVENTS,
+    VIDEO_EVENTS,
+    VIDEO_EVENT_TYPES,
 )
 
 if TYPE_CHECKING:
@@ -187,6 +189,9 @@ class SSEManager:
                 code_info.get("transition", "TRIGGERED") if code_info else "TRIGGERED"
             )
 
+            # Also check eventTypeV2 for video AI events
+            event_type_v2 = event.get("eventTypeV2", "")
+
             _LOGGER.info(
                 "SSE event: type=%s, tag=%s, code=%s, source=%s (%s), id=%s, transition=%s",
                 event_type,
@@ -254,6 +259,10 @@ class SSEManager:
                 self._handle_relay_event(space, event_tag, source_name, source_id)
             elif event_tag in SCENARIO_EVENTS:
                 self._handle_scenario_event(space, event, event_tag)
+            elif event_tag in VIDEO_EVENTS or event_type_v2 in VIDEO_EVENT_TYPES:
+                self._handle_video_event(
+                    space, event_tag, event_type_v2, source_name, source_id
+                )
             else:
                 _LOGGER.warning(
                     "SSE event not handled: tag=%s, type=%s, source=%s (id=%s)",
@@ -554,3 +563,173 @@ class SSEManager:
                 "space_name": space.name,
             },
         )
+
+    def _handle_video_event(
+        self,
+        space,
+        event_tag: str,
+        event_type_v2: str,
+        source_name: str,
+        source_id: str,
+    ) -> None:
+        """Handle video AI detection events (motion, human, vehicle, pet).
+
+        These events are sent by surveillance cameras (Video Edge devices).
+        Updates the channel state to reflect the active detection.
+        """
+        # Determine the detection type from eventTag or eventTypeV2
+        detection_type = None
+        if event_tag in VIDEO_EVENTS:
+            detection_type = VIDEO_EVENTS[event_tag]
+        elif event_type_v2 in VIDEO_EVENT_TYPES:
+            detection_type = VIDEO_EVENT_TYPES[event_type_v2]
+
+        if not detection_type:
+            _LOGGER.debug(
+                "SSE video: unknown detection type for tag=%s, type=%s",
+                event_tag,
+                event_type_v2,
+            )
+            return
+
+        # Find the video edge device
+        video_edge, channel_id = self._find_video_edge(space, source_name, source_id)
+        if not video_edge:
+            _LOGGER.warning(
+                "SSE: Video edge device not found: name=%s, id=%s",
+                source_name,
+                source_id,
+            )
+            return
+
+        # Update the channel state with the detection
+        self._update_video_detection(video_edge, channel_id, detection_type, True)
+
+        _LOGGER.info(
+            "SSE instant: %s -> %s detected (channel=%s)",
+            video_edge.name,
+            detection_type,
+            channel_id or "default",
+        )
+
+        # Schedule auto-reset after detection timeout (30 seconds)
+        self.coordinator.hass.loop.call_later(
+            30.0,
+            lambda: self._reset_video_detection(
+                space.id, video_edge.id, channel_id, detection_type
+            ),
+        )
+
+    def _find_video_edge(self, space, source_name: str, source_id: str):
+        """Find video edge device by name or ID.
+
+        Returns a tuple of (video_edge, channel_id).
+        For NVR devices, source_id might be the channel ID.
+        """
+        # Try by exact ID match first
+        if source_id:
+            if source_id in space.video_edges:
+                return space.video_edges[source_id], None
+
+            # For NVR: the source_id might be a channel ID
+            # Try to find the video edge that has this channel
+            for video_edge in space.video_edges.values():
+                for channel in video_edge.channels:
+                    if isinstance(channel, dict) and channel.get("id") == source_id:
+                        return video_edge, source_id
+
+        # Fall back to name match
+        if source_name:
+            for video_edge in space.video_edges.values():
+                if video_edge.name == source_name:
+                    return video_edge, None
+
+                # For NVR: check channel names
+                for channel in video_edge.channels:
+                    if isinstance(channel, dict) and channel.get("name") == source_name:
+                        return video_edge, channel.get("id")
+
+        return None, None
+
+    def _update_video_detection(
+        self,
+        video_edge,
+        channel_id: str | None,
+        detection_type: str,
+        active: bool,
+    ) -> None:
+        """Update video edge channel state with detection.
+
+        The detection is stored in the channel's state array as:
+        {"type": "VIDEO_MOTION", "active": True}
+        """
+        channels = video_edge.channels
+        if not isinstance(channels, list):
+            return
+
+        # Find target channel (first one if no channel_id specified)
+        target_channel = None
+        for channel in channels:
+            if isinstance(channel, dict):
+                if channel_id is None or channel.get("id") == channel_id:
+                    target_channel = channel
+                    break
+
+        if not target_channel:
+            # Create a default channel if none exists
+            if channel_id is None and not channels:
+                target_channel = {"id": "0", "state": []}
+                channels.append(target_channel)
+            else:
+                return
+
+        # Ensure state is a list
+        if not isinstance(target_channel.get("state"), list):
+            target_channel["state"] = []
+
+        # Find existing detection entry or create new one
+        state_list = target_channel["state"]
+        detection_entry = None
+        for entry in state_list:
+            if isinstance(entry, dict) and entry.get("type") == detection_type:
+                detection_entry = entry
+                break
+
+        if detection_entry:
+            detection_entry["active"] = active
+        else:
+            state_list.append({"type": detection_type, "active": active})
+
+    def _reset_video_detection(
+        self,
+        space_id: str,
+        video_edge_id: str,
+        channel_id: str | None,
+        detection_type: str,
+    ) -> None:
+        """Reset video detection after timeout (called from timer)."""
+        try:
+            if not self.coordinator.account:
+                return
+
+            space = self.coordinator.account.spaces.get(space_id)
+            if not space:
+                return
+
+            video_edge = space.video_edges.get(video_edge_id)
+            if not video_edge:
+                return
+
+            self._update_video_detection(video_edge, channel_id, detection_type, False)
+
+            _LOGGER.debug(
+                "Video detection auto-reset: %s -> %s cleared",
+                video_edge.name,
+                detection_type,
+            )
+
+            # Notify HA of update
+            self.coordinator.async_set_updated_data(self.coordinator.account)
+
+        except Exception as err:
+            _LOGGER.debug("Error resetting video detection: %s", err)
