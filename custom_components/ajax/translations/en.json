@@ -257,7 +257,9 @@
       "alarm_volume_level": {
         "name": "Alarm Volume",
         "state": {
+          "disabled": "Disabled",
           "loud": "Loud",
+          "mute": "Mute",
           "normal": "Normal",
           "off": "Off",
           "quiet": "Quiet",

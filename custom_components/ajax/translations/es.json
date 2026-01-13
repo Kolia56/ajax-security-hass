@@ -285,7 +285,9 @@
       "alarm_volume_level": {
         "name": "Volumen de la alarma",
         "state": {
+          "disabled": "Desactivado",
           "loud": "Fuerte",
+          "mute": "Silenciado",
           "normal": "Normal",
           "off": "Desactivado",
           "quiet": "Silencioso",
