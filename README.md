@@ -2,11 +2,18 @@
 
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![Hassfest](https://github.com/foXaCe/ajax-security-hass/actions/workflows/lint.yml/badge.svg)](https://github.com/foXaCe/ajax-security-hass/actions/workflows/lint.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Community Forum](https://img.shields.io/badge/Home_Assistant-Community-blue?logo=home-assistant)](https://community.home-assistant.io/t/custom-component-ajax-systems/948939/2)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://paypal.me/foXaCe66)
 
 **Full-featured** Home Assistant integration for Ajax Security Systems.
+
+---
+
+> [!CAUTION]
+> ## Proxy Mode Security
+> When using a proxy, the proxy administrator can see your password hash (SHA256), all API requests/responses, and your email. For security and trust considerations, contact your proxy provider. See [Security & Privacy](#-security--privacy) for details.
 
 ---
 
@@ -25,6 +32,12 @@
 > - A **self-hosted proxy server** (Proxy mode)
 >
 > For discussions and updates, join the community: [HACF Forum](https://forum.hacf.fr/t/alarme-ajax-sur-home-assistant/29511/160)
+
+---
+
+> [!WARNING]
+> ## Real-Time Events Only When Armed
+> Due to Ajax Systems architecture, **real-time events (SSE/SQS) are only received when the system is armed**. When disarmed, the integration uses polling (30s for sensors, 5s for door sensors). This is an Ajax API limitation.
 
 ---
 
@@ -171,16 +184,15 @@ These credentials are provided by Ajax Systems with your enterprise API key.
 
 #### Real-Time Event Limitations
 
-Due to Ajax Systems architecture, **motion and door/window events are only sent in real-time when**:
-- The system is **armed** (Away, Night, or Partial mode)
-- OR the sensor has **"Always Active"** mode enabled
-
-When the system is **disarmed** and sensors are not in "Always Active" mode:
-- Motion and door events are **not** sent to SQS/SSE
-- The integration uses fast polling (5 seconds) for door sensors
-- Motion sensors fall back to standard polling (30 seconds)
-
-> 💡 **Tip**: Enable "Always Active" on motion sensors if you need real-time motion detection while disarmed (e.g., for automation). Note: This will use more battery and may trigger alarms if not configured properly (set siren to "sound only when armed").
+> [!WARNING]
+> Due to Ajax Systems architecture, **real-time events (SSE/SQS) are only received when the system is armed**.
+>
+> When **disarmed**, Ajax does not send real-time events - this is an Ajax API limitation, not the integration.
+> - Motion and door events are **not** sent to SQS/SSE
+> - The integration uses fast polling (5 seconds) for door sensors
+> - Motion sensors fall back to standard polling (30 seconds)
+>
+> **Exception**: Sensors with **"Always Active"** mode enabled will send real-time events even when disarmed.
 
 ### Options (after setup)
 
@@ -191,16 +203,25 @@ Go to the integration options to configure:
 
 ## 🔒 Security & Privacy
 
-**Your credentials are handled with the utmost care:**
-
 ### Credential Storage
 - **Local storage only**: Credentials are stored in Home Assistant's encrypted config entry system
-- **No third parties**: The integration communicates only with Ajax servers
 
 ### Authentication Process
 1. **Password hashing**: Your password is hashed using SHA-256 before transmission
 2. **Secure communication**: All API communication uses HTTPS (TLS/SSL)
 3. **Session tokens**: Tokens are stored locally and refreshed automatically
+
+### Direct Mode
+- **No third parties**: The integration communicates directly with Ajax servers
+- End-to-end encrypted communication between your Home Assistant and Ajax
+
+### Proxy Mode
+When using a proxy, the proxy administrator can see:
+- Your password hash (SHA256) - sufficient to authenticate as you
+- All API requests and responses (alarm state, arm/disarm actions, device status)
+- Your email address
+
+**Important**: This integration does not manage any proxy server. For security and trust considerations, contact the person or organization providing your proxy access.
 
 ### What the Developer Cannot Access
 - ❌ I (the developer) **cannot access your credentials**

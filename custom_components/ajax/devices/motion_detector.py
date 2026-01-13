@@ -33,10 +33,10 @@ class MotionDetectorHandler(AjaxDeviceHandler):
             {
                 "key": "motion",
                 "device_class": BinarySensorDeviceClass.MOTION,
-                # Note: Ajax API doesn't provide real-time motion detection when disarmed.
-                # The 'state' field only shows ALARM when armed and motion triggers alarm.
-                # This sensor will only be ON when an alarm is triggered.
-                "value_fn": lambda: self.device.attributes.get("state") == "ALARM",
+                # motion_detected is set by SSE/SQS events in real-time
+                "value_fn": lambda: self.device.attributes.get(
+                    "motion_detected", False
+                ),
                 "enabled_by_default": True,
             },
             # Note: "armed_in_night_mode" is now a switch, not a binary sensor

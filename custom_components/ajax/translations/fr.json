@@ -880,6 +880,11 @@
       }
     }
   },
+  "exceptions": {
+    "invalid_target": {
+      "message": "Cible invalide pour le service."
+    }
+  },
   "options": {
     "step": {
       "aws_credentials": {
@@ -962,41 +967,21 @@
     }
   },
   "services": {
-    "arm": {
-      "description": "Arme le système Ajax",
-      "name": "Armer"
-    },
-    "arm_night": {
-      "description": "Active le mode nuit",
-      "name": "Mode nuit"
-    },
-    "arm_partial": {
-      "description": "Active l'armement partiel",
-      "name": "Armement partiel"
-    },
-    "disarm": {
-      "description": "Désarme le système Ajax",
-      "name": "Désarmer"
-    },
     "force_arm": {
-      "description": "Force l'armement du système de sécurité, en ignorant les capteurs ouverts et les problèmes",
-      "fields": {
-        "entity_id": {
-          "description": "L'entité du panneau d'alarme à forcer d'armer",
-          "name": "Entité"
-        }
-      },
+      "description": "Force l'armement du système de sécurité, en ignorant les capteurs ouverts et les problèmes.",
       "name": "Armement forcé"
     },
     "force_arm_night": {
-      "description": "Force l'activation du mode nuit, en ignorant les capteurs ouverts et les problèmes",
-      "fields": {
-        "entity_id": {
-          "description": "L'entité du panneau d'alarme à forcer en mode nuit",
-          "name": "Entité"
-        }
-      },
+      "description": "Force l'activation du mode nuit, en ignorant les capteurs ouverts et les problèmes.",
       "name": "Mode nuit forcé"
+    },
+    "get_raw_devices": {
+      "description": "Récupère les données JSON brutes de l'API pour tous les appareils. Enregistre la réponse complète dans ajax_raw_devices.json.",
+      "name": "Récupérer les appareils bruts"
+    },
+    "refresh_metadata": {
+      "description": "Force un rafraîchissement complet des pièces, utilisateurs et groupes depuis Ajax.",
+      "name": "Rafraîchir les métadonnées"
     }
   }
 }
