@@ -138,10 +138,17 @@ class AjaxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._spaces = []
                 for hub in hubs:
                     hub_id = hub.get("hubId")
-                    hub_name = hub.get(
-                        "hubName", f"Hub {hub_id[:6]}" if hub_id else "Unknown"
-                    )
                     if hub_id:
+                        # Get proper space name via space binding API
+                        hub_name = hub.get("hubName", f"Hub {hub_id[:6]}")
+                        try:
+                            space_binding = await self._api.async_get_space_by_hub(
+                                hub_id
+                            )
+                            if space_binding and space_binding.get("name"):
+                                hub_name = space_binding.get("name")
+                        except Exception:
+                            pass  # Keep fallback name
                         self._spaces.append({"id": hub_id, "name": hub_name})
 
                 await self._api.close()
@@ -261,10 +268,17 @@ class AjaxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._spaces = []
                     for hub in hubs:
                         hub_id = hub.get("hubId")
-                        hub_name = hub.get(
-                            "hubName", f"Hub {hub_id[:6]}" if hub_id else "Unknown"
-                        )
                         if hub_id:
+                            # Get proper space name via space binding API
+                            hub_name = hub.get("hubName", f"Hub {hub_id[:6]}")
+                            try:
+                                space_binding = await self._api.async_get_space_by_hub(
+                                    hub_id
+                                )
+                                if space_binding and space_binding.get("name"):
+                                    hub_name = space_binding.get("name")
+                            except Exception:
+                                pass  # Keep fallback name
                             self._spaces.append({"id": hub_id, "name": hub_name})
                 except Exception:
                     # Proxy may not have all endpoints - continue without space selection
@@ -358,10 +372,17 @@ class AjaxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._spaces = []
                 for hub in hubs:
                     hub_id = hub.get("hubId")
-                    hub_name = hub.get(
-                        "hubName", f"Hub {hub_id[:6]}" if hub_id else "Unknown"
-                    )
                     if hub_id:
+                        # Get proper space name via space binding API
+                        hub_name = hub.get("hubName", f"Hub {hub_id[:6]}")
+                        try:
+                            space_binding = await self._api.async_get_space_by_hub(
+                                hub_id
+                            )
+                            if space_binding and space_binding.get("name"):
+                                hub_name = space_binding.get("name")
+                        except Exception:
+                            pass  # Keep fallback name
                         self._spaces.append({"id": hub_id, "name": hub_name})
 
                 await self._api.close()
