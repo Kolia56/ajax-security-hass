@@ -1,0 +1,984 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Denna Ajax-integration är redan konfigurerad.",
+      "no_spaces_available": "Inga space tillgängliga. Pröva att ladda om integrationen.",
+      "reauth_failed": "Re-authentisering misslyckades. Vänligen omkonfigurera integrationen.",
+      "reauth_successful": "Re-authentisering lyckades."
+    },
+    "error": {
+      "cannot_connect": "Misslyckades att ansluta till Ajax API. Kontollera internetanslutningen.",
+      "invalid_2fa": "Ogiltig verifikationskod. Vänligen försök igen.",
+      "invalid_account_type": "Kontotypen stöds ej. Använd ett användarkonto (inte ett PRO/Enterprise konto).",
+      "invalid_api_key": "Ogiltig eller saknad API nyckel. Kontrollera din enterprise API-nyckel.",
+      "invalid_auth": "Ogiltiga inloggningsuppgifter för API. Kontrollera API Nyckel, epost and lösenord.",
+      "invalid_password": "Ogiltig epost eller lösenord. Kontrollera inloggningsuppgifter för Ajax-kontot.",
+      "invalid_proxy_url": "Ogiltig proxy URL. URL måste börja med http:// eller https://",
+      "no_spaces_selected": "Välj minst ett space för aktivering.",
+      "unknown": "Oväntat fel. Kontrollera loggar för mer information."
+    },
+    "step": {
+      "2fa": {
+        "data": {
+          "code": "Verifikationskod"
+        },
+        "data_description": {
+          "code": "6-digit code from your authenticator app or SMS"
+        },
+        "description": "Enter the 6-digit verification code sent to your device for {email}",
+        "title": "Två-Faktor Authentisering"
+      },
+      "direct": {
+        "data": {
+          "api_key": "API Nyckel",
+          "aws_access_key_id": "AWS Access Key ID (Optional)",
+          "aws_secret_access_key": "AWS Secret Access Key (Optional)",
+          "email": "Epostaddres",
+          "password": "Lösenord",
+          "queue_name": "SQS Queue Name (Optional)"
+        },
+        "data_description": {
+          "api_key": "Your API Key provided by Ajax Systems",
+          "aws_access_key_id": "AWS Access Key ID for real-time SQS events",
+          "aws_secret_access_key": "AWS Secret Access Key for real-time SQS events",
+          "email": "Your Ajax account email address",
+          "password": "Your Ajax account password",
+          "queue_name": "SQS Queue name (e.g., ajax-events-xxxxx-prod.fifo)"
+        },
+        "description": "Enter your Ajax API credentials.\n\n⚠️ **User account only** (not PRO/Enterprise accounts).\n\nOptional: Add AWS credentials for real-time event notifications.",
+        "title": "Direktanslutning"
+      },
+      "proxy": {
+        "data": {
+          "email": "Epostadress",
+          "password": "Lösenord",
+          "proxy_url": "Proxy URL"
+        },
+        "data_description": {
+          "email": "Din epostadress för Ajax-kontot",
+          "password": "Ditt lösenord för Ajax-kontot",
+          "proxy_url": "Ajax proxy server URL"
+        },
+        "description": "Anslut via en Ajax proxy server.\n\n⚠️ **Enbart användarkonton** (Ej PRO/Enterprise-konto).\n\nHändelser tas emot i realtid via SSE.",
+        "title": "Proxy-anslutning"
+      },
+      "reauth_confirm": {
+        "data": {
+          "password": "Lösenord"
+        },
+        "description": "Din session har löpt ut. Vänligen ange lösenord för {email}.",
+        "title": "Re-authentisera"
+      },
+      "select_spaces": {
+        "data": {
+          "enabled_spaces": "Aktiverade space"
+        },
+        "description": "Hittade {space_count} space. Markera de space som ska aktiveras i Home Assistant.\nOmarkerade space kommer inte skapa enheter eller entiteter i Home Assistant.",
+        "title": "Välj space"
+      },
+      "user": {
+        "data": {
+          "auth_mode": "Authenticeringstyp"
+        },
+        "data_description": {
+          "auth_mode": "Proxy: Anslut via Ajax proxy server. Direkt: endast enterprise API nyckel."
+        },
+        "description": "Välj anslutning till Ajax Systems.",
+        "title": "Anslutning"
+      }
+    }
+  },
+  "entity": {
+    "alarm_control_panel": {
+      "ajax": {
+        "name": "Ajax",
+        "state": {
+          "armed": "Tillkopplat",
+          "arming": "Tillkopplar",
+          "disarmed": "Frånkopplat",
+          "disarming": "Frånkopplar",
+          "pending": "Väntar",
+          "triggered": "Utlöst"
+        },
+        "state_attributes": {
+          "hub_connection_status": {
+            "name": "Hub anslutningsstatus",
+            "state": {
+              "offline": "Ej ansluten",
+              "online": "Ansluten",
+              "unknown": "Okänt"
+            }
+          },
+          "malfunctions_count": {
+            "name": "Funktionsfel"
+          },
+          "new_notifications_count": {
+            "name": "Nya notiser"
+          },
+          "security_state": {
+            "name": "Säkerhetsläge",
+            "state": {
+              "armed": "Tillkopplat",
+              "arming_incomplete": "Tillkoppling ej komplett",
+              "awaiting_confirmation": "Avvaktar bekräftelse",
+              "awaiting_exit_timer": "Avvaktar utgångstimer",
+              "awaiting_vds_arming_completion": "Avvaktar VDS tillkoppling",
+              "disarmed": "Frånkopplat",
+              "night_mode": "Nattläge",
+              "none": "Inget",
+              "partially_armed": "Delvis tillkopplat",
+              "two_stage_arming_incomplete": "Två-stegs tillkoppling ej komplett"
+            }
+          }
+        }
+      }
+    },
+    "binary_sensor": {
+      "battery_connected": {
+        "name": "Hub batteri"
+      },
+      "connection": {
+        "name": "Hub anslutning",
+        "state": {
+          "off": "Ej ansluten",
+          "on": "Ansluten"
+        }
+      },
+      "external_contact": {
+        "name": "Dörr (extern kontakt)"
+      },
+      "external_power": {
+        "name": "Extern strömförsörjning"
+      },
+      "glass_break": {
+        "name": "Glaskrossdetektor"
+      },
+      "gsm_antenna": {
+        "name": "GSM antenn"
+      },
+      "jeweller_radio": {
+        "name": "Jeweller radio"
+      },
+      "problem": {
+        "name": "Problem detekterat",
+        "state_attributes": {
+          "devices_with_problems": {
+            "name": "Enherter med problem"
+          },
+          "problem_devices": {
+            "name": "Problemenheter lista"
+          },
+          "total_malfunctions": {
+            "name": "Totala felfunktioner"
+          }
+        }
+      },
+      "shock": {
+        "name": "Stöt"
+      },
+      "system_problems": {
+        "name": "Systemproblem",
+        "state": {
+          "off": "Inga problem",
+          "on": "Problem detekterade"
+        },
+        "state_attributes": {
+          "devices_with_problems": {
+            "name": "Enheter med problem"
+          },
+          "problem_devices": {
+            "name": "Enhetslista"
+          },
+          "total_malfunctions": {
+            "name": "Totala funktionsfel"
+          }
+        }
+      },
+      "tilt": {
+        "name": "Lutning"
+      },
+      "video_human": {
+        "name": "Människa upptäckt"
+      },
+      "video_motion": {
+        "name": "Rörelse upptäckt"
+      },
+      "video_pet": {
+        "name": "Husdjur upptäckt"
+      },
+      "video_vehicle": {
+        "name": "Fordon upptäckt"
+      },
+      "wings_radio": {
+        "name": "Wings radio"
+      }
+    },
+    "button": {
+      "panic": {
+        "name": "Panikknapp"
+      }
+    },
+    "device_tracker": {
+      "position": {
+        "name": "Position"
+      }
+    },
+    "number": {
+      "tilt_degrees": {
+        "name": "Lutningströskel"
+      }
+    },
+    "select": {
+      "shock_sensitivity": {
+        "name": "Stötkänslighet",
+        "state": {
+          "high": "Hög",
+          "low": "Låg",
+          "normal": "Normal"
+        }
+      }
+    },
+    "sensor": {
+      "active_connection": {
+        "name": "Aktiv anslutning"
+      },
+      "alarm_duration": {
+        "name": "Larmduration",
+        "state": {
+          "10_minutes": "10 minuter",
+          "15_minutes": "15 minuter",
+          "1_minute": "1 minut",
+          "2_minutes": "2 minuter",
+          "3_minutes": "3 minuter",
+          "5_minutes": "5 minuter",
+          "continuous": "Kontinuerligt"
+        }
+      },
+      "alarm_volume_level": {
+        "name": "Larmvolym",
+        "state": {
+          "disabled": "Avstängt",
+          "loud": "Hög",
+          "mute": "Tystad",
+          "normal": "Normal",
+          "off": "Av",
+          "quiet": "Tyst",
+          "very_loud": "Mycket hög"
+        }
+      },
+      "battery_state": {
+        "name": "Batteristatus"
+      },
+      "beep_volume_level": {
+        "name": "Pipvolym",
+        "state": {
+          "loud": "Hög",
+          "normal": "Normal",
+          "off": "Av",
+          "quiet": "Tyst",
+          "very_loud": "Mycket hög"
+        }
+      },
+      "bypassed_devices": {
+        "name": "Förbikopplade enheter"
+      },
+      "device_color": {
+        "name": "Enhetens färg",
+        "state": {
+          "black": "Svart",
+          "white": "Vit"
+        }
+      },
+      "device_label": {
+        "name": "Enhetsetikett"
+      },
+      "device_marketing_id": {
+        "name": "Device marketing ID"
+      },
+      "device_state": {
+        "name": "Enhetens läge"
+      },
+      "devices_with_malfunctions": {
+        "name": "Enheter med felfuntion"
+      },
+      "firmware_version": {
+        "name": "Mjukvaruversion"
+      },
+      "gsm_connection_status": {
+        "name": "GSM anslutningsstatus",
+        "state": {
+          "CONNECTED": "Ansluten",
+          "CONNECTING": "Ansluter",
+          "DISCONNECTED": "Ej ansluten",
+          "ERROR": "Fel"
+        }
+      },
+      "gsm_signal_level": {
+        "name": "GSM signalnivå"
+      },
+      "gsm_type": {
+        "name": "GSM typ",
+        "state": {
+          "2G": "2G",
+          "3G": "3G",
+          "4G": "4G",
+          "5G": "5G",
+          "UNKNOWN": "Okänt"
+        }
+      },
+      "hardware_version": {
+        "name": "Hårdvaruversion"
+      },
+      "hub_active_channels": {
+        "name": "Aktiva kanaler",
+        "state_attributes": {
+          "channels": {
+            "name": "Kanallista"
+          },
+          "ethernet": {
+            "name": "Ethernet"
+          },
+          "gsm": {
+            "name": "GSM"
+          },
+          "wifi": {
+            "name": "WiFi"
+          }
+        }
+      },
+      "hub_battery": {
+        "name": "Hub batteri"
+      },
+      "hub_ethernet_ip": {
+        "name": "Intern IP-adress"
+      },
+      "hub_external_power": {
+        "name": "Hub extern strömförsörjning",
+        "state": {
+          "connected": "Ansluten",
+          "disconnected": "Ej ansluten"
+        }
+      },
+      "hub_geofence": {
+        "name": "GPS-position",
+        "state_attributes": {
+          "latitude": {
+            "name": "Lattitud"
+          },
+          "longitude": {
+            "name": "Longitud"
+          },
+          "radius_meters": {
+            "name": "Radie (meter)"
+          }
+        }
+      },
+      "hub_grade_mode": {
+        "name": "Säkerhetsgradering"
+      },
+      "hub_gsm": {
+        "name": "Hub GSM/SIM",
+        "state": {
+          "good": "Bra",
+          "none": "Ingen",
+          "normal": "Normal",
+          "strong": "Stark",
+          "weak": "Svag"
+        },
+        "state_attributes": {
+          "active_sim": {
+            "name": "Aktivt SIM"
+          },
+          "modem_imei": {
+            "name": "Modem IMEI"
+          },
+          "network_status": {
+            "name": "Nätverksstatus"
+          },
+          "signal_level": {
+            "name": "Signalnivå"
+          },
+          "sim1_active": {
+            "name": "SIM 1 aktivt"
+          },
+          "sim1_apn": {
+            "name": "SIM 1 APN"
+          },
+          "sim1_traffic_rx_kb": {
+            "name": "SIM 1 mottaget (KB)"
+          },
+          "sim1_traffic_tx_kb": {
+            "name": "SIM 1 skickat (KB)"
+          },
+          "sim2_active": {
+            "name": "SIM 2 aktivt"
+          },
+          "sim2_apn": {
+            "name": "SIM 2 APN"
+          },
+          "sim2_traffic_rx_kb": {
+            "name": "SIM 2 mottaget (KB)"
+          },
+          "sim2_traffic_tx_kb": {
+            "name": "SIM 2 skickat (KB)"
+          },
+          "total_sims": {
+            "name": "Antal SIM-kort"
+          }
+        }
+      },
+      "hub_hardware_version": {
+        "name": "Hårdvaruversion",
+        "state_attributes": {
+          "cpu": {
+            "name": "CPU"
+          },
+          "ethernet": {
+            "name": "Ethernet"
+          },
+          "flash": {
+            "name": "Flash"
+          },
+          "modem": {
+            "name": "Modem"
+          },
+          "pcb": {
+            "name": "PCB"
+          },
+          "rfm": {
+            "name": "RFM"
+          },
+          "wifi": {
+            "name": "WiFi"
+          }
+        }
+      },
+      "hub_led_brightness": {
+        "name": "Hub LED ljusstyrka"
+      },
+      "hub_limits": {
+        "name": "Hub Begränsningar",
+        "state_attributes": {
+          "max_cameras": {
+            "name": "Max kameror"
+          },
+          "max_groups": {
+            "name": "Max Grupper"
+          },
+          "max_rooms": {
+            "name": "Max Rum"
+          },
+          "max_sensors": {
+            "name": "Max Enheter"
+          },
+          "max_users": {
+            "name": "Max Användare"
+          }
+        }
+      },
+      "hub_noise_level": {
+        "name": "Radio brusnivå",
+        "state": {
+          "high": "Hög",
+          "normal": "Normal"
+        },
+        "state_attributes": {
+          "channel_1_dbm": {
+            "name": "Kanal 1 (dBm)"
+          },
+          "channel_2_dbm": {
+            "name": "Kanal 2 (dBm)"
+          },
+          "data_channel_dbm": {
+            "name": "Datakanal (dBm)"
+          },
+          "high": {
+            "name": "Högt brus"
+          }
+        }
+      },
+      "hub_offline_delay": {
+        "name": "Offline larmfördröjning"
+      },
+      "hub_ping_period": {
+        "name": "Ping-intervall"
+      },
+      "hub_rooms": {
+        "name": "Rum",
+        "state_attributes": {
+          "room_names": {
+            "name": "Rumslista"
+          },
+          "rooms": {
+            "name": "Rumsdetaljer"
+          }
+        }
+      },
+      "hub_timezone": {
+        "name": "Hub tidszon"
+      },
+      "hub_users": {
+        "name": "Användare",
+        "state_attributes": {
+          "user_names": {
+            "name": "Användarnamn"
+          },
+          "users": {
+            "name": "Användardetaljer"
+          }
+        }
+      },
+      "hub_wifi": {
+        "name": "Hub Wi-Fi",
+        "state": {
+          "good": "Bra",
+          "none": "Ingen",
+          "normal": "Normal",
+          "strong": "Stark",
+          "weak": "Svag"
+        },
+        "state_attributes": {
+          "channel": {
+            "name": "Kanal"
+          },
+          "ip": {
+            "name": "IP-adress"
+          },
+          "security": {
+            "name": "Säkerhet"
+          },
+          "signal_level": {
+            "name": "Signalnivå"
+          },
+          "ssid": {
+            "name": "Nätverk"
+          }
+        }
+      },
+      "image_resolution": {
+        "name": "Bildupplösning"
+      },
+      "indicator_light_mode": {
+        "name": "LED-läge"
+      },
+      "ip_address": {
+        "name": "IP-adress"
+      },
+      "last_action": {
+        "name": "Senaste åtgärd",
+        "state": {
+          "double_press": "Dubbeltryck",
+          "emergency": "Nödläge",
+          "long_press": "Långt tryck",
+          "panic": "Panik",
+          "single_press": "Enkeltryck"
+        }
+      },
+      "last_alert": {
+        "name": "Last alert",
+        "state_attributes": {
+          "device_name": {
+            "name": "Enhet"
+          },
+          "event_type": {
+            "name": "Händelsetyp"
+          },
+          "notification_type": {
+            "name": "Notistyp"
+          },
+          "room_name": {
+            "name": "Rum"
+          }
+        }
+      },
+      "led_indication": {
+        "name": "LED-indikering"
+      },
+      "malfunctions": {
+        "name": "Felfuntioner"
+      },
+      "network_status": {
+        "name": "Mobilnät"
+      },
+      "noise_level_avg": {
+        "name": "Genomsnittlig brusnivå",
+        "state_attributes": {
+          "always_active": {
+            "name": "Alltid aktiv"
+          },
+          "armed_in_night_mode": {
+            "name": "Larmat i nattläge"
+          },
+          "channel1": {
+            "name": "Kanal 1"
+          },
+          "channel2": {
+            "name": "Kanal 2"
+          },
+          "high": {
+            "name": "Högt brus"
+          }
+        }
+      },
+      "online_devices": {
+        "name": "Enheter online"
+      },
+      "photos_per_alarm": {
+        "name": "Foton per larm"
+      },
+      "recent_events": {
+        "name": "Aktuella händelser",
+        "state": {
+          "no_event": "Ingen"
+        },
+        "state_attributes": {
+          "event_count": {
+            "name": "Antal händelser"
+          },
+          "events": {
+            "name": "Aktuella händelser"
+          },
+          "events_raw": {
+            "name": "Rådata"
+          }
+        }
+      },
+      "room": {
+        "name": "Rum"
+      },
+      "sensitivity": {
+        "name": "Känslighet",
+        "state": {
+          "high": "Hög",
+          "low": "Låg",
+          "normal": "Normal"
+        }
+      },
+      "signal_strength": {
+        "name": "Signalstyrka"
+      },
+      "sim_status": {
+        "name": "SIM-kortstatus",
+        "state_attributes": {
+          "sim_cards": {
+            "name": "SIM-kortsdetaljer"
+          },
+          "sim_slots_total": {
+            "name": "Antal SIM-platser"
+          },
+          "sim_slots_used": {
+            "name": "Utnyttjade SIM-platser"
+          }
+        }
+      },
+      "total_devices": {
+        "name": "Enheter"
+      },
+      "unread_notifications": {
+        "name": "Olästa notiser"
+      },
+      "wifi_signal_level": {
+        "name": "Wi-Fi signal"
+      }
+    },
+    "switch": {
+      "alerts_by_sirens": {
+        "name": "Sirenljud",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "always_active": {
+        "name": "Alltid aktiv",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "beep_on_arm": {
+        "name": "Pip vid tillkoppling",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "beep_on_arm_disarm": {
+        "name": "Pip vid till- och frånkoppling",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "beep_on_delay": {
+        "name": "Beep on entry/exit delay",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "blink_while_armed": {
+        "name": "Blink while armed",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "chimes": {
+        "name": "Chimes",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "chimes_enabled": {
+        "name": "Chime",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "external_contact_enabled": {
+        "name": "Extern kontakt",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "ignore_impact": {
+        "name": "Ignorera enkelstöt",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "indicator_light": {
+        "name": "Indikatorlampa",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "night_mode": {
+        "name": "Aktiv i nattläge",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "security_group": {
+        "name": "Säkerhetsgrupp",
+        "state_attributes": {
+          "bulk_arm_involved": {
+            "name": "Involved in bulk arm"
+          },
+          "bulk_disarm_involved": {
+            "name": "Involved in bulk disarm"
+          },
+          "device_count": {
+            "name": "Device count"
+          },
+          "group_id": {
+            "name": "Group ID"
+          },
+          "group_name": {
+            "name": "Group name"
+          },
+          "night_mode_enabled": {
+            "name": "Night mode enabled"
+          },
+          "space_id": {
+            "name": "Space ID"
+          },
+          "space_name": {
+            "name": "Space name"
+          }
+        }
+      },
+      "shock_sensor": {
+        "name": "Stötsensor",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "siren_trigger_glass": {
+        "name": "Siren vid glasskross",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "siren_trigger_reed": {
+        "name": "Siren vid öppning av dörr",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "siren_trigger_shock": {
+        "name": "Siren vid stöt",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "siren_trigger_tilt": {
+        "name": "Siren vid lutning",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
+      "socket": {
+        "name": "Uttag",
+        "state_attributes": {
+          "channel_id": {
+            "name": "Kanal id"
+          },
+          "operating_mode": {
+            "name": "Driftsläge"
+          },
+          "output_mode": {
+            "name": "Uttag läge"
+          }
+        }
+      },
+      "tilt_sensor": {
+        "name": "Lutningssensor",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_target": {
+      "message": "Ogiltigt mål för tjänsten."
+    }
+  },
+  "options": {
+    "step": {
+      "aws_credentials": {
+        "data": {
+          "aws_access_key_id": "AWS Access Key ID",
+          "aws_secret_access_key": "AWS Secret Access Key",
+          "queue_name": "SQS Queue Name"
+        },
+        "data_description": {
+          "aws_access_key_id": "Exempel: AKIA3SFSAKBHLDDOCGFG",
+          "aws_secret_access_key": "Secret key provided by Ajax (40 characters)",
+          "queue_name": "Exempel: ajax-events-V6WHbk3e-prod.fifo"
+        },
+        "description": "Configure AWS credentials for real-time event notifications.\n\n**Current configuration:**\n- Access Key: {current_access_key}\n- Secret Key: {current_secret_key}\n- SQS Queue: {current_queue}\n\nLeave a field empty to keep current value.",
+        "title": "AWS SQS Credentials"
+      },
+      "enabled_spaces": {
+        "data": {
+          "enabled_spaces": "Aktiverade space"
+        },
+        "description": "Markera de space som ska aktiveras i Home Assistant.\nOmarkerade space kommer inte skapa enheter eller entiteter i Home Assistant.",
+        "title": "Aktiverade space"
+      },
+      "init": {
+        "description": "Välj kategori för konfigurering",
+        "menu_options": {
+          "aws_credentials": "AWS SQS Inloggningsuppgifter",
+          "enabled_spaces": "Aktiverade space",
+          "notifications": "Notiser",
+          "polling_settings": "Polling",
+          "proxy_settings": "Proxy"
+        },
+        "title": "Ajax inställningar"
+      },
+      "notifications": {
+        "data": {
+          "monitored_spaces": "Spaces som ska monitoreras",
+          "notification_filter": "Notisfilter",
+          "persistent_notification": "Visa beständiga notiser"
+        },
+        "description": "Konfigurera notiser för Ajax-integrationen",
+        "title": "Notisinställningar"
+      },
+      "polling_settings": {
+        "data": {
+          "door_sensor_fast_poll": "Door sensor fast polling"
+        },
+        "data_description": {
+          "door_sensor_fast_poll": "Poll door sensors every 5 seconds when disarmed. Disable to reduce API calls."
+        },
+        "description": "Configure API polling behavior to optimize performance.\n\n**Current behavior:**\n- Light polling (hub state + devices): every 30-60s\n- Full metadata refresh (rooms, users, groups): hourly",
+        "title": "Polling Settings"
+      },
+      "proxy_settings": {
+        "data": {
+          "proxy_url": "Proxy URL"
+        },
+        "data_description": {
+          "proxy_url": "Exempel: https://my-proxy.example.com"
+        },
+        "description": "Ändra URL till Ajax proxyserver.",
+        "title": "Proxy Inställningar"
+      }
+    }
+  },
+  "selector": {
+    "auth_mode": {
+      "options": {
+        "direct": "Direct (Enterprise API key only)",
+        "proxy_secure": "Ajax Proxy"
+      }
+    },
+    "notification_filter": {
+      "options": {
+        "alarms_only": "Enbart larm",
+        "all": "Alla notiser",
+        "none": "Inga",
+        "security_events": "Säkerhetshändelser (larm + till- och frånkoppling)"
+      }
+    }
+  },
+  "services": {
+    "arm": {
+      "description": "Arm the Ajax system",
+      "name": "Arm"
+    },
+    "arm_night": {
+      "description": "Activate night mode",
+      "name": "Night mode"
+    },
+    "arm_partial": {
+      "description": "Activate partial arming",
+      "name": "Partial arming"
+    },
+    "disarm": {
+      "description": "Disarm the Ajax system",
+      "name": "Disarm"
+    },
+    "force_arm": {
+      "description": "Forcera tillkoppling av larmsystemet, ignorera öppna sensorer och felfunktioner",
+      "fields": {
+        "entity_id": {
+          "description": "Larmpanel som ska tillkopplas forcerat",
+          "name": "Entitet"
+        }
+      },
+      "name": "Forcera tillkoppling"
+    },
+    "force_arm_night": {
+      "description": "Forcera tillkoppling i nattläge av larmsystemet, ignorera öppna sensorer och felfunktioner",
+      "fields": {
+        "entity_id": {
+          "description": "Larmpanel som ska forceras till nattläge",
+          "name": "Entitet"
+        }
+      },
+      "name": "Forcera tillkoppling till nattläge"
+    },
+    "refresh_metadata": {
+      "description": "Forcera fullständig omladdning av rum, användare och grupper från Ajax",
+      "name": "Uppdatera metadata"
+    }
+  }
+}
