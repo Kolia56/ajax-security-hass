@@ -137,6 +137,12 @@
       "battery_connected": {
         "name": "Hub battery"
       },
+      "beep_on_arm": {
+        "name": "Beep on arm/disarm"
+      },
+      "beep_on_delay": {
+        "name": "Beep on entry/exit delay"
+      },
       "connection": {
         "name": "Hub connection",
         "state": {

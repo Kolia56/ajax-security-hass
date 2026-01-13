@@ -37,6 +37,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 "device_class": BinarySensorDeviceClass.DOOR,
                 "value_fn": lambda: self.device.attributes.get("door_opened", False),
                 "enabled_by_default": True,
+                "name": None,
             }
         )
 

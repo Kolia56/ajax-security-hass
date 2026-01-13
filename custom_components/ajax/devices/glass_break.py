@@ -37,6 +37,7 @@ class GlassBreakHandler(AjaxDeviceHandler):
                 "icon": "mdi:glass-fragile",
                 "value_fn": lambda: self.device.attributes.get("state") == "ALARM",
                 "enabled_by_default": True,
+                "name": None,
             }
         )
 

@@ -208,6 +208,10 @@ class AjaxBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEntit
                 "enabled_by_default"
             ]
 
+        # Force name on entity. Mainly used to assign None (=device name)
+        if "name" in sensor_desc:
+            self._attr_name = sensor_desc["name"]
+
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""

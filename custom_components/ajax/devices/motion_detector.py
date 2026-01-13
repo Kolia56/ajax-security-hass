@@ -38,6 +38,7 @@ class MotionDetectorHandler(AjaxDeviceHandler):
                     "motion_detected", False
                 ),
                 "enabled_by_default": True,
+                "name": None,
             },
             # Note: "armed_in_night_mode" is now a switch, not a binary sensor
             {
