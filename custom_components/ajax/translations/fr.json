@@ -144,6 +144,9 @@
           "on": "Connecté"
         }
       },
+      "doorbell_ring": {
+        "name": "Sonnette"
+      },
       "external_contact": {
         "name": "Porte (contact externe)"
       },
@@ -590,8 +593,14 @@
           }
         }
       },
+      "last_ring": {
+        "name": "Dernière sonnerie"
+      },
       "led_indication": {
         "name": "Indication LED"
+      },
+      "mac_address": {
+        "name": "Adresse MAC"
       },
       "malfunctions": {
         "name": "Dysfonctionnements"

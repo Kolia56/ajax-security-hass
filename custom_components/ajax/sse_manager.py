@@ -22,6 +22,7 @@ from .event_codes import DEFAULT_LANGUAGE, parse_event_code
 from .sqs_manager import (  # Import event mappings from SQS manager to avoid duplication
     DEVICE_STATUS_EVENTS,
     DOOR_EVENTS,
+    DOORBELL_EVENTS,
     EVENT_TAG_TO_STATE,
     FLOOD_EVENTS,
     GLASS_EVENTS,
@@ -188,7 +189,7 @@ class SSEManager:
             event_type_v2 = event.get("eventTypeV2", "")
 
             _LOGGER.info(
-                "SSE event: type=%s, tag=%s, code=%s, source=%s (%s), id=%s, transition=%s",
+                "SSE event: type=%s, tag=%s, code=%s, source=%s (%s), id=%s, transition=%s, typeV2=%s",
                 event_type,
                 event_tag,
                 event_code,
@@ -196,7 +197,11 @@ class SSEManager:
                 source_type,
                 source_id,
                 transition,
+                event_type_v2 or "none",
             )
+
+            # Log raw event data at DEBUG level for troubleshooting
+            _LOGGER.debug("SSE raw event data: %s", event)
 
             # Deduplication: ignore duplicate events within window
             event_key = f"{source_id}:{event_tag}:{transition}"
@@ -258,13 +263,17 @@ class SSEManager:
                 self._handle_video_event(
                     space, event_tag, event_type_v2, source_name, source_id
                 )
+            elif event_tag in DOORBELL_EVENTS:
+                self._handle_doorbell_event(space, source_name, source_id)
             else:
                 _LOGGER.warning(
-                    "SSE event not handled: tag=%s, type=%s, source=%s (id=%s)",
+                    "SSE event not handled: tag=%s, type=%s, typeV2=%s, source=%s (id=%s). Raw: %s",
                     event_tag,
                     source_type,
+                    event_type_v2 or "none",
                     source_name,
                     source_id,
+                    event,
                 )
 
             # Notify HA of update
@@ -556,6 +565,57 @@ class SSEManager:
             _LOGGER.warning(
                 "SSE: Relay device not found: name=%s, id=%s", source_name, source_id
             )
+
+    def _handle_doorbell_event(self, space, source_name: str, source_id: str) -> None:
+        """Handle doorbell ring events."""
+        dev = self._find_device(space, source_name, source_id)
+        if dev:
+            # Store the last ring time in device attributes
+            dev.attributes["last_ring"] = datetime.now(timezone.utc).isoformat()
+            dev.last_trigger_time = datetime.now(timezone.utc)
+
+            # Set the doorbell_ring state to True (will auto-reset)
+            dev.attributes["doorbell_ring"] = True
+
+            # Fire a Home Assistant event for automations
+            self.coordinator.hass.bus.async_fire(
+                "ajax_doorbell_ring",
+                {
+                    "device_id": dev.id,
+                    "device_name": dev.name,
+                    "space_name": space.name,
+                },
+            )
+
+            _LOGGER.info("SSE instant: %s -> doorbell ring", dev.name)
+
+            # Schedule auto-reset of doorbell_ring state after 10 seconds
+            self.coordinator.hass.loop.call_later(
+                10.0,
+                lambda: self._reset_doorbell_ring(space.id, dev.id),
+            )
+        else:
+            _LOGGER.warning(
+                "SSE: Doorbell device not found: name=%s, id=%s", source_name, source_id
+            )
+
+    def _reset_doorbell_ring(self, space_id: str, device_id: str) -> None:
+        """Reset doorbell ring state after timeout."""
+        try:
+            if not self.coordinator.account:
+                return
+
+            space = self.coordinator.account.spaces.get(space_id)
+            if not space:
+                return
+
+            device = space.devices.get(device_id)
+            if device:
+                device.attributes["doorbell_ring"] = False
+                _LOGGER.debug("Doorbell ring auto-reset: %s", device.name)
+                self.coordinator.async_set_updated_data(self.coordinator.account)
+        except Exception as err:
+            _LOGGER.debug("Error resetting doorbell ring: %s", err)
 
     def _handle_scenario_event(self, space, event: dict, event_tag: str) -> None:
         """Handle scenario events that might be triggered by a Button.

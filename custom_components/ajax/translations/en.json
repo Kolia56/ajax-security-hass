@@ -150,6 +150,9 @@
           "on": "Connected"
         }
       },
+      "doorbell_ring": {
+        "name": "Doorbell"
+      },
       "external_contact": {
         "name": "Door (external contact)"
       },
@@ -597,8 +600,14 @@
           }
         }
       },
+      "last_ring": {
+        "name": "Last ring"
+      },
       "led_indication": {
         "name": "LED indication"
+      },
+      "mac_address": {
+        "name": "MAC address"
       },
       "malfunctions": {
         "name": "Malfunctions"

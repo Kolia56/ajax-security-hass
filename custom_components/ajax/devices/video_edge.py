@@ -113,6 +113,19 @@ class VideoEdgeHandler:
                 }
             )
 
+        # MAC Address
+        if self.video_edge.mac_address:
+            sensors.append(
+                {
+                    "key": "mac_address",
+                    "translation_key": "mac_address",
+                    "icon": "mdi:network",
+                    "value_fn": lambda: self.video_edge.mac_address,
+                    "enabled_by_default": True,
+                    "entity_category": "diagnostic",
+                }
+            )
+
         # Firmware version
         if self.video_edge.firmware_version:
             sensors.append(

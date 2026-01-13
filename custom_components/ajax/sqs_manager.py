@@ -132,6 +132,14 @@ BUTTON_EVENTS = {
     "emergencybuttonpressed": ("emergency", True),
 }
 
+# Doorbell events
+DOORBELL_EVENTS = {
+    "doorbellpressed": True,
+    "doorbellbuttonpressed": True,
+    "doorbellring": True,
+    "doorbell": True,
+}
+
 # Scenario events that might be triggered by a Button
 SCENARIO_EVENTS = {
     "relayonbyscenario": "scenario_triggered",
@@ -260,6 +268,9 @@ class SQSManager:
                 transition,
             )
 
+            # Log raw event data at DEBUG level for troubleshooting
+            _LOGGER.debug("SQS raw event data: %s", event)
+
             if not hub_id or not event_tag:
                 _LOGGER.debug("SQS event missing hubId or eventTag")
                 return
@@ -316,6 +327,10 @@ class SQSManager:
                 await self._handle_button_event(
                     space, event_tag, source_name, source_id
                 )
+            elif event_tag in DOORBELL_EVENTS:
+                await self._handle_doorbell_event(
+                    space, event_tag, source_name, source_id
+                )
             elif event_tag in SCENARIO_EVENTS:
                 await self._handle_scenario_event(
                     space, event_tag, source_name, additional_data_v2
@@ -334,11 +349,12 @@ class SQSManager:
                 )
             else:
                 _LOGGER.warning(
-                    "SQS event not handled: tag=%s, type=%s, source=%s (id=%s)",
+                    "SQS event not handled: tag=%s, type=%s, source=%s (id=%s). Raw: %s",
                     event_tag,
-                    source_type,
+                    event_type,
                     source_name,
                     source_id,
+                    event,
                 )
 
             # Create notification if it's an alarm event
@@ -723,6 +739,60 @@ class SQSManager:
 
         _LOGGER.warning("SQS: Button device %s not found", source_name)
         return False
+
+    async def _handle_doorbell_event(
+        self, space, event_tag: str, source_name: str, source_id: str
+    ) -> bool:
+        """Handle doorbell ring events."""
+        device = self._find_device(space, source_name, source_id)
+        if device:
+            # Store the last ring time in device attributes
+            device.attributes["last_ring"] = datetime.now(timezone.utc).isoformat()
+            device.last_trigger_time = datetime.now(timezone.utc)
+
+            # Set the doorbell_ring state to True (will auto-reset)
+            device.attributes["doorbell_ring"] = True
+
+            # Fire a Home Assistant event for automations
+            self.coordinator.hass.bus.async_fire(
+                "ajax_doorbell_ring",
+                {
+                    "device_id": device.id,
+                    "device_name": device.name,
+                    "space_name": space.name,
+                },
+            )
+
+            _LOGGER.info("SQS instant: %s -> doorbell ring", source_name)
+
+            # Schedule auto-reset of doorbell_ring state after 10 seconds
+            self.coordinator.hass.loop.call_later(
+                10.0,
+                lambda: self._reset_doorbell_ring(space.id, device.id),
+            )
+
+            return True
+
+        _LOGGER.warning("SQS: Doorbell device %s not found", source_name)
+        return False
+
+    def _reset_doorbell_ring(self, space_id: str, device_id: str) -> None:
+        """Reset doorbell ring state after timeout."""
+        try:
+            if not self.coordinator.account:
+                return
+
+            space = self.coordinator.account.spaces.get(space_id)
+            if not space:
+                return
+
+            device = space.devices.get(device_id)
+            if device:
+                device.attributes["doorbell_ring"] = False
+                _LOGGER.debug("Doorbell ring auto-reset: %s", device.name)
+                self.coordinator.async_set_updated_data(self.coordinator.account)
+        except Exception as err:
+            _LOGGER.debug("Error resetting doorbell ring: %s", err)
 
     async def _handle_scenario_event(
         self, space, event_tag: str, source_name: str, additional_data_v2: list

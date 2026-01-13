@@ -21,6 +21,7 @@ Structure:
 from .base import AjaxDeviceHandler
 from .button import ButtonHandler
 from .door_contact import DoorContactHandler, WireInputHandler
+from .doorbell import DoorbellHandler
 from .flood_detector import FloodDetectorHandler
 from .glass_break import GlassBreakHandler
 from .hub import HubHandler
@@ -35,6 +36,7 @@ from .video_edge import VideoEdgeHandler
 __all__ = [
     "AjaxDeviceHandler",
     "ButtonHandler",
+    "DoorbellHandler",
     "DoorContactHandler",
     "FloodDetectorHandler",
     "GlassBreakHandler",

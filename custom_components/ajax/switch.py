@@ -19,6 +19,7 @@ from .const import DOMAIN, MANUFACTURER
 from .coordinator import AjaxDataCoordinator
 from .devices import (
     ButtonHandler,
+    DoorbellHandler,
     DoorContactHandler,
     FloodDetectorHandler,
     GlassBreakHandler,
@@ -49,6 +50,7 @@ DEVICE_HANDLERS = {
     DeviceType.RELAY: SocketHandler,
     DeviceType.WALLSWITCH: SocketHandler,
     DeviceType.BUTTON: ButtonHandler,
+    DeviceType.DOORBELL: DoorbellHandler,
     DeviceType.REPEATER: RepeaterHandler,
 }
 

@@ -150,6 +150,9 @@
       "door": {
         "name": "Detector de apertura de puerta"
       },
+      "doorbell_ring": {
+        "name": "Timbre"
+      },
       "external_contact": {
         "name": "Puerta (contacto externo)"
       },

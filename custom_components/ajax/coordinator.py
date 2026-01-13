@@ -2102,6 +2102,10 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             "home_siren_fibra": DeviceType.SIREN,
             # SpeakerPhone
             "speakerphone": DeviceType.SPEAKERPHONE,
+            # Doorbell
+            "doorbell": DeviceType.DOORBELL,
+            "doorbellbutton": DeviceType.DOORBELL,
+            "doorbell_button": DeviceType.DOORBELL,
             # Transmitter
             "transmitter": DeviceType.TRANSMITTER,
             "transmitterfibra": DeviceType.TRANSMITTER,

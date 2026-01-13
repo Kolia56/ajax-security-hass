@@ -170,7 +170,7 @@ class AjaxSSEClient:
         """
         try:
             event_data = json.loads(data)
-            _LOGGER.debug("SSE event received: type=%s", event_type)
+            _LOGGER.debug("SSE event received: type=%s, raw=%s", event_type, data[:500])
 
             # Add event type to data if not present
             if event_type and "eventType" not in event_data:

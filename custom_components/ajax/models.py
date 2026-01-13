@@ -47,6 +47,7 @@ class DeviceType(Enum):
     BUTTON = "button"  # Button / DoubleButton devices
     SIREN = "siren"
     SPEAKERPHONE = "speakerphone"  # SpeakerPhone Jeweller
+    DOORBELL = "doorbell"  # Ajax Doorbell
     TRANSMITTER = "transmitter"
     MULTI_TRANSMITTER = "multi_transmitter"  # MultiTransmitter for wired sensors
     REPEATER = "repeater"
