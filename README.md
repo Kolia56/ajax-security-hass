@@ -11,17 +11,17 @@
 
 ---
 
+> [!CAUTION]
+> ## Proxy Mode Security
+> When using a proxy, the proxy administrator can see your password hash (SHA256), all API requests/responses, and your email. For security and trust considerations, contact your proxy provider. See [Security & Privacy](#-security--privacy) for details.
+
+---
+
 > [!NOTE]
 > ## About This Integration
 > This is **NOT an official Ajax Systems addon**. It is a community-developed integration created in collaboration with Ajax Systems.
 >
 > **Special thanks to Ajax Systems** for their support and assistance during development. Their help made this integration possible! 🙏
-
----
-
-> [!CAUTION]
-> ## Proxy Mode Security
-> When using a proxy, the proxy administrator can see your password hash (SHA256), all API requests/responses, and your email. For security and trust considerations, contact your proxy provider. See [Security & Privacy](#-security--privacy) for details.
 
 ---
 
