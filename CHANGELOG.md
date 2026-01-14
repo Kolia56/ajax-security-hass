@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.68] - 2026-01-14
+
+### Fixed
+- Multi-gang LightSwitch channels - use string format "CHANNEL_1"/"CHANNEL_2" for API commands (#26)
+
 ## [0.7.67] - 2026-01-14
 
 ### Fixed
