@@ -537,3 +537,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_shutdown()
 
     return unload_ok
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: AjaxConfigEntry) -> bool:
+    """Migrate old entry."""
+    # Add unique_id
+    if entry.version == 1 and entry.minor_version == 1:
+        hass.config_entries.async_update_entry(
+            entry,
+            unique_id=entry.data[CONF_EMAIL],
+            minor_version=2,
+        )
+        _LOGGER.info("ConfigEntry migrated successfully to version %s.%s", 1, 2)
+
+    return True
