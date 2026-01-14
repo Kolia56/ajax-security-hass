@@ -49,8 +49,8 @@ class SmokeDetectorHandler(AjaxDeviceHandler):
         if self.device.raw_type in ["FireProtect2", "FireProtectPlus"]:
             sensors.append(
                 {
-                    "key": "gas",
-                    "device_class": BinarySensorDeviceClass.GAS,
+                    "key": "co",
+                    "device_class": BinarySensorDeviceClass.CO,
                     # CO alarm indicated by specific state or attribute
                     "value_fn": lambda: self.device.attributes.get("co_alarm", False),
                     "enabled_by_default": True,
