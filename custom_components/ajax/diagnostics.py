@@ -6,8 +6,9 @@ import logging
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+
+from . import AjaxConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,7 +22,9 @@ TO_REDACT = {
 }
 
 
-async def get_ajax_raw_data(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, Any]:
+async def get_ajax_raw_data(
+    hass: HomeAssistant, entry: AjaxConfigEntry
+) -> dict[str, Any]:
     """Get fresh raw data from all devices."""
 
     coordinator = entry.runtime_data
@@ -128,7 +131,7 @@ async def get_ajax_raw_data(hass: HomeAssistant, entry: ConfigEntry) -> dict[str
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: ConfigEntry
+    hass: HomeAssistant, entry: AjaxConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
 
