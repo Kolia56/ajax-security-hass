@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from contextlib import suppress
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
@@ -35,14 +34,15 @@ async def get_ajax_raw_data(
     all_cameras = []
     all_video_edges = []
     hub_count = 0
-    target_device_id: str | None = None
 
-    with suppress(StopIteration):
-        target_device_id = (
-            next(str(value) for domain, value in device.identifiers if domain == DOMAIN)
-            if device is not None
-            else None
+    target_device_id = (
+        next(
+            (str(value) for domain, value in device.identifiers if domain == DOMAIN),
+            None,
         )
+        if device is not None
+        else None
+    )
 
     if coordinator.account:
         for _space_id, space in coordinator.account.spaces.items():
