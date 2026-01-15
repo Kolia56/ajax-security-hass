@@ -12,7 +12,6 @@ reviews:
   collapse_walkthrough: false
   path_filters:
     - "!**/*.md"
-    - "!**/translations/*.json"
   path_instructions:
     - path: "custom_components/ajax/**"
       instructions: |
