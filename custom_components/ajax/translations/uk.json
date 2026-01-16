@@ -872,8 +872,17 @@
     "failed_to_change": {
       "message": "Не вдалося змінити {entity}: {error}"
     },
+    "force_arm_failed": {
+      "message": "Не вдалося примусово поставити на охорону хаб {hub_id}: {error}"
+    },
+    "force_arm_night_failed": {
+      "message": "Не вдалося примусово увімкнути нічний режим для хабу {hub_id}: {error}"
+    },
     "invalid_target": {
       "message": "Невірна ціль для сервісу."
+    },
+    "no_hubs_found": {
+      "message": "Хабів не знайдено."
     },
     "space_not_found": {
       "message": "Простір не знайдено."

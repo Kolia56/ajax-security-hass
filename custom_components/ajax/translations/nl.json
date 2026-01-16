@@ -872,8 +872,17 @@
     "failed_to_change": {
       "message": "Wijzigen van {entity} mislukt: {error}"
     },
+    "force_arm_failed": {
+      "message": "Geforceerd inschakelen van hub {hub_id} mislukt: {error}"
+    },
+    "force_arm_night_failed": {
+      "message": "Geforceerd inschakelen nachtmodus van hub {hub_id} mislukt: {error}"
+    },
     "invalid_target": {
       "message": "Ongeldig doel voor service."
+    },
+    "no_hubs_found": {
+      "message": "Geen hubs gevonden."
     },
     "space_not_found": {
       "message": "Ruimte niet gevonden."

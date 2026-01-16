@@ -872,8 +872,17 @@
     "failed_to_change": {
       "message": "Échec de la modification de {entity} : {error}"
     },
+    "force_arm_failed": {
+      "message": "Échec de l'armement forcé du hub {hub_id} : {error}"
+    },
+    "force_arm_night_failed": {
+      "message": "Échec de l'armement forcé en mode nuit du hub {hub_id} : {error}"
+    },
     "invalid_target": {
       "message": "Cible invalide pour le service."
+    },
+    "no_hubs_found": {
+      "message": "Aucun hub trouvé."
     },
     "space_not_found": {
       "message": "Espace non trouvé."

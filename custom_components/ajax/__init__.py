@@ -12,7 +12,11 @@ from homeassistant.components.persistent_notification import async_create
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ConfigEntryNotReady, ServiceValidationError
+from homeassistant.exceptions import (
+    ConfigEntryNotReady,
+    HomeAssistantError,
+    ServiceValidationError,
+)
 from homeassistant.helpers import (
     area_registry as ar,
     config_validation as cv,
@@ -269,14 +273,23 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
         entry = entries[0]
         coordinator = entry.runtime_data
         # Get the first hub from coordinator
-        if coordinator.account and coordinator.account.spaces:
-            for hub_id in coordinator.account.spaces:
-                try:
-                    await coordinator.api.async_arm(hub_id, ignore_problems=True)
-                    await coordinator.async_request_refresh()
-                    _LOGGER.info("Force armed hub %s", hub_id)
-                except Exception as err:
-                    _LOGGER.error("Failed to force arm hub %s: %s", hub_id, err)
+        if not coordinator.account or not coordinator.account.spaces:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="no_hubs_found",
+            )
+        for hub_id in coordinator.account.spaces:
+            try:
+                await coordinator.api.async_arm(hub_id, ignore_problems=True)
+                await coordinator.async_request_refresh()
+                _LOGGER.info("Force armed hub %s", hub_id)
+            except Exception as err:
+                _LOGGER.error("Failed to force arm hub %s: %s", hub_id, err)
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="force_arm_failed",
+                    translation_placeholders={"hub_id": hub_id, "error": str(err)},
+                ) from err
 
     async def handle_force_arm_night(call: ServiceCall) -> None:
         """Handle force arm night mode service call."""
@@ -286,16 +299,23 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
         entries = await _extract_config_entry(call)
         entry = entries[0]
         coordinator = entry.runtime_data
-        if coordinator.account and coordinator.account.spaces:
-            for hub_id in coordinator.account.spaces:
-                try:
-                    await coordinator.api.async_night_mode(hub_id, enabled=True)
-                    await coordinator.async_request_refresh()
-                    _LOGGER.info("Force armed night mode hub %s", hub_id)
-                except Exception as err:
-                    _LOGGER.error(
-                        "Failed to force arm night mode hub %s: %s", hub_id, err
-                    )
+        if not coordinator.account or not coordinator.account.spaces:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="no_hubs_found",
+            )
+        for hub_id in coordinator.account.spaces:
+            try:
+                await coordinator.api.async_night_mode(hub_id, enabled=True)
+                await coordinator.async_request_refresh()
+                _LOGGER.info("Force armed night mode hub %s", hub_id)
+            except Exception as err:
+                _LOGGER.error("Failed to force arm night mode hub %s: %s", hub_id, err)
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="force_arm_night_failed",
+                    translation_placeholders={"hub_id": hub_id, "error": str(err)},
+                ) from err
 
     async def handle_get_raw_devices(call: ServiceCall) -> None:
         """Handle get raw devices service call - get full raw API data for all devices."""

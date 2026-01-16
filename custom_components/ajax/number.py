@@ -115,7 +115,10 @@ class AjaxTiltDegreesNumber(AjaxDoorPlusBaseNumber):
         """Set the tilt degrees threshold."""
         space = self.coordinator.get_space(self._space_id)
         if not space:
-            raise HomeAssistantError("space_not_found")
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="space_not_found",
+            )
 
         if space.security_state != SecurityState.DISARMED:
             raise ServiceValidationError(

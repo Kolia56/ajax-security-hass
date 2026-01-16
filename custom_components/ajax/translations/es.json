@@ -870,16 +870,25 @@
   },
   "exceptions": {
     "failed_to_change": {
-      "message": "Failed to change {entity}: {error}"
+      "message": "Error al cambiar {entity}: {error}"
+    },
+    "force_arm_failed": {
+      "message": "Error al armar forzado el hub {hub_id}: {error}"
+    },
+    "force_arm_night_failed": {
+      "message": "Error al armar forzado en modo nocturno el hub {hub_id}: {error}"
     },
     "invalid_target": {
-      "message": "Invalid target for service."
+      "message": "Objetivo no válido para el servicio."
+    },
+    "no_hubs_found": {
+      "message": "No se encontraron hubs."
     },
     "space_not_found": {
-      "message": "Space not found."
+      "message": "Espacio no encontrado."
     },
     "system_armed": {
-      "message": "System armed. Please disarm."
+      "message": "Sistema armado. Por favor, desarme."
     }
   },
   "options": {

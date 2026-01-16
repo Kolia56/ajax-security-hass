@@ -872,8 +872,17 @@
     "failed_to_change": {
       "message": "Failed to change {entity}: {error}"
     },
+    "force_arm_failed": {
+      "message": "Failed to force arm hub {hub_id}: {error}"
+    },
+    "force_arm_night_failed": {
+      "message": "Failed to force arm night mode hub {hub_id}: {error}"
+    },
     "invalid_target": {
       "message": "Invalid target for service."
+    },
+    "no_hubs_found": {
+      "message": "No hubs found."
     },
     "space_not_found": {
       "message": "Space not found."

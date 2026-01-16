@@ -870,10 +870,19 @@
   },
   "exceptions": {
     "failed_to_change": {
-      "message": "Failed to change {entity}: {error}"
+      "message": "Det gick inte att ändra {entity}: {error}"
+    },
+    "force_arm_failed": {
+      "message": "Det gick inte att tvångstillkoppla hub {hub_id}: {error}"
+    },
+    "force_arm_night_failed": {
+      "message": "Det gick inte att tvångstillkoppla nattläge för hub {hub_id}: {error}"
     },
     "invalid_target": {
       "message": "Ogiltigt mål för tjänsten."
+    },
+    "no_hubs_found": {
+      "message": "Inga hubbar hittades."
     },
     "space_not_found": {
       "message": "Space kan ej hittas."

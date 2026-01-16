@@ -872,8 +872,17 @@
     "failed_to_change": {
       "message": "Fehler beim Ändern von {entity}: {error}"
     },
+    "force_arm_failed": {
+      "message": "Fehler beim Zwangsschärfen des Hubs {hub_id}: {error}"
+    },
+    "force_arm_night_failed": {
+      "message": "Fehler beim Zwangsschärfen des Nachtmodus für Hub {hub_id}: {error}"
+    },
     "invalid_target": {
       "message": "Ungültiges Ziel für den Dienst."
+    },
+    "no_hubs_found": {
+      "message": "Keine Hubs gefunden."
     },
     "space_not_found": {
       "message": "Bereich nicht gefunden."
