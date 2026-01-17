@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.11
+    rev: v0.14.13
     hooks:
       # Run the linter.
       - id: ruff-check
@@ -20,3 +20,11 @@ repos:
           files: (icons.json|translations/.+\.json$)
         - id: check-yaml
           args: ['--unsafe']
+
+  - repo: local
+    hooks:
+      - id: remove-co-authored-by
+        name: Remove Co-Authored-By Claude
+        entry: sed -i '/Co-Authored-By:.*[Cc]laude/d'
+        language: system
+        stages: [commit-msg]
