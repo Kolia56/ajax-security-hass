@@ -18,6 +18,9 @@ Julien AJax/
 docker-compose.yml
 .claude/
 .ruff_cache/
+.coderabbit.yaml
+.pre-commit-config.yaml
+ruff.toml
 
 # Python
 __pycache__/
