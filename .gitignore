@@ -19,7 +19,6 @@ docker-compose.yml
 .claude/
 .ruff_cache/
 .coderabbit.yaml
-.pre-commit-config.yaml
 
 # Python
 __pycache__/
