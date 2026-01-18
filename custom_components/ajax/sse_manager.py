@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .event_codes import DEFAULT_LANGUAGE, parse_event_code
@@ -156,9 +156,7 @@ class SSEManager:
                 else (source.get("name") if isinstance(source, dict) else None)
             )
             if not source_name:
-                source_name = event.get("sourceObjectName") or event.get(
-                    "sourceName", ""
-                )
+                source_name = event.get("sourceObjectName") or event.get("sourceName", "")
 
             # Source ID: try device.id, sourceObjectId, deviceId
             source_id = (
@@ -174,16 +172,12 @@ class SSEManager:
                 else (source.get("type") if isinstance(source, dict) else None)
             )
             if not source_type:
-                source_type = event.get("sourceObjectType") or event.get(
-                    "sourceType", ""
-                )
+                source_type = event.get("sourceObjectType") or event.get("sourceType", "")
 
             # Parse event code for type info
             code_info = parse_event_code(event_code)
             event_type = code_info.get("type", "UNKNOWN") if code_info else "UNKNOWN"
-            transition = (
-                code_info.get("transition", "TRIGGERED") if code_info else "TRIGGERED"
-            )
+            transition = code_info.get("transition", "TRIGGERED") if code_info else "TRIGGERED"
 
             # Also check eventTypeV2 for video AI events
             event_type_v2 = event.get("eventTypeV2", "")
@@ -217,9 +211,7 @@ class SSEManager:
             self._recent_events[event_key] = now
 
             # Cleanup old entries (keep dict from growing indefinitely)
-            self._recent_events = {
-                k: v for k, v in self._recent_events.items() if now - v < 60
-            }
+            self._recent_events = {k: v for k, v in self._recent_events.items() if now - v < 60}
 
             # Get space by hub_id
             space = None
@@ -236,9 +228,7 @@ class SSEManager:
             if event_tag in EVENT_TAG_TO_STATE:
                 await self._handle_security_event(space, event_tag, source_name)
             elif event_tag in DOOR_EVENTS:
-                self._handle_door_event(
-                    space, event_tag, source_name, source_id, transition
-                )
+                self._handle_door_event(space, event_tag, source_name, source_id, transition)
             elif event_tag in MOTION_EVENTS:
                 self._handle_motion_event(space, event_tag, source_name, source_id)
             elif event_tag in SMOKE_EVENTS:
@@ -248,21 +238,15 @@ class SSEManager:
             elif event_tag in GLASS_EVENTS:
                 self._handle_glass_event(space, event_tag, source_name, source_id)
             elif event_tag in TAMPER_EVENTS:
-                self._handle_tamper_event(
-                    space, event_tag, source_name, source_id, transition
-                )
+                self._handle_tamper_event(space, event_tag, source_name, source_id, transition)
             elif event_tag in DEVICE_STATUS_EVENTS:
-                self._handle_device_status_event(
-                    space, event_tag, source_name, source_id
-                )
+                self._handle_device_status_event(space, event_tag, source_name, source_id)
             elif event_tag in RELAY_EVENTS:
                 self._handle_relay_event(space, event_tag, source_name, source_id)
             elif event_tag in SCENARIO_EVENTS:
                 self._handle_scenario_event(space, event, event_tag)
             elif event_tag in VIDEO_EVENTS or event_type_v2 in VIDEO_EVENT_TYPES:
-                self._handle_video_event(
-                    space, event_tag, event_type_v2, source_name, source_id
-                )
+                self._handle_video_event(space, event_tag, event_type_v2, source_name, source_id)
             elif event_tag in DOORBELL_EVENTS:
                 self._handle_doorbell_event(space, source_name, source_id)
             else:
@@ -282,9 +266,7 @@ class SSEManager:
         except Exception as err:
             _LOGGER.error("SSE event processing error: %s", err, exc_info=True)
 
-    async def _handle_security_event(
-        self, space, event_tag: str, source_name: str
-    ) -> None:
+    async def _handle_security_event(self, space, event_tag: str, source_name: str) -> None:
         """Handle arm/disarm/night mode events."""
         new_state = EVENT_TAG_TO_STATE.get(event_tag)
         if not new_state:
@@ -371,9 +353,7 @@ class SSEManager:
 
         return None
 
-    def _handle_door_event(
-        self, space, event_tag: str, source_name: str, source_id: str, transition: str
-    ) -> None:
+    def _handle_door_event(self, space, event_tag: str, source_name: str, source_id: str, transition: str) -> None:
         """Handle door opened/closed events."""
         action_key, is_triggered = DOOR_EVENTS[event_tag]
 
@@ -386,16 +366,12 @@ class SSEManager:
         dev = self._find_device(space, source_name, source_id)
         if dev:
             dev.attributes["door_opened"] = is_triggered
-            dev.attributes["door_opened_at"] = datetime.now(timezone.utc).isoformat()
+            dev.attributes["door_opened_at"] = datetime.now(UTC).isoformat()
             _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
         else:
-            _LOGGER.warning(
-                "SSE: Door device not found: name=%s, id=%s", source_name, source_id
-            )
+            _LOGGER.warning("SSE: Door device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_motion_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> None:
+    def _handle_motion_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle motion detected events."""
         from .models import SecurityState
 
@@ -404,9 +380,7 @@ class SSEManager:
         dev = self._find_device(space, source_name, source_id)
         if dev:
             dev.attributes["motion_detected"] = is_triggered
-            dev.attributes["motion_detected_at"] = datetime.now(
-                timezone.utc
-            ).isoformat()
+            dev.attributes["motion_detected_at"] = datetime.now(UTC).isoformat()
             _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
 
             # If system is armed and motion detected, trigger alarm
@@ -422,13 +396,9 @@ class SSEManager:
                     space.security_state.value,
                 )
         else:
-            _LOGGER.warning(
-                "SSE: Motion device not found: name=%s, id=%s", source_name, source_id
-            )
+            _LOGGER.warning("SSE: Motion device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_smoke_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> None:
+    def _handle_smoke_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle smoke/fire detector events."""
         from .models import SecurityState
 
@@ -449,13 +419,9 @@ class SSEManager:
                 space.security_state = SecurityState.TRIGGERED
                 _LOGGER.info("SSE: Alarm TRIGGERED by smoke/fire on %s", dev.name)
         else:
-            _LOGGER.warning(
-                "SSE: Smoke device not found: name=%s, id=%s", source_name, source_id
-            )
+            _LOGGER.warning("SSE: Smoke device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_flood_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> None:
+    def _handle_flood_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle flood/leak detector events."""
         from .models import SecurityState
 
@@ -471,13 +437,9 @@ class SSEManager:
                 space.security_state = SecurityState.TRIGGERED
                 _LOGGER.info("SSE: Alarm TRIGGERED by flood on %s", dev.name)
         else:
-            _LOGGER.warning(
-                "SSE: Flood device not found: name=%s, id=%s", source_name, source_id
-            )
+            _LOGGER.warning("SSE: Flood device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_glass_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> None:
+    def _handle_glass_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle glass break events."""
         from .models import SecurityState
 
@@ -497,13 +459,9 @@ class SSEManager:
                 space.security_state = SecurityState.TRIGGERED
                 _LOGGER.info("SSE: Alarm TRIGGERED by glass break on %s", dev.name)
         else:
-            _LOGGER.warning(
-                "SSE: Glass device not found: name=%s, id=%s", source_name, source_id
-            )
+            _LOGGER.warning("SSE: Glass device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_tamper_event(
-        self, space, event_tag: str, source_name: str, source_id: str, transition: str
-    ) -> None:
+    def _handle_tamper_event(self, space, event_tag: str, source_name: str, source_id: str, transition: str) -> None:
         """Handle tamper events."""
         action_key, is_triggered = TAMPER_EVENTS[event_tag]
 
@@ -529,9 +487,7 @@ class SSEManager:
                 source_id,
             )
 
-    def _handle_device_status_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> None:
+    def _handle_device_status_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle device status events (online/offline, battery)."""
         action_key, is_problem = DEVICE_STATUS_EVENTS[event_tag]
 
@@ -551,9 +507,7 @@ class SSEManager:
                 source_id,
             )
 
-    def _handle_relay_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> None:
+    def _handle_relay_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle relay/socket on/off events."""
         action_key, is_on = RELAY_EVENTS[event_tag]
 
@@ -562,17 +516,15 @@ class SSEManager:
             dev.attributes["is_on"] = is_on
             _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
         else:
-            _LOGGER.warning(
-                "SSE: Relay device not found: name=%s, id=%s", source_name, source_id
-            )
+            _LOGGER.warning("SSE: Relay device not found: name=%s, id=%s", source_name, source_id)
 
     def _handle_doorbell_event(self, space, source_name: str, source_id: str) -> None:
         """Handle doorbell ring events."""
         dev = self._find_device(space, source_name, source_id)
         if dev:
             # Store the last ring time in device attributes
-            dev.attributes["last_ring"] = datetime.now(timezone.utc).isoformat()
-            dev.last_trigger_time = datetime.now(timezone.utc)
+            dev.attributes["last_ring"] = datetime.now(UTC).isoformat()
+            dev.last_trigger_time = datetime.now(UTC)
 
             # Set the doorbell_ring state to True (will auto-reset)
             dev.attributes["doorbell_ring"] = True
@@ -595,9 +547,7 @@ class SSEManager:
                 lambda: self._reset_doorbell_ring(space.id, dev.id),
             )
         else:
-            _LOGGER.warning(
-                "SSE: Doorbell device not found: name=%s, id=%s", source_name, source_id
-            )
+            _LOGGER.warning("SSE: Doorbell device not found: name=%s, id=%s", source_name, source_id)
 
     def _reset_doorbell_ring(self, space_id: str, device_id: str) -> None:
         """Reset doorbell ring state after timeout."""
@@ -710,9 +660,7 @@ class SSEManager:
         # Schedule auto-reset after detection timeout (30 seconds)
         self.coordinator.hass.loop.call_later(
             30.0,
-            lambda: self._reset_video_detection(
-                space.id, video_edge.id, channel_id, detection_type
-            ),
+            lambda: self._reset_video_detection(space.id, video_edge.id, channel_id, detection_type),
         )
 
     def _find_video_edge(self, space, source_name: str, source_id: str):
@@ -765,9 +713,7 @@ class SSEManager:
         # Find target channel (first one if no channel_id specified)
         target_channel = None
         for channel in channels:
-            if isinstance(channel, dict) and (
-                channel_id is None or channel.get("id") == channel_id
-            ):
+            if isinstance(channel, dict) and (channel_id is None or channel.get("id") == channel_id):
                 target_channel = channel
                 break
 

@@ -21,7 +21,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .event_codes import (
@@ -203,9 +203,7 @@ class SQSManager:
 
     def set_language(self, language: str) -> None:
         """Set the language for event messages."""
-        self._language = (
-            language if language in ("fr", "en", "es") else DEFAULT_LANGUAGE
-        )
+        self._language = language if language in ("fr", "en", "es") else DEFAULT_LANGUAGE
         _LOGGER.debug("SQS Manager language set to: %s", self._language)
 
     async def start(self) -> bool:
@@ -302,51 +300,29 @@ class SQSManager:
             if event_tag in EVENT_TAG_TO_STATE:
                 await self._handle_security_event(space, event_tag, source_name)
             elif event_tag in DOOR_EVENTS:
-                await self._handle_door_event(
-                    space, event_tag, source_name, source_id, transition
-                )
+                await self._handle_door_event(space, event_tag, source_name, source_id, transition)
             elif event_tag in MOTION_EVENTS:
-                await self._handle_motion_event(
-                    space, event_tag, source_name, source_id
-                )
+                await self._handle_motion_event(space, event_tag, source_name, source_id)
             elif event_tag in SMOKE_EVENTS:
-                await self._handle_alarm_event(
-                    space, "smoke", event_tag, source_name, source_id
-                )
+                await self._handle_alarm_event(space, "smoke", event_tag, source_name, source_id)
             elif event_tag in FLOOD_EVENTS:
-                await self._handle_alarm_event(
-                    space, "flood", event_tag, source_name, source_id
-                )
+                await self._handle_alarm_event(space, "flood", event_tag, source_name, source_id)
             elif event_tag in GLASS_EVENTS:
-                await self._handle_alarm_event(
-                    space, "glass", event_tag, source_name, source_id
-                )
+                await self._handle_alarm_event(space, "glass", event_tag, source_name, source_id)
             elif event_tag in RELAY_EVENTS:
                 await self._handle_relay_event(space, event_tag, source_name, source_id)
             elif event_tag in BUTTON_EVENTS:
-                await self._handle_button_event(
-                    space, event_tag, source_name, source_id
-                )
+                await self._handle_button_event(space, event_tag, source_name, source_id)
             elif event_tag in DOORBELL_EVENTS:
-                await self._handle_doorbell_event(
-                    space, event_tag, source_name, source_id
-                )
+                await self._handle_doorbell_event(space, event_tag, source_name, source_id)
             elif event_tag in SCENARIO_EVENTS:
-                await self._handle_scenario_event(
-                    space, event_tag, source_name, additional_data_v2
-                )
+                await self._handle_scenario_event(space, event_tag, source_name, additional_data_v2)
             elif event_tag in WIRE_INPUT_EVENTS:
-                await self._handle_wire_input_event(
-                    space, event_tag, source_name, source_id, transition
-                )
+                await self._handle_wire_input_event(space, event_tag, source_name, source_id, transition)
             elif event_tag in TAMPER_EVENTS or event_tag in DEVICE_STATUS_EVENTS:
-                await self._handle_device_status_event(
-                    space, event_tag, source_name, source_id
-                )
+                await self._handle_device_status_event(space, event_tag, source_name, source_id)
             elif event_tag in VIDEO_EVENTS or event_type in VIDEO_EVENT_TYPES:
-                await self._handle_video_event(
-                    space, event_tag, event_type, source_name, source_id
-                )
+                await self._handle_video_event(space, event_tag, event_type, source_name, source_id)
             else:
                 _LOGGER.warning(
                     "SQS event not handled: tag=%s, type=%s, source=%s (id=%s). Raw: %s",
@@ -358,11 +334,7 @@ class SQSManager:
                 )
 
             # Create notification if it's an alarm event
-            if (
-                event_type == "ALARM"
-                or event_tag in SMOKE_EVENTS
-                or event_tag in FLOOD_EVENTS
-            ):
+            if event_type == "ALARM" or event_tag in SMOKE_EVENTS or event_tag in FLOOD_EVENTS:
                 await self._create_alarm_notification(space, event_record)
 
             # Always update UI to show new event in history
@@ -447,9 +419,7 @@ class SQSManager:
             "room_name": room_name,
             "hub_name": hub_name,
             # Ajax timestamps are in milliseconds, convert to seconds
-            "timestamp": datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc)
-            if timestamp
-            else datetime.now(timezone.utc),
+            "timestamp": datetime.fromtimestamp(timestamp / 1000, tz=UTC) if timestamp else datetime.now(UTC),
             "transition": transition,
         }
 
@@ -461,9 +431,7 @@ class SQSManager:
         if len(space.recent_events) > self.MAX_EVENTS_HISTORY:
             space.recent_events = space.recent_events[: self.MAX_EVENTS_HISTORY]
 
-    async def _handle_security_event(
-        self, space, event_tag: str, source_name: str
-    ) -> bool:
+    async def _handle_security_event(self, space, event_tag: str, source_name: str) -> bool:
         """Handle arm/disarm/night mode events."""
         new_state = EVENT_TAG_TO_STATE.get(event_tag)
         if not new_state:
@@ -509,9 +477,7 @@ class SQSManager:
                 await self.coordinator.async_force_metadata_refresh()
                 _LOGGER.info("SQS: Metadata refresh completed after security event")
             except Exception as err:
-                _LOGGER.error(
-                    "SQS: Metadata refresh failed after security event: %s", err
-                )
+                _LOGGER.error("SQS: Metadata refresh failed after security event: %s", err)
             finally:
                 # Always reset the flag
                 self.coordinator._skip_state_change_event = False
@@ -570,7 +536,7 @@ class SQSManager:
         device = self._find_device(space, source_name, source_id)
         if device:
             device.attributes["door_opened"] = is_open
-            device.last_trigger_time = datetime.now(timezone.utc) if is_open else None
+            device.last_trigger_time = datetime.now(UTC) if is_open else None
             message = get_event_message(action, self._language)
             _LOGGER.info("SQS instant: %s -> %s", source_name, message)
             return True
@@ -578,9 +544,7 @@ class SQSManager:
         _LOGGER.warning("SQS: Door device %s not found", source_name)
         return False
 
-    async def _handle_motion_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> bool:
+    async def _handle_motion_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
         """Handle motion detection events."""
         event_data = MOTION_EVENTS.get(event_tag)
         if event_data is None:
@@ -590,7 +554,7 @@ class SQSManager:
         device = self._find_device(space, source_name, source_id)
         if device:
             device.attributes["motion"] = is_motion
-            device.last_trigger_time = datetime.now(timezone.utc) if is_motion else None
+            device.last_trigger_time = datetime.now(UTC) if is_motion else None
             message = get_event_message(action, self._language)
             _LOGGER.info("SQS instant: %s -> %s", source_name, message)
 
@@ -622,7 +586,7 @@ class SQSManager:
                     break
 
             device.attributes[f"{alarm_type}_alarm"] = is_alarm
-            device.last_trigger_time = datetime.now(timezone.utc) if is_alarm else None
+            device.last_trigger_time = datetime.now(UTC) if is_alarm else None
 
             message = get_event_message(action, self._language)
             _LOGGER.info("SQS instant: %s - %s", source_name, message)
@@ -633,27 +597,21 @@ class SQSManager:
                 if alarm_type in ("smoke", "flood"):
                     # Life safety alarms always trigger
                     space.security_state = SecurityState.TRIGGERED
-                    _LOGGER.info(
-                        "SQS: Alarm TRIGGERED by %s on %s", alarm_type, device.name
-                    )
+                    _LOGGER.info("SQS: Alarm TRIGGERED by %s on %s", alarm_type, device.name)
                 elif alarm_type == "glass" and space.security_state in (
                     SecurityState.ARMED,
                     SecurityState.NIGHT_MODE,
                     SecurityState.PARTIALLY_ARMED,
                 ):
                     space.security_state = SecurityState.TRIGGERED
-                    _LOGGER.info(
-                        "SQS: Alarm TRIGGERED by glass break on %s", device.name
-                    )
+                    _LOGGER.info("SQS: Alarm TRIGGERED by glass break on %s", device.name)
 
             return True
 
         _LOGGER.warning("SQS: Alarm device %s not found", source_name)
         return False
 
-    async def _handle_relay_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> bool:
+    async def _handle_relay_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
         """Handle relay/socket/light on/off events."""
         event_data = RELAY_EVENTS.get(event_tag)
         if event_data is None:
@@ -694,22 +652,16 @@ class SQSManager:
         if device:
             # Update door_opened state (same as door events)
             device.attributes["door_opened"] = is_triggered
-            device.last_trigger_time = (
-                datetime.now(timezone.utc) if is_triggered else None
-            )
+            device.last_trigger_time = datetime.now(UTC) if is_triggered else None
 
             message = get_event_message(action, self._language)
             _LOGGER.info("SQS instant: %s -> %s (wire input)", source_name, message)
             return True
 
-        _LOGGER.warning(
-            "SQS: WireInput device %s (id=%s) not found", source_name, source_id
-        )
+        _LOGGER.warning("SQS: WireInput device %s (id=%s) not found", source_name, source_id)
         return False
 
-    async def _handle_button_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> bool:
+    async def _handle_button_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
         """Handle button press events."""
         event_data = BUTTON_EVENTS.get(event_tag)
         if event_data is None:
@@ -720,7 +672,7 @@ class SQSManager:
         if device:
             # Store the last action in device attributes
             device.attributes["last_action"] = action
-            device.last_trigger_time = datetime.now(timezone.utc)
+            device.last_trigger_time = datetime.now(UTC)
 
             # Fire a Home Assistant event for automations
             self.coordinator.hass.bus.async_fire(
@@ -740,15 +692,13 @@ class SQSManager:
         _LOGGER.warning("SQS: Button device %s not found", source_name)
         return False
 
-    async def _handle_doorbell_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> bool:
+    async def _handle_doorbell_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
         """Handle doorbell ring events."""
         device = self._find_device(space, source_name, source_id)
         if device:
             # Store the last ring time in device attributes
-            device.attributes["last_ring"] = datetime.now(timezone.utc).isoformat()
-            device.last_trigger_time = datetime.now(timezone.utc)
+            device.attributes["last_ring"] = datetime.now(UTC).isoformat()
+            device.last_trigger_time = datetime.now(UTC)
 
             # Set the doorbell_ring state to True (will auto-reset)
             device.attributes["doorbell_ring"] = True
@@ -794,9 +744,7 @@ class SQSManager:
         except Exception as err:
             _LOGGER.debug("Error resetting doorbell ring: %s", err)
 
-    async def _handle_scenario_event(
-        self, space, event_tag: str, source_name: str, additional_data_v2: list
-    ) -> bool:
+    async def _handle_scenario_event(self, space, event_tag: str, source_name: str, additional_data_v2: list) -> bool:
         """Handle scenario events that might be triggered by a Button.
 
         When a Button is configured in 'Control' mode, Ajax doesn't send a direct
@@ -838,9 +786,7 @@ class SQSManager:
 
         return True
 
-    async def _handle_device_status_event(
-        self, space, event_tag: str, source_name: str, source_id: str
-    ) -> bool:
+    async def _handle_device_status_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
         """Handle device status events (online/offline, battery, tamper)."""
         device = self._find_device(space, source_name, source_id)
         if not device:
@@ -920,9 +866,7 @@ class SQSManager:
             )
         return None
 
-    async def _create_alarm_notification(
-        self, space, event_record: dict[str, Any]
-    ) -> None:
+    async def _create_alarm_notification(self, space, event_record: dict[str, Any]) -> None:
         """Create a Home Assistant notification for alarm events."""
         from homeassistant.components.persistent_notification import async_create
 
@@ -997,9 +941,7 @@ class SQSManager:
         # Schedule auto-reset after detection timeout (30 seconds)
         self.coordinator.hass.loop.call_later(
             30.0,
-            lambda: self._reset_video_detection(
-                space.id, video_edge.id, channel_id, detection_type
-            ),
+            lambda: self._reset_video_detection(space.id, video_edge.id, channel_id, detection_type),
         )
 
         return True
@@ -1054,9 +996,7 @@ class SQSManager:
         # Find target channel (first one if no channel_id specified)
         target_channel = None
         for channel in channels:
-            if isinstance(channel, dict) and (
-                channel_id is None or channel.get("id") == channel_id
-            ):
+            if isinstance(channel, dict) and (channel_id is None or channel.get("id") == channel_id):
                 target_channel = channel
                 break
 
@@ -1125,9 +1065,7 @@ class SQSManager:
         elapsed = time.time() - last_update
         is_protected = elapsed < self.STATE_PROTECTION_SECONDS
         if is_protected:
-            _LOGGER.debug(
-                "Hub %s state protected (%.1fs since SQS update)", hub_id, elapsed
-            )
+            _LOGGER.debug("Hub %s state protected (%.1fs since SQS update)", hub_id, elapsed)
         return is_protected
 
     @property

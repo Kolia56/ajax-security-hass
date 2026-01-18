@@ -55,16 +55,11 @@ async def get_ajax_raw_data(
                     # Then get full details for each device
                     for device_summary in devices_list:
                         device_id = device_summary.get("id")
-                        if (
-                            target_device_id is not None
-                            and target_device_id != device_id
-                        ):
+                        if target_device_id is not None and target_device_id != device_id:
                             continue
                         if device_id:
                             try:
-                                full_device = await coordinator.api.async_get_device(
-                                    hub_id, device_id
-                                )
+                                full_device = await coordinator.api.async_get_device(hub_id, device_id)
                                 all_devices.append(full_device)
                             except Exception as dev_err:
                                 _LOGGER.warning(
@@ -84,16 +79,11 @@ async def get_ajax_raw_data(
                     cameras_list = await coordinator.api.async_get_cameras(hub_id)
                     for camera_summary in cameras_list:
                         camera_id = camera_summary.get("id")
-                        if (
-                            target_device_id is not None
-                            and target_device_id != camera_id
-                        ):
+                        if target_device_id is not None and target_device_id != camera_id:
                             continue
                         if camera_id:
                             try:
-                                full_camera = await coordinator.api.async_get_camera(
-                                    hub_id, camera_id
-                                )
+                                full_camera = await coordinator.api.async_get_camera(hub_id, camera_id)
                                 all_cameras.append(full_camera)
                             except Exception as cam_err:
                                 _LOGGER.warning(
@@ -110,9 +100,7 @@ async def get_ajax_raw_data(
             real_space_id = space.real_space_id
             if real_space_id:
                 try:
-                    video_edges_list = await coordinator.api.async_get_video_edges(
-                        real_space_id
-                    )
+                    video_edges_list = await coordinator.api.async_get_video_edges(real_space_id)
                     all_video_edges.extend(video_edges_list)
                 except Exception as err:
                     _LOGGER.warning(
@@ -125,7 +113,7 @@ async def get_ajax_raw_data(
         for device in all_devices:
             dtype = device.get("deviceType", "unknown")
             type_counts[dtype] = type_counts.get(dtype, 0) + 1
-        type_list = {dtype: count for dtype, count in sorted(type_counts.items())}
+        type_list = dict(sorted(type_counts.items()))
 
         summary = {
             "hubs": hub_count,
@@ -151,9 +139,7 @@ async def get_ajax_raw_data(
     }
 
 
-async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: AjaxConfigEntry
-) -> dict[str, Any]:
+async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: AjaxConfigEntry) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
 
     ajax_data = await get_ajax_raw_data(hass, entry)

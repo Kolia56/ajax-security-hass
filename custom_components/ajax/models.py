@@ -10,7 +10,7 @@ This module defines the data models that mirror the Ajax app structure:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -51,9 +51,7 @@ class DeviceType(Enum):
     TRANSMITTER = "transmitter"
     MULTI_TRANSMITTER = "multi_transmitter"  # MultiTransmitter for wired sensors
     REPEATER = "repeater"
-    WIRE_INPUT = (
-        "wire_input"  # Wired input modules for connecting third-party detectors
-    )
+    WIRE_INPUT = "wire_input"  # Wired input modules for connecting third-party detectors
     LINE_SPLITTER = "line_splitter"  # Fibra line splitter/multiplexer
 
     # Smart Devices
@@ -61,9 +59,7 @@ class DeviceType(Enum):
     RELAY = "relay"
     WALLSWITCH = "wallswitch"
     THERMOSTAT = "thermostat"
-    LIFE_QUALITY = (
-        "life_quality"  # LifeQuality air quality sensor (CO2, temperature, humidity)
-    )
+    LIFE_QUALITY = "life_quality"  # LifeQuality air quality sensor (CO2, temperature, humidity)
 
     # Cameras
     CAMERA = "camera"
@@ -137,9 +133,7 @@ class AjaxDevice:
     type: DeviceType
     space_id: str
     hub_id: str
-    raw_type: str | None = (
-        None  # Raw device type before parsing (for debugging unknown devices)
-    )
+    raw_type: str | None = None  # Raw device type before parsing (for debugging unknown devices)
     room_id: str | None = None
     room_name: str | None = None
     group_id: str | None = None
@@ -199,27 +193,21 @@ class AjaxDevice:
         # Check notification type and timing
         # Motion/door sensors auto-reset after a short time
         if self.last_trigger_time:
-            from datetime import timedelta, timezone
+            from datetime import timedelta
 
             # Make sure both timestamps are timezone-aware
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             trigger_time = self.last_trigger_time
             if trigger_time.tzinfo is None:
-                trigger_time = trigger_time.replace(tzinfo=timezone.utc)
+                trigger_time = trigger_time.replace(tzinfo=UTC)
 
             # Auto-reset after 30 seconds
             if (now - trigger_time) > timedelta(seconds=30):
                 return False
 
         # Check notification message for trigger keywords
-        message = (
-            self.last_notification.message.lower()
-            if self.last_notification.message
-            else ""
-        )
-        title = (
-            self.last_notification.title.lower() if self.last_notification.title else ""
-        )
+        message = self.last_notification.message.lower() if self.last_notification.message else ""
+        title = self.last_notification.title.lower() if self.last_notification.title else ""
 
         trigger_keywords = [
             "motion",
@@ -229,9 +217,7 @@ class AjaxDevice:
             "alarm",
             "movement",
         ]
-        return any(
-            keyword in message or keyword in title for keyword in trigger_keywords
-        )
+        return any(keyword in message or keyword in title for keyword in trigger_keywords)
 
 
 class VideoEdgeType(Enum):

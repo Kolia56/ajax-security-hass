@@ -121,10 +121,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
         self._attr_unique_id = f"{device_id}_{switch_key}"
 
         # Set entity category if provided
-        if "entity_category" in switch_desc:
-            self._attr_entity_category = switch_desc["entity_category"]
-        else:
-            self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_entity_category = switch_desc.get("entity_category", EntityCategory.CONFIG)
 
         # Set entity name - use custom name if provided (for multi-gang channels),
         # otherwise use translation key
@@ -141,9 +138,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
 
         # Set enabled by default
         if "enabled_by_default" in switch_desc:
-            self._attr_entity_registry_enabled_default = switch_desc[
-                "enabled_by_default"
-            ]
+            self._attr_entity_registry_enabled_default = switch_desc["enabled_by_default"]
 
     @property
     def is_on(self) -> bool | None:
@@ -303,13 +298,9 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
         try:
             # Use nested update for settings inside nested structures (e.g., wiredDeviceSettings)
             if api_nested_key:
-                await self.coordinator.api.async_update_device_nested(
-                    space.hub_id, self._device_id, payload
-                )
+                await self.coordinator.api.async_update_device_nested(space.hub_id, self._device_id, payload)
             else:
-                await self.coordinator.api.async_update_device(
-                    space.hub_id, self._device_id, payload
-                )
+                await self.coordinator.api.async_update_device(space.hub_id, self._device_id, payload)
             _LOGGER.info(
                 "Set %s=%s for device %s",
                 api_key,
@@ -328,9 +319,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
 
-    async def _set_trigger_value(
-        self, space, device, trigger_key: str, enabled: bool
-    ) -> None:
+    async def _set_trigger_value(self, space, device, trigger_key: str, enabled: bool) -> None:
         """Set a trigger value in the sirenTriggers list."""
         current_triggers = list(device.attributes.get("siren_triggers", []))
 
@@ -356,9 +345,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
             _LOGGER.error("Failed to set sirenTriggers: %s", err)
             await self.coordinator.async_request_refresh()
 
-    async def _set_channel_value(
-        self, space, device, channel: int, value: bool
-    ) -> None:
+    async def _set_channel_value(self, space, device, channel: int, value: bool) -> None:
         """Set a channel value for multi-gang LightSwitch devices."""
         # channel is 0-based (0, 1), but attribute keys are 1-based (channel_1_on, channel_2_on)
         attr_key = f"channel_{channel + 1}_on"

@@ -18,7 +18,7 @@ import asyncio
 import contextlib
 import logging
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -117,23 +117,15 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         self.api = api
         self.account: AjaxAccount | None = None
         self._enabled_spaces: list[str] | None = enabled_spaces
-        self.all_discovered_spaces: dict[
-            str, str
-        ] = {}  # space_id -> name (for options flow)
-        self._fast_poll_tasks: dict[
-            str, asyncio.Task
-        ] = {}  # device_id -> fast polling task for door sensors
+        self.all_discovered_spaces: dict[str, str] = {}  # space_id -> name (for options flow)
+        self._fast_poll_tasks: dict[str, asyncio.Task] = {}  # device_id -> fast polling task for door sensors
         self._door_sensor_poll_task: asyncio.Task | None = (
             None  # Continuous door sensor polling when disarmed or in night mode
         )
         self._door_sensor_poll_security_state: SecurityState = SecurityState.DISARMED
         self._initial_load_done: bool = False  # Track if initial data load is complete
-        self._force_metadata_refresh: bool = (
-            False  # Flag to force full metadata refresh
-        )
-        self._pending_ha_actions: dict[
-            str, float
-        ] = {}  # hub_id -> timestamp of HA action
+        self._force_metadata_refresh: bool = False  # Flag to force full metadata refresh
+        self._pending_ha_actions: dict[str, float] = {}  # hub_id -> timestamp of HA action
 
         # SQS real-time events (optional, for direct mode)
         self.sqs_manager: SQSManager | None = None
@@ -191,11 +183,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         else:
             new_interval = UPDATE_INTERVAL
 
-        current_interval = (
-            self.update_interval.total_seconds()
-            if self.update_interval
-            else UPDATE_INTERVAL
-        )
+        current_interval = self.update_interval.total_seconds() if self.update_interval else UPDATE_INTERVAL
 
         if new_interval != current_interval:
             self.update_interval = timedelta(seconds=new_interval)
@@ -210,9 +198,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         should_poll = is_disarmed or security_state == SecurityState.NIGHT_MODE
         self._manage_door_sensor_polling(should_poll, security_state)
 
-    def _manage_door_sensor_polling(
-        self, should_poll: bool, security_state: SecurityState
-    ) -> None:
+    def _manage_door_sensor_polling(self, should_poll: bool, security_state: SecurityState) -> None:
         """Start or stop door sensor fast polling.
 
         Args:
@@ -228,9 +214,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         if should_poll and self._door_sensor_poll_task is None:
             # Start door sensor polling when disarmed or in night mode
-            self._door_sensor_poll_task = asyncio.create_task(
-                self._async_poll_door_sensors_loop()
-            )
+            self._door_sensor_poll_task = asyncio.create_task(self._async_poll_door_sensors_loop())
             _LOGGER.info(
                 "Started door sensor fast polling (every %ds, state: %s)",
                 UPDATE_INTERVAL_DOOR_SENSORS,
@@ -264,9 +248,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     if current_state == SecurityState.DISARMED:
                         # When disarmed: poll all door sensors
                         door_sensors = [
-                            device
-                            for device in space.devices.values()
-                            if device.type == DeviceType.DOOR_CONTACT
+                            device for device in space.devices.values() if device.type == DeviceType.DOOR_CONTACT
                         ]
                     elif current_state == SecurityState.NIGHT_MODE:
                         # When in night mode: only poll sensors excluded from night mode
@@ -285,9 +267,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
                     try:
                         # Get all devices with enriched data (includes reedClosed)
-                        devices_data = await self.api.async_get_devices(
-                            space.hub_id, enrich=True
-                        )
+                        devices_data = await self.api.async_get_devices(space.hub_id, enrich=True)
                         updated = False
 
                         for device_summary in devices_data:
@@ -301,15 +281,11 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                         device_data.update(device_summary["model"])
 
                                     # Get current state
-                                    old_door_state = device.attributes.get(
-                                        "door_opened"
-                                    )
+                                    old_door_state = device.attributes.get("door_opened")
 
                                     # Check reedClosed directly from device_data
                                     reed_closed = device_data.get("reedClosed")
-                                    external_state = device_data.get(
-                                        "externalContactState"
-                                    )
+                                    external_state = device_data.get("externalContactState")
 
                                     # Calculate new door state
                                     if reed_closed is not None:
@@ -318,43 +294,25 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                         # Default to externalContactState
                                         new_door_state = external_state != "OK"
                                         # Check wiringSchemeSpecificDetails for more accurate state
-                                        wiring_details = device_data.get(
-                                            "wiringSchemeSpecificDetails", {}
-                                        )
-                                        wiring_type = wiring_details.get(
-                                            "wiringSchemeType"
-                                        )
+                                        wiring_details = device_data.get("wiringSchemeSpecificDetails", {})
+                                        wiring_type = wiring_details.get("wiringSchemeType")
                                         if wiring_type == "TWO_EOL":
-                                            contact_two = wiring_details.get(
-                                                "contactTwoDetails", {}
-                                            )
-                                            contact_state = contact_two.get(
-                                                "contactState"
-                                            )
+                                            contact_two = wiring_details.get("contactTwoDetails", {})
+                                            contact_state = contact_two.get("contactState")
                                             if contact_state:
                                                 new_door_state = contact_state != "OK"
                                         elif wiring_type in ("NO_EOL", "ONE_EOL"):
-                                            contact_state = wiring_details.get(
-                                                "contactState"
-                                            )
+                                            contact_state = wiring_details.get("contactState")
                                             if contact_state:
                                                 new_door_state = contact_state != "OK"
                                     else:
                                         # Try attributes as fallback
                                         api_attrs = device_data.get("attributes", {})
-                                        normalized_attrs = (
-                                            self._normalize_device_attributes(
-                                                api_attrs, device.type
-                                            )
-                                        )
-                                        new_door_state = normalized_attrs.get(
-                                            "door_opened", old_door_state
-                                        )
+                                        normalized_attrs = self._normalize_device_attributes(api_attrs, device.type)
+                                        new_door_state = normalized_attrs.get("door_opened", old_door_state)
 
                                     if old_door_state != new_door_state:
-                                        device.attributes["door_opened"] = (
-                                            new_door_state
-                                        )
+                                        device.attributes["door_opened"] = new_door_state
                                         _LOGGER.debug(
                                             "Door sensor %s state changed: %s -> %s",
                                             device.name,
@@ -446,9 +404,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             else:
                 # Periodic update - optimized polling
                 # Check if we need full metadata refresh (hourly or forced)
-                need_metadata_refresh = (
-                    self._force_metadata_refresh or self._should_refresh_metadata()
-                )
+                need_metadata_refresh = self._force_metadata_refresh or self._should_refresh_metadata()
                 if need_metadata_refresh:
                     if self._force_metadata_refresh:
                         _LOGGER.info("Forced metadata refresh (groups will be updated)")
@@ -458,9 +414,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     self._last_metadata_refresh = time.time()
 
                 # Light or full update based on metadata refresh need
-                await self._async_update_spaces_from_hubs(
-                    full_refresh=need_metadata_refresh
-                )
+                await self._async_update_spaces_from_hubs(full_refresh=need_metadata_refresh)
 
                 for space_id in self.account.spaces:
                     space = self.account.spaces.get(space_id)
@@ -505,15 +459,11 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                 device = space.devices[device_id]
                                 # Normalize attributes from API
                                 api_attrs = device_data.get("attributes", {})
-                                normalized_attrs = self._normalize_device_attributes(
-                                    api_attrs, device.type
-                                )
+                                normalized_attrs = self._normalize_device_attributes(api_attrs, device.type)
                                 device.attributes.update(normalized_attrs)
 
                                 # Check door state (after normalization)
-                                door_opened = device.attributes.get(
-                                    "door_opened", False
-                                )
+                                door_opened = device.attributes.get("door_opened", False)
 
                                 if not door_opened:
                                     self.async_set_updated_data(self.account)
@@ -525,9 +475,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                         break
 
                 except Exception as err:
-                    _LOGGER.error(
-                        "Error in fast polling for door sensor %s: %s", device_id, err
-                    )
+                    _LOGGER.error("Error in fast polling for door sensor %s: %s", device_id, err)
 
                 await asyncio.sleep(poll_interval)
 
@@ -566,22 +514,13 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         """
         # Check if SQS is available
         if not SQS_AVAILABLE:
-            _LOGGER.info(
-                "AWS SQS not available (aiobotocore not installed). "
-                "Using REST API polling only."
-            )
+            _LOGGER.info("AWS SQS not available (aiobotocore not installed). Using REST API polling only.")
             self._sqs_initialized = True  # Mark as "initialized" to prevent retries
             return
 
         # Check if credentials are provided
-        if (
-            not self._aws_access_key_id
-            or not self._aws_secret_access_key
-            or not self._queue_name
-        ):
-            _LOGGER.debug(
-                "AWS credentials not configured. Using REST API polling only."
-            )
+        if not self._aws_access_key_id or not self._aws_secret_access_key or not self._queue_name:
+            _LOGGER.debug("AWS credentials not configured. Using REST API polling only.")
             self._sqs_initialized = True
             return
 
@@ -613,13 +552,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             success = await self.sqs_manager.start()
 
             if success:
-                _LOGGER.info(
-                    "✓ AWS SQS initialized successfully - Real-time events enabled!"
-                )
+                _LOGGER.info("✓ AWS SQS initialized successfully - Real-time events enabled!")
             else:
-                _LOGGER.warning(
-                    "Failed to start SQS - Falling back to REST API polling only"
-                )
+                _LOGGER.warning("Failed to start SQS - Falling back to REST API polling only")
                 self.sqs_manager = None
 
         except Exception as err:
@@ -644,9 +579,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         """
         # Check if SSE is available
         if not SSE_AVAILABLE:
-            _LOGGER.info(
-                "SSE not available (module not loaded). Using REST API polling only."
-            )
+            _LOGGER.info("SSE not available (module not loaded). Using REST API polling only.")
             self._sse_initialized = True
             return
 
@@ -658,9 +591,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         # Check if we have a session token
         if not self.api.session_token:
-            _LOGGER.warning(
-                "No session token available for SSE. Using REST API polling only."
-            )
+            _LOGGER.warning("No session token available for SSE. Using REST API polling only.")
             self._sse_initialized = True
             return
 
@@ -691,13 +622,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             success = await self.sse_manager.start()
 
             if success:
-                _LOGGER.info(
-                    "✓ SSE initialized successfully - Real-time events enabled!"
-                )
+                _LOGGER.info("✓ SSE initialized successfully - Real-time events enabled!")
             else:
-                _LOGGER.warning(
-                    "Failed to start SSE - Falling back to REST API polling only"
-                )
+                _LOGGER.warning("Failed to start SSE - Falling back to REST API polling only")
                 self.sse_manager = None
 
         except Exception as err:
@@ -736,7 +663,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 if space_binding and space_binding.get("name"):
                     hub_name = space_binding.get("name")
                     self.all_discovered_spaces[hub_id] = hub_name
-            except Exception:
+            except Exception:  # noqa: S110
                 pass  # Keep the fallback name
 
             # Skip spaces that are not enabled
@@ -771,28 +698,20 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                 hub_id,
                             )
                     except Exception as space_err:
-                        _LOGGER.debug(
-                            "Could not get space for %s: %s", hub_id, space_err
-                        )
+                        _LOGGER.debug("Could not get space for %s: %s", hub_id, space_err)
 
                     # Get rooms for this hub
                     try:
                         rooms_data = await self.api.async_get_rooms(hub_id)
                         # Build room_id -> room_name mapping
-                        rooms_map = {
-                            room.get("id"): room.get("roomName")
-                            for room in rooms_data
-                            if room.get("id")
-                        }
+                        rooms_map = {room.get("id"): room.get("roomName") for room in rooms_data if room.get("id")}
                         _LOGGER.debug(
                             "Loaded %d rooms for hub %s",
                             len(rooms_map),
                             hub_id,
                         )
                     except Exception as room_err:
-                        _LOGGER.warning(
-                            "Could not get rooms for hub %s: %s", hub_id, room_err
-                        )
+                        _LOGGER.warning("Could not get rooms for hub %s: %s", hub_id, room_err)
                 else:
                     # Light refresh: reuse existing metadata
                     existing_space = self.account.spaces[space_id]
@@ -940,17 +859,11 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                 name=group_data.get("groupName", f"Group {group_id}"),
                                 space_id=space_id,
                                 state=group_state,
-                                bulk_arm_involved=group_data.get(
-                                    "bulkArmInvolved", False
-                                ),
-                                bulk_disarm_involved=group_data.get(
-                                    "bulkDisarmInvolved", False
-                                ),
+                                bulk_arm_involved=group_data.get("bulkArmInvolved", False),
+                                bulk_disarm_involved=group_data.get("bulkDisarmInvolved", False),
                             )
                     # Log group states for debugging
-                    group_states = [
-                        f"{g.name}={g.state.value}" for g in space.groups.values()
-                    ]
+                    group_states = [f"{g.name}={g.state.value}" for g in space.groups.values()]
                     _LOGGER.debug(
                         "Hub %s: Updated %d groups: %s",
                         hub_id,
@@ -965,12 +878,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             old_state = space.security_state
             if old_state != security_state:
                 # Check real-time event protection (don't overwrite recent updates)
-                sqs_protected = (
-                    self.sqs_manager and self.sqs_manager.is_state_protected(hub_id)
-                )
-                sse_protected = (
-                    self.sse_manager and self.sse_manager.is_state_protected(hub_id)
-                )
+                sqs_protected = self.sqs_manager and self.sqs_manager.is_state_protected(hub_id)
+                sse_protected = self.sse_manager and self.sse_manager.is_state_protected(hub_id)
                 if sqs_protected or sse_protected:
                     _LOGGER.debug(
                         "Hub %s: REST has %s but real-time event recently set %s (protected)",
@@ -992,13 +901,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
                     # Create event from state change (skip if SQS already created it)
                     if self._skip_state_change_event:
-                        _LOGGER.debug(
-                            "Skipping state change event (SQS already created it)"
-                        )
+                        _LOGGER.debug("Skipping state change event (SQS already created it)")
                     else:
-                        self._create_event_from_state_change(
-                            space, old_state, security_state
-                        )
+                        self._create_event_from_state_change(space, old_state, security_state)
 
     async def _async_update_devices(self, space_id: str) -> None:
         """Update devices for a specific space."""
@@ -1012,10 +917,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         # Check if we need to refresh battery/signal (every 5 minutes)
         current_time = time.time()
-        need_details_refresh = (
-            current_time - self._last_device_details_refresh
-            >= self._device_details_refresh_interval
-        )
+        need_details_refresh = current_time - self._last_device_details_refresh >= self._device_details_refresh_interval
         if need_details_refresh:
             _LOGGER.debug("Refreshing battery/signal - 5 min interval")
             self._last_device_details_refresh = current_time
@@ -1048,9 +950,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             is_new_device = device_id not in space.devices
 
             # Parse device type - API uses camelCase (deviceType, deviceName)
-            raw_device_type = device_data.get(
-                "deviceType", device_data.get("type", "unknown")
-            )
+            raw_device_type = device_data.get("deviceType", device_data.get("type", "unknown"))
             device_type = self._parse_device_type(raw_device_type)
 
             # Get room_id and room_name
@@ -1062,9 +962,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             if device_id not in space.devices:
                 device = AjaxDevice(
                     id=device_id,
-                    name=device_data.get(
-                        "deviceName", device_data.get("name", "Unknown Device")
-                    ),
+                    name=device_data.get("deviceName", device_data.get("name", "Unknown Device")),
                     type=device_type,
                     space_id=space_id,
                     hub_id=device_data.get("hub_id", space.hub_id or ""),
@@ -1127,13 +1025,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 if battery is not None:
                     battery = round(battery)
                 device.battery_level = battery
-                device.battery_state = device_data.get(
-                    "batteryState", device_data.get("battery_state")
-                )
+                device.battery_state = device_data.get("batteryState", device_data.get("battery_state"))
                 # Convert signal level string to percentage
-                signal_level = device_data.get(
-                    "signalLevel", device_data.get("signal_strength")
-                )
+                signal_level = device_data.get("signalLevel", device_data.get("signal_strength"))
                 if isinstance(signal_level, str):
                     signal_map = {
                         "EXCELLENT": 100,
@@ -1151,12 +1045,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 else:
                     device.signal_strength = signal_level
 
-            device.firmware_version = device_data.get(
-                "firmwareVersion", device_data.get("firmware_version")
-            )
-            device.hardware_version = device_data.get(
-                "hardwareVersion", device_data.get("hardware_version")
-            )
+            device.firmware_version = device_data.get("firmwareVersion", device_data.get("firmware_version"))
+            device.hardware_version = device_data.get("hardwareVersion", device_data.get("hardware_version"))
             device.states = device_data.get("states", [])
 
             # Store tampered status in attributes
@@ -1176,13 +1066,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             wired_settings = device_data.get("wiredDeviceSettings") or {}
 
             if "alwaysActive" in device_data:
-                device.attributes["always_active"] = device_data.get(
-                    "alwaysActive", False
-                )
+                device.attributes["always_active"] = device_data.get("alwaysActive", False)
             elif "alwaysActive" in wired_settings:
-                device.attributes["always_active"] = wired_settings.get(
-                    "alwaysActive", False
-                )
+                device.attributes["always_active"] = wired_settings.get("alwaysActive", False)
 
             if "nightModeArm" in device_data or "armedInNightMode" in device_data:
                 night_mode_value = device_data.get(
@@ -1190,9 +1076,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     device_data.get("armedInNightMode", False),
                 )
                 device.attributes["armed_in_night_mode"] = night_mode_value
-                device.attributes["night_mode_arm"] = (
-                    night_mode_value  # Alias for handlers
-                )
+                device.attributes["night_mode_arm"] = night_mode_value  # Alias for handlers
             elif "nightModeArm" in wired_settings:
                 # MultiTransmitterWireInput: nightModeArm is in wiredDeviceSettings
                 night_mode_value = wired_settings.get("nightModeArm", False)
@@ -1201,45 +1085,27 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
             # DoorProtect Plus specific attributes
             if "extraContactAware" in device_data:
-                device.attributes["extra_contact_aware"] = device_data.get(
-                    "extraContactAware", False
-                )
+                device.attributes["extra_contact_aware"] = device_data.get("extraContactAware", False)
             if "shockSensorAware" in device_data:
-                device.attributes["shock_sensor_aware"] = device_data.get(
-                    "shockSensorAware", False
-                )
+                device.attributes["shock_sensor_aware"] = device_data.get("shockSensorAware", False)
             if "accelerometerAware" in device_data:
-                device.attributes["accelerometer_aware"] = device_data.get(
-                    "accelerometerAware", False
-                )
+                device.attributes["accelerometer_aware"] = device_data.get("accelerometerAware", False)
             if "shockSensorSensitivity" in device_data:
-                device.attributes["shock_sensor_sensitivity"] = device_data.get(
-                    "shockSensorSensitivity", 0
-                )
+                device.attributes["shock_sensor_sensitivity"] = device_data.get("shockSensorSensitivity", 0)
             if "accelerometerTiltDegrees" in device_data:
-                device.attributes["accelerometer_tilt_degrees"] = device_data.get(
-                    "accelerometerTiltDegrees", 5
-                )
+                device.attributes["accelerometer_tilt_degrees"] = device_data.get("accelerometerTiltDegrees", 5)
             if "ignoreSimpleImpact" in device_data:
-                device.attributes["ignore_simple_impact"] = device_data.get(
-                    "ignoreSimpleImpact", False
-                )
+                device.attributes["ignore_simple_impact"] = device_data.get("ignoreSimpleImpact", False)
             if "sirenTriggers" in device_data:
-                device.attributes["siren_triggers"] = device_data.get(
-                    "sirenTriggers", []
-                )
+                device.attributes["siren_triggers"] = device_data.get("sirenTriggers", [])
 
             # Door contact state (reedClosed -> door_opened)
             if "reedClosed" in device_data:
                 # reedClosed=True means door is closed, so door_opened=False
-                device.attributes["door_opened"] = not device_data.get(
-                    "reedClosed", True
-                )
+                device.attributes["door_opened"] = not device_data.get("reedClosed", True)
             # External contact state (extraContactClosed -> external_contact_opened)
             if "extraContactClosed" in device_data:
-                device.attributes["external_contact_opened"] = not device_data.get(
-                    "extraContactClosed", True
-                )
+                device.attributes["external_contact_opened"] = not device_data.get("extraContactClosed", True)
             # Multitransmitter state (externalContactState -> door_opened)
             if "externalContactState" in device_data:
                 ext_state = device_data.get("externalContactState")
@@ -1287,30 +1153,20 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             # Siren specific attributes
             # Prefer v2sirenVolumeLevel (supports DISABLED), fallback to deprecated sirenVolumeLevel
             if "v2sirenVolumeLevel" in device_data:
-                device.attributes["siren_volume_level"] = device_data.get(
-                    "v2sirenVolumeLevel"
-                )
+                device.attributes["siren_volume_level"] = device_data.get("v2sirenVolumeLevel")
             elif "sirenVolumeLevel" in device_data:
-                device.attributes["siren_volume_level"] = device_data.get(
-                    "sirenVolumeLevel"
-                )
+                device.attributes["siren_volume_level"] = device_data.get("sirenVolumeLevel")
             if "beepVolumeLevel" in device_data:
-                device.attributes["beep_volume_level"] = device_data.get(
-                    "beepVolumeLevel"
-                )
+                device.attributes["beep_volume_level"] = device_data.get("beepVolumeLevel")
             if "alarmDuration" in device_data:
                 device.attributes["alarm_duration"] = device_data.get("alarmDuration")
             if "v2sirenIndicatorLightMode" in device_data:
-                device.attributes["led_indication"] = device_data.get(
-                    "v2sirenIndicatorLightMode"
-                )
+                device.attributes["led_indication"] = device_data.get("v2sirenIndicatorLightMode")
             elif "blinkWhileArmed" in device_data:
                 device.attributes["led_indication"] = device_data.get("blinkWhileArmed")
             # Siren beep/chime settings
             if "beepOnArmDisarm" in device_data:
-                device.attributes["beep_on_arm_disarm"] = device_data.get(
-                    "beepOnArmDisarm"
-                )
+                device.attributes["beep_on_arm_disarm"] = device_data.get("beepOnArmDisarm")
             if "beepOnDelay" in device_data:
                 device.attributes["beep_on_delay"] = device_data.get("beepOnDelay")
             if "chimesEnabled" in device_data:
@@ -1320,21 +1176,15 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
             # LED indicator mode (all devices)
             if "indicatorLightMode" in device_data:
-                device.attributes["indicatorLightMode"] = device_data.get(
-                    "indicatorLightMode"
-                )
+                device.attributes["indicatorLightMode"] = device_data.get("indicatorLightMode")
 
             # Alerts by sirens setting
             if "alertsBySirens" in device_data:
-                device.attributes["alertsBySirens"] = device_data.get(
-                    "alertsBySirens", False
-                )
+                device.attributes["alertsBySirens"] = device_data.get("alertsBySirens", False)
 
             # MotionCam specific attributes
             if "imageResolution" in device_data:
-                device.attributes["imageResolution"] = device_data.get(
-                    "imageResolution"
-                )
+                device.attributes["imageResolution"] = device_data.get("imageResolution")
             if "photosPerAlarm" in device_data:
                 device.attributes["photosPerAlarm"] = device_data.get("photosPerAlarm")
 
@@ -1359,13 +1209,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 button_one = device_data.get("buttonOne", {})
                 button_two = device_data.get("buttonTwo", {})
                 if button_one:
-                    device.attributes["channel_1_name"] = button_one.get(
-                        "buttonName", "Channel 1"
-                    )
+                    device.attributes["channel_1_name"] = button_one.get("buttonName", "Channel 1")
                 if button_two:
-                    device.attributes["channel_2_name"] = button_two.get(
-                        "buttonName", "Channel 2"
-                    )
+                    device.attributes["channel_2_name"] = button_two.get("buttonName", "Channel 2")
                 device.attributes["is_multi_gang"] = bool(button_one or button_two)
 
             # Update device metadata (API uses "color" not "device_color")
@@ -1376,9 +1222,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             # Update device attributes dict
             if "attributes" in device_data:
                 # Normalize API attributes to internal format
-                normalized_attrs = self._normalize_device_attributes(
-                    device_data["attributes"], device.type
-                )
+                normalized_attrs = self._normalize_device_attributes(device_data["attributes"], device.type)
                 device.attributes.update(normalized_attrs)
             # Update room association
             if device.room_id and device.room_id in space.rooms:
@@ -1388,13 +1232,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         # Log summary of devices loaded
         if new_devices_count > 0:
-            _LOGGER.info(
-                "Discovered %d new device(s) in space %s", new_devices_count, space_id
-            )
+            _LOGGER.info("Discovered %d new device(s) in space %s", new_devices_count, space_id)
 
-    def _normalize_device_attributes(
-        self, api_attributes: dict[str, Any], device_type: DeviceType
-    ) -> dict[str, Any]:
+    def _normalize_device_attributes(self, api_attributes: dict[str, Any], device_type: DeviceType) -> dict[str, Any]:
         """Normalize Ajax API attributes to internal format.
 
         The Ajax API uses specific attribute names (e.g., reedClosed) that we
@@ -1418,10 +1258,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 normalized["door_opened"] = not api_attributes["reedClosed"]
 
             # MultiTransmitterWireInput uses externalContactState
-            if (
-                "door_opened" not in normalized
-                and "externalContactState" in api_attributes
-            ):
+            if "door_opened" not in normalized and "externalContactState" in api_attributes:
                 ext_state = api_attributes["externalContactState"]
                 # externalContactState: "OK" = closed, "TRIGGERED" = open
                 door_opened = ext_state != "OK"
@@ -1454,27 +1291,16 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 normalized["door_opened"] = door_opened
 
             # External contact: Support both formats
-            if (
-                "external_contact_opened" not in api_attributes
-                and "extraContactClosed" in api_attributes
-            ):
+            if "external_contact_opened" not in api_attributes and "extraContactClosed" in api_attributes:
                 # Convert extraContactClosed to external_contact_opened
                 # extraContactClosed=False means contact is open (alarm state)
-                normalized["external_contact_opened"] = not api_attributes[
-                    "extraContactClosed"
-                ]
+                normalized["external_contact_opened"] = not api_attributes["extraContactClosed"]
 
         # Motion detectors: Support both camelCase and snake_case
         if device_type == DeviceType.MOTION_DETECTOR:
-            if (
-                "motion_detected" not in api_attributes
-                and "motionDetected" in api_attributes
-            ):
+            if "motion_detected" not in api_attributes and "motionDetected" in api_attributes:
                 normalized["motion_detected"] = api_attributes["motionDetected"]
-            if (
-                "motion_detected_at" not in api_attributes
-                and "motionDetectedAt" in api_attributes
-            ):
+            if "motion_detected_at" not in api_attributes and "motionDetectedAt" in api_attributes:
                 normalized["motion_detected_at"] = api_attributes["motionDetectedAt"]
 
         # Smoke detectors: Support both formats
@@ -1529,7 +1355,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         Args:
             space: The AjaxSpace to process
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expiry_seconds = 30  # Reset motion detection after 30 seconds
 
         for device in space.devices.values():
@@ -1551,7 +1377,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             try:
                 last_detected = datetime.fromisoformat(last_detected_at)
                 if last_detected.tzinfo is None:
-                    last_detected = last_detected.replace(tzinfo=timezone.utc)
+                    last_detected = last_detected.replace(tzinfo=UTC)
 
                 if (now - last_detected).total_seconds() > expiry_seconds:
                     device.attributes["motion_detected"] = False
@@ -1590,9 +1416,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     id=notif_data.get("id", ""),
                     space_id=notif_data.get("space_id", space_id),
                     type=notif_type,
-                    title=event_type.replace("_", " ").title()
-                    if event_type
-                    else "Event",
+                    title=event_type.replace("_", " ").title() if event_type else "Event",
                     message=f"{notif_data.get('device_name', 'Device')}: {event_type.replace('_', ' ')}"
                     if event_type
                     else "",
@@ -1600,22 +1424,16 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     device_id=notif_data.get("device_id"),
                     device_name=notif_data.get("device_name"),
                     read=notif_data.get("read", False),
-                    user_name=notif_data.get(
-                        "user_name"
-                    ),  # User who triggered the event
+                    user_name=notif_data.get("user_name"),  # User who triggered the event
                 )
 
                 space.notifications.append(notification)
 
             # Update unread count
-            space.unread_notifications = sum(
-                1 for n in space.notifications if not n.read
-            )
+            space.unread_notifications = sum(1 for n in space.notifications if not n.read)
 
         except Exception as err:
-            _LOGGER.error(
-                "Error updating notifications for space %s: %s", space_id, err
-            )
+            _LOGGER.error("Error updating notifications for space %s: %s", space_id, err)
 
     async def _async_update_video_edges(self, space_id: str) -> None:
         """Update video edge devices (surveillance cameras) for a specific space."""
@@ -1625,9 +1443,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         # Need real_space_id to fetch video edges
         if not space.real_space_id:
-            _LOGGER.debug(
-                "No real_space_id for space %s, skipping video edges", space_id
-            )
+            _LOGGER.debug("No real_space_id for space %s, skipping video edges", space_id)
             return
 
         try:
@@ -1738,9 +1554,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     video_edge.raw_data = ve_data
 
         except Exception as err:
-            _LOGGER.warning(
-                "Error updating video edges for space %s: %s", space_id, err
-            )
+            _LOGGER.warning("Error updating video edges for space %s: %s", space_id, err)
 
     def _parse_notification_type(self, event_type: str | None) -> NotificationType:
         """Parse notification type from event type string."""
@@ -1764,19 +1578,11 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             ]
         ):
             return NotificationType.ALARM
-        elif any(
-            keyword in event_lower
-            for keyword in ["malfunction", "low", "tamper", "loss", "error", "fault"]
-        ):
+        elif any(keyword in event_lower for keyword in ["malfunction", "low", "tamper", "loss", "error", "fault"]):
             return NotificationType.WARNING
-        elif any(
-            keyword in event_lower
-            for keyword in ["arm", "disarm", "motion", "door", "opened"]
-        ):
+        elif any(keyword in event_lower for keyword in ["arm", "disarm", "motion", "door", "opened"]):
             return NotificationType.SECURITY_EVENT
-        elif any(
-            keyword in event_lower for keyword in ["update", "added", "changed", "test"]
-        ):
+        elif any(keyword in event_lower for keyword in ["update", "added", "changed", "test"]):
             return NotificationType.SYSTEM_EVENT
         else:
             return NotificationType.INFO
@@ -1813,17 +1619,13 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             "space_name": space.name,
             "old_state": old_state.value,
             "new_state": new_state.value,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         # Add group information if in group mode
         if space.group_mode_enabled and space.groups:
-            armed_groups = [
-                g.name for g in space.groups.values() if g.state == GroupState.ARMED
-            ]
-            disarmed_groups = [
-                g.name for g in space.groups.values() if g.state == GroupState.DISARMED
-            ]
+            armed_groups = [g.name for g in space.groups.values() if g.state == GroupState.ARMED]
+            disarmed_groups = [g.name for g in space.groups.values() if g.state == GroupState.DISARMED]
             event_data["armed_groups"] = armed_groups
             event_data["disarmed_groups"] = disarmed_groups
             event_data["group_mode"] = True
@@ -1877,8 +1679,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             "message": message,
             "hub_id": space.hub_id or space.id,
             "space_id": space.id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "event_time": datetime.now(timezone.utc),
+            "timestamp": datetime.now(UTC).isoformat(),
+            "event_time": datetime.now(UTC),
         }
 
         # Store in recent_events (keep last 10)
@@ -1890,9 +1692,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         # Fire Home Assistant event for automations
         self._fire_security_state_event(space, old_state, new_state)
 
-    async def _create_sqs_notification(
-        self, action: str, source_name: str, space_name: str
-    ) -> None:
+    async def _create_sqs_notification(self, action: str, source_name: str, space_name: str) -> None:
         """Create a persistent notification in HA for SQS events."""
         from homeassistant.components.persistent_notification import async_create
 
@@ -1903,9 +1703,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         if not options.get(CONF_PERSISTENT_NOTIFICATION, True):
             return
 
-        notification_filter = options.get(
-            CONF_NOTIFICATION_FILTER, NOTIFICATION_FILTER_ALL
-        )
+        notification_filter = options.get(CONF_NOTIFICATION_FILTER, NOTIFICATION_FILTER_ALL)
 
         # Apply filter
         if notification_filter == NOTIFICATION_FILTER_NONE:
@@ -2268,9 +2066,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             # State will be updated via SQS with "Home Assistant" as source
 
         except AjaxRestApiError as err:
-            _LOGGER.error(
-                "Failed to activate night mode for space %s: %s", space_id, err
-            )
+            _LOGGER.error("Failed to activate night mode for space %s: %s", space_id, err)
             raise
 
     async def async_press_panic_button(self, space_id: str) -> None:
@@ -2285,9 +2081,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             _LOGGER.error("Failed to trigger panic for space %s: %s", space_id, err)
             raise
 
-    async def async_arm_group(
-        self, space_id: str, group_id: str, force: bool = True
-    ) -> None:
+    async def async_arm_group(self, space_id: str, group_id: str, force: bool = True) -> None:
         """Arm a specific group.
 
         Args:
@@ -2295,9 +2089,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             group_id: The group ID to arm
             force: If True, ignore problems and force arm
         """
-        _LOGGER.info(
-            "Arming group %s in space %s (force=%s)", group_id, space_id, force
-        )
+        _LOGGER.info("Arming group %s in space %s (force=%s)", group_id, space_id, force)
 
         try:
             self._register_ha_action(space_id)
@@ -2310,9 +2102,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             await self.async_request_refresh()
 
         except AjaxRestApiError as err:
-            _LOGGER.error(
-                "Failed to arm group %s in space %s: %s", group_id, space_id, err
-            )
+            _LOGGER.error("Failed to arm group %s in space %s: %s", group_id, space_id, err)
             raise
 
     async def async_disarm_group(self, space_id: str, group_id: str) -> None:
@@ -2335,9 +2125,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             await self.async_request_refresh()
 
         except AjaxRestApiError as err:
-            _LOGGER.error(
-                "Failed to disarm group %s in space %s: %s", group_id, space_id, err
-            )
+            _LOGGER.error("Failed to disarm group %s in space %s: %s", group_id, space_id, err)
             raise
 
     # ============================================================================

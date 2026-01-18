@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -206,9 +206,9 @@ def get_last_event_attributes(space) -> dict[str, Any]:
 
 def _format_time_ago(timestamp: datetime) -> str:
     """Format timestamp as 'X minutes ago'."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=timezone.utc)
+        timestamp = timestamp.replace(tzinfo=UTC)
 
     diff = now - timestamp
     seconds = diff.total_seconds()
@@ -260,9 +260,7 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         translation_key="devices_with_malfunctions",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda space: space.hub_details.get("warnings", {}).get(
-            "allDevices", 0
-        )
+        value_fn=lambda space: space.hub_details.get("warnings", {}).get("allDevices", 0)
         if space.hub_details
         else len(space.get_devices_with_malfunctions()),
     ),
@@ -284,9 +282,7 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         device_class=SensorDeviceClass.BATTERY,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda space: space.hub_details.get("battery", {}).get(
-            "chargeLevelPercentage"
-        )
+        value_fn=lambda space: space.hub_details.get("battery", {}).get("chargeLevelPercentage")
         if space.hub_details
         else None,
     ),
@@ -312,41 +308,31 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         key="hub_wifi",
         translation_key="hub_wifi",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda space: format_signal_level(
-            space.hub_details.get("wifi", {}).get("signalLevel")
-        )
+        value_fn=lambda space: format_signal_level(space.hub_details.get("wifi", {}).get("signalLevel"))
         if space.hub_details and space.hub_details.get("wifi", {}).get("enabled")
         else None,
-        should_create=lambda space: space.hub_details
-        and space.hub_details.get("wifi", {}).get("enabled", False),
+        should_create=lambda space: space.hub_details and space.hub_details.get("wifi", {}).get("enabled", False),
     ),
     AjaxSpaceSensorDescription(
         key="hub_gsm",
         translation_key="hub_gsm",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda space: format_signal_level(
-            space.hub_details.get("gsm", {}).get("signalLevel")
-        )
+        value_fn=lambda space: format_signal_level(space.hub_details.get("gsm", {}).get("signalLevel"))
         if space.hub_details
         else None,
-        should_create=lambda space: space.hub_details
-        and space.hub_details.get("gsm") is not None,
+        should_create=lambda space: space.hub_details and space.hub_details.get("gsm") is not None,
     ),
     AjaxSpaceSensorDescription(
         key="hub_led_brightness",
         translation_key="hub_led_brightness",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda space: space.hub_details.get("ledBrightnessLevel")
-        if space.hub_details
-        else None,
+        value_fn=lambda space: space.hub_details.get("ledBrightnessLevel") if space.hub_details else None,
     ),
     AjaxSpaceSensorDescription(
         key="hub_timezone",
         translation_key="hub_timezone",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda space: format_timezone(space.hub_details.get("timeZone"))
-        if space.hub_details
-        else None,
+        value_fn=lambda space: format_timezone(space.hub_details.get("timeZone")) if space.hub_details else None,
     ),
     # Rooms count
     AjaxSpaceSensorDescription(
@@ -360,11 +346,8 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         key="hub_users",
         translation_key="hub_users",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda space: len(getattr(space, "_users", []))
-        if hasattr(space, "_users")
-        else None,
-        should_create=lambda space: hasattr(space, "_users")
-        and len(getattr(space, "_users", [])) > 0,
+        value_fn=lambda space: len(getattr(space, "_users", [])) if hasattr(space, "_users") else None,
+        should_create=lambda space: hasattr(space, "_users") and len(getattr(space, "_users", [])) > 0,
     ),
     # Grade Mode (security level)
     AjaxSpaceSensorDescription(
@@ -378,8 +361,7 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         }.get(space.hub_details.get("gradeMode"), space.hub_details.get("gradeMode"))
         if space.hub_details
         else None,
-        should_create=lambda space: space.hub_details
-        and space.hub_details.get("gradeMode"),
+        should_create=lambda space: space.hub_details and space.hub_details.get("gradeMode"),
     ),
     # Active Channels (WiFi, Ethernet, GSM) - disabled by default (changes too often)
     AjaxSpaceSensorDescription(
@@ -390,8 +372,7 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         value_fn=lambda space: ", ".join(space.hub_details.get("activeChannels", []))
         if space.hub_details and space.hub_details.get("activeChannels")
         else None,
-        should_create=lambda space: space.hub_details
-        and space.hub_details.get("activeChannels"),
+        should_create=lambda space: space.hub_details and space.hub_details.get("activeChannels"),
     ),
     # Ping Period
     AjaxSpaceSensorDescription(
@@ -399,11 +380,8 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         translation_key="hub_ping_period",
         native_unit_of_measurement="s",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda space: space.hub_details.get("pingPeriodSeconds")
-        if space.hub_details
-        else None,
-        should_create=lambda space: space.hub_details
-        and space.hub_details.get("pingPeriodSeconds"),
+        value_fn=lambda space: space.hub_details.get("pingPeriodSeconds") if space.hub_details else None,
+        should_create=lambda space: space.hub_details and space.hub_details.get("pingPeriodSeconds"),
     ),
     # Offline Alarm Delay
     AjaxSpaceSensorDescription(
@@ -411,11 +389,8 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         translation_key="hub_offline_delay",
         native_unit_of_measurement="s",
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda space: space.hub_details.get("offlineAlarmSeconds")
-        if space.hub_details
-        else None,
-        should_create=lambda space: space.hub_details
-        and space.hub_details.get("offlineAlarmSeconds"),
+        value_fn=lambda space: space.hub_details.get("offlineAlarmSeconds") if space.hub_details else None,
+        should_create=lambda space: space.hub_details and space.hub_details.get("offlineAlarmSeconds"),
     ),
     # Noise Level (radio interference)
     AjaxSpaceSensorDescription(
@@ -427,8 +402,7 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         else "normal"
         if space.hub_details and space.hub_details.get("noiseLevel")
         else None,
-        should_create=lambda space: space.hub_details
-        and space.hub_details.get("noiseLevel"),
+        should_create=lambda space: space.hub_details and space.hub_details.get("noiseLevel"),
     ),
     # Limits (sensors, rooms, etc.)
     AjaxSpaceSensorDescription(
@@ -438,8 +412,7 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         value_fn=lambda space: f"{len(space.devices)}/{space.hub_details.get('limits', {}).get('sensors', 0)}"
         if space.hub_details and space.hub_details.get("limits")
         else None,
-        should_create=lambda space: space.hub_details
-        and space.hub_details.get("limits"),
+        should_create=lambda space: space.hub_details and space.hub_details.get("limits"),
     ),
 )
 
@@ -661,9 +634,7 @@ class AjaxSpaceSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
             "identifiers": {(DOMAIN, self._space_id)},
             "name": hub_display_name,
             "manufacturer": MANUFACTURER,
-            "model": format_hub_type(space.hub_details.get("hubSubtype"))
-            if space.hub_details
-            else "Security Hub",
+            "model": format_hub_type(space.hub_details.get("hubSubtype")) if space.hub_details else "Security Hub",
         }
 
         if space.hub_details and space.hub_details.get("firmware"):
@@ -714,17 +685,13 @@ class AjaxDeviceSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
             self._attr_translation_key = sensor_key
 
         if "native_unit_of_measurement" in sensor_desc:
-            self._attr_native_unit_of_measurement = sensor_desc[
-                "native_unit_of_measurement"
-            ]
+            self._attr_native_unit_of_measurement = sensor_desc["native_unit_of_measurement"]
 
         if "state_class" in sensor_desc:
             self._attr_state_class = sensor_desc["state_class"]
 
         if "enabled_by_default" in sensor_desc:
-            self._attr_entity_registry_enabled_default = sensor_desc[
-                "enabled_by_default"
-            ]
+            self._attr_entity_registry_enabled_default = sensor_desc["enabled_by_default"]
 
     @property
     def native_value(self) -> Any:
@@ -829,9 +796,7 @@ class AjaxVideoEdgeSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
 
         # Set enabled by default
         if "enabled_by_default" in sensor_desc:
-            self._attr_entity_registry_enabled_default = sensor_desc[
-                "enabled_by_default"
-            ]
+            self._attr_entity_registry_enabled_default = sensor_desc["enabled_by_default"]
 
     @property
     def native_value(self) -> Any:
@@ -916,9 +881,7 @@ def _get_hub_sensors(space: AjaxSpace) -> list[dict]:
                 "device_class": SensorDeviceClass.BATTERY,
                 "native_unit_of_measurement": PERCENTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
-                "value_fn": lambda hd=hub_details: hd.get("battery", {}).get(
-                    "chargeLevelPercentage"
-                ),
+                "value_fn": lambda hd=hub_details: hd.get("battery", {}).get("chargeLevelPercentage"),
                 "enabled_by_default": True,
             }
         )
@@ -930,9 +893,7 @@ def _get_hub_sensors(space: AjaxSpace) -> list[dict]:
             {
                 "key": "gsm_signal",
                 "translation_key": "gsm_signal_level",
-                "value_fn": lambda hd=hub_details: hd.get("gsm", {})
-                .get("signalLevel", "")
-                .lower()
+                "value_fn": lambda hd=hub_details: hd.get("gsm", {}).get("signalLevel", "").lower()
                 if hd.get("gsm", {}).get("signalLevel")
                 else None,
                 "enabled_by_default": True,
@@ -945,9 +906,7 @@ def _get_hub_sensors(space: AjaxSpace) -> list[dict]:
             {
                 "key": "gsm_network",
                 "translation_key": "gsm_type",
-                "value_fn": lambda hd=hub_details: hd.get("gsm", {})
-                .get("networkStatus", "")
-                .lower()
+                "value_fn": lambda hd=hub_details: hd.get("gsm", {}).get("networkStatus", "").lower()
                 if hd.get("gsm", {}).get("networkStatus")
                 else None,
                 "enabled_by_default": True,
@@ -960,9 +919,7 @@ def _get_hub_sensors(space: AjaxSpace) -> list[dict]:
             {
                 "key": "sim_status",
                 "translation_key": "sim_status",
-                "value_fn": lambda hd=hub_details: hd.get("gsm", {})
-                .get("simCardState", "")
-                .lower()
+                "value_fn": lambda hd=hub_details: hd.get("gsm", {}).get("simCardState", "").lower()
                 if hd.get("gsm", {}).get("simCardState")
                 else None,
                 "enabled_by_default": True,
@@ -975,9 +932,7 @@ def _get_hub_sensors(space: AjaxSpace) -> list[dict]:
             {
                 "key": "active_connection",
                 "translation_key": "active_connection",
-                "value_fn": lambda hd=hub_details: ", ".join(
-                    hd.get("activeChannels", [])
-                )
+                "value_fn": lambda hd=hub_details: ", ".join(hd.get("activeChannels", []))
                 if hd.get("activeChannels")
                 else None,
                 "enabled_by_default": True,
@@ -991,9 +946,7 @@ def _get_hub_sensors(space: AjaxSpace) -> list[dict]:
             {
                 "key": "hub_firmware",
                 "translation_key": "firmware_version",
-                "value_fn": lambda hd=hub_details: hd.get("firmware", {}).get(
-                    "version"
-                ),
+                "value_fn": lambda hd=hub_details: hd.get("firmware", {}).get("version"),
                 "enabled_by_default": False,
             }
         )
@@ -1042,9 +995,7 @@ class AjaxHubSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
 
         # Set unit of measurement
         if "native_unit_of_measurement" in sensor_desc:
-            self._attr_native_unit_of_measurement = sensor_desc[
-                "native_unit_of_measurement"
-            ]
+            self._attr_native_unit_of_measurement = sensor_desc["native_unit_of_measurement"]
 
         # Set state class
         if "state_class" in sensor_desc:
@@ -1052,9 +1003,7 @@ class AjaxHubSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
 
         # Set enabled by default
         if "enabled_by_default" in sensor_desc:
-            self._attr_entity_registry_enabled_default = sensor_desc[
-                "enabled_by_default"
-            ]
+            self._attr_entity_registry_enabled_default = sensor_desc["enabled_by_default"]
 
     @property
     def native_value(self) -> Any:

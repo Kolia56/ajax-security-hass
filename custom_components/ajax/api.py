@@ -26,9 +26,7 @@ class AjaxRestApiError(Exception):
 class AjaxRestAuthError(AjaxRestApiError):
     """Authentication error."""
 
-    def __init__(
-        self, message: str = "Authentication failed", error_type: str = "generic"
-    ):
+    def __init__(self, message: str = "Authentication failed", error_type: str = "generic"):
         """Initialize auth error with type.
 
         Args:
@@ -97,9 +95,7 @@ class AjaxRestApi:
         self.session_token: str | None = None  # Session token (15 min TTL)
         self.refresh_token: str | None = None  # Refresh token (7 days TTL)
         self.user_id: str | None = None  # User ID from login
-        self._auth_lock: asyncio.Lock = (
-            asyncio.Lock()
-        )  # Prevent concurrent token refresh
+        self._auth_lock: asyncio.Lock = asyncio.Lock()  # Prevent concurrent token refresh
 
         # Base headers with API key (may be empty for proxy modes initially)
         self._base_headers = {
@@ -163,9 +159,7 @@ class AjaxRestApi:
             AjaxRestAuthError: If authentication fails
             AjaxRestApiError: For other API errors
         """
-        _LOGGER.debug(
-            "Logging in with email: %s (mode: %s)", self.email, self.proxy_mode
-        )
+        _LOGGER.debug("Logging in with email: %s (mode: %s)", self.email, self.proxy_mode)
 
         session = await self._get_session()
         base_url = self._get_base_url(for_login=True)
@@ -195,19 +189,14 @@ class AjaxRestApi:
 
                         if "not authorized" in error_msg.lower():
                             # "User is not authorized" = missing or invalid API key
-                            raise AjaxRestAuthError(
-                                "Invalid API key", error_type="invalid_api_key"
-                            )
+                            raise AjaxRestAuthError("Invalid API key", error_type="invalid_api_key")
                         elif "wrong login or password" in error_msg.lower():
                             # "Wrong login or password" = bad credentials
                             raise AjaxRestAuthError(
                                 "Invalid email or password",
                                 error_type="invalid_password",
                             )
-                        elif (
-                            "pro" in error_msg.lower()
-                            or "enterprise" in error_msg.lower()
-                        ):
+                        elif "pro" in error_msg.lower() or "enterprise" in error_msg.lower():
                             # Account type mismatch
                             raise AjaxRestAuthError(
                                 "Account type not supported (PRO account detected)",
@@ -221,15 +210,11 @@ class AjaxRestApi:
                     except AjaxRestAuthError:
                         raise
                     except Exception:
-                        raise AjaxRestAuthError(
-                            "Invalid email or password", error_type="invalid_password"
-                        ) from None
+                        raise AjaxRestAuthError("Invalid email or password", error_type="invalid_password") from None
                 elif response.status == 500:
                     # 500 often means invalid API key
                     _LOGGER.debug("Login 500 error - likely invalid API key")
-                    raise AjaxRestAuthError(
-                        "Invalid API key or server error", error_type="invalid_api_key"
-                    )
+                    raise AjaxRestAuthError("Invalid API key or server error", error_type="invalid_api_key")
                 elif response.status == 403:
                     # 2FA required
                     result = await response.json()
@@ -281,7 +266,7 @@ class AjaxRestApi:
         except aiohttp.ClientError as err:
             _LOGGER.error("Login request failed: %s", err)
             raise AjaxRestApiError(f"Login failed: {err}") from err
-        except asyncio.TimeoutError as err:
+        except TimeoutError as err:
             _LOGGER.error("Login request timeout")
             raise AjaxRestApiError("Login timeout") from err
 
@@ -334,7 +319,7 @@ class AjaxRestApi:
         except aiohttp.ClientError as err:
             _LOGGER.error("2FA verification failed: %s", err)
             raise AjaxRestApiError(f"2FA verification failed: {err}") from err
-        except asyncio.TimeoutError as err:
+        except TimeoutError as err:
             _LOGGER.error("2FA verification timeout")
             raise AjaxRestApiError("2FA verification timeout") from err
 
@@ -354,9 +339,7 @@ class AjaxRestApi:
             AjaxRestApiError: For other API errors
         """
         if not self.refresh_token or not self.user_id:
-            raise AjaxRestApiError(
-                "No refresh token available. Call async_login() first."
-            )
+            raise AjaxRestApiError("No refresh token available. Call async_login() first.")
 
         _LOGGER.debug("Refreshing session token for user: %s", self.user_id)
 
@@ -398,15 +381,13 @@ class AjaxRestApi:
                 if not self.session_token:
                     raise AjaxRestApiError("No sessionToken in refresh response")
 
-                _LOGGER.info(
-                    "Session token refreshed successfully (userId: %s)", self.user_id
-                )
+                _LOGGER.info("Session token refreshed successfully (userId: %s)", self.user_id)
                 return self.session_token
 
         except aiohttp.ClientError as err:
             _LOGGER.error("Token refresh request failed: %s", err)
             raise AjaxRestApiError(f"Token refresh failed: {err}") from err
-        except asyncio.TimeoutError as err:
+        except TimeoutError as err:
             _LOGGER.error("Token refresh request timeout")
             raise AjaxRestApiError("Token refresh timeout") from err
 
@@ -462,29 +443,21 @@ class AjaxRestApi:
                             try:
                                 # Try refresh token first (faster, no password needed)
                                 await self.async_refresh_token()
-                                _LOGGER.info(
-                                    "Token refreshed successfully, retrying request"
-                                )
+                                _LOGGER.info("Token refreshed successfully, retrying request")
                             except AjaxRestAuthError:
                                 # Refresh token expired or invalid, fallback to full login
-                                _LOGGER.warning(
-                                    "Refresh token failed, falling back to full login"
-                                )
+                                _LOGGER.warning("Refresh token failed, falling back to full login")
                                 try:
                                     await self.async_login()
                                     _LOGGER.info("Full login successful")
                                 except Exception as err:
                                     _LOGGER.error("Failed to renew token: %s", err)
-                                    raise AjaxRestAuthError(
-                                        "Token renewal failed"
-                                    ) from err
+                                    raise AjaxRestAuthError("Token renewal failed") from err
                             except Exception as err:
                                 _LOGGER.error("Token refresh failed: %s", err)
                                 raise AjaxRestAuthError("Token refresh failed") from err
                         # Retry the request with the new token (only once)
-                        return await self._request(
-                            method, endpoint, data, _retry_on_auth_error=False
-                        )
+                        return await self._request(method, endpoint, data, _retry_on_auth_error=False)
                     else:
                         # Already retried once, give up
                         _LOGGER.error("Authentication failed after token renewal")
@@ -499,10 +472,8 @@ class AjaxRestApi:
         except aiohttp.ClientError as err:
             _LOGGER.error("API request to %s failed: %s", endpoint, err)
             raise AjaxRestApiError(f"API request failed: {err}") from err
-        except asyncio.TimeoutError as err:
-            _LOGGER.error(
-                "API request to %s timed out after %ss", endpoint, AJAX_REST_API_TIMEOUT
-            )
+        except TimeoutError as err:
+            _LOGGER.error("API request to %s timed out after %ss", endpoint, AJAX_REST_API_TIMEOUT)
             raise AjaxRestApiError("API request timeout") from err
 
     # Hub methods
@@ -541,9 +512,7 @@ class AjaxRestApi:
         if not self.user_id:
             raise AjaxRestApiError("No user_id available. Call async_login() first.")
         # Use query parameter to find space by hubId
-        spaces = await self._request(
-            "GET", f"user/{self.user_id}/spaces?hubId={hub_id}"
-        )
+        spaces = await self._request("GET", f"user/{self.user_id}/spaces?hubId={hub_id}")
         # Returns array of SpaceBinding, get first one
         if spaces and isinstance(spaces, list) and len(spaces) > 0:
             return spaces[0]
@@ -599,9 +568,7 @@ class AjaxRestApi:
         return await self._request("POST", f"hubs/{hub_id}/mode", {"mode": mode})
 
     # Device methods
-    async def async_get_devices(
-        self, hub_id: str, enrich: bool = True
-    ) -> list[dict[str, Any]]:
+    async def async_get_devices(self, hub_id: str, enrich: bool = True) -> list[dict[str, Any]]:
         """Get all devices for a specific hub.
 
         Args:
@@ -626,9 +593,7 @@ class AjaxRestApi:
         Returns:
             Device details dictionary
         """
-        return await self._request(
-            "GET", f"user/{self.user_id}/hubs/{hub_id}/devices/{device_id}"
-        )
+        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/devices/{device_id}")
 
     async def async_get_device_state(self, device_id: str) -> dict[str, Any]:
         """Get device state.
@@ -642,9 +607,7 @@ class AjaxRestApi:
         return await self._request("GET", f"devices/{device_id}/state")
 
     # Device control methods (direct API mode)
-    async def async_control_device(
-        self, device_id: str, command: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def async_control_device(self, device_id: str, command: dict[str, Any]) -> dict[str, Any]:
         """Send control command to device (direct API mode only).
 
         This endpoint is used for Socket/Relay/WallSwitch control in direct mode.
@@ -659,9 +622,7 @@ class AjaxRestApi:
         """
         return await self._request("POST", f"devices/{device_id}/control", command)
 
-    async def async_send_device_command(
-        self, hub_id: str, device_id: str, command: str, device_type: str
-    ) -> None:
+    async def async_send_device_command(self, hub_id: str, device_id: str, command: str, device_type: str) -> None:
         """Send command to device (Socket/Relay/WallSwitch).
 
         Uses the /command endpoint which is simpler and more reliable than PUT.
@@ -685,9 +646,7 @@ class AjaxRestApi:
         )
         await self._request_no_response("POST", endpoint, payload)
 
-    async def async_set_switch_state(
-        self, hub_id: str, device_id: str, state: bool, device_type: str
-    ) -> None:
+    async def async_set_switch_state(self, hub_id: str, device_id: str, state: bool, device_type: str) -> None:
         """Set switch/relay/socket state.
 
         Uses the /command endpoint for reliable switch control.
@@ -775,9 +734,7 @@ class AjaxRestApi:
         Returns:
             Camera details dictionary
         """
-        return await self._request(
-            "GET", f"user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}"
-        )
+        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}")
 
     async def async_get_camera_snapshot(self, hub_id: str, camera_id: str) -> bytes:
         """Get camera snapshot.
@@ -789,10 +746,7 @@ class AjaxRestApi:
         Returns:
             Snapshot image data as bytes
         """
-        url = (
-            f"{self._get_base_url()}/user/{self.user_id}/hubs/{hub_id}"
-            f"/cameras/{camera_id}/snapshot"
-        )
+        url = f"{self._get_base_url()}/user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}/snapshot"
         session = await self._get_session()
 
         headers = {
@@ -814,9 +768,7 @@ class AjaxRestApi:
         Returns:
             Stream URL string
         """
-        data = await self._request(
-            "GET", f"user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}/stream"
-        )
+        data = await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}/stream")
         return data.get("url", "")
 
     # Video Edge methods (Bullet/Turret/MiniDome cameras)
@@ -848,19 +800,13 @@ class AjaxRestApi:
                 video_edge_id = device.get("id")
                 if video_edge_id:
                     try:
-                        video_edge = await self.async_get_video_edge(
-                            space_id, video_edge_id
-                        )
+                        video_edge = await self.async_get_video_edge(space_id, video_edge_id)
                         video_edges.append(video_edge)
                     except Exception as err:
-                        _LOGGER.warning(
-                            "Failed to get video edge %s: %s", video_edge_id, err
-                        )
+                        _LOGGER.warning("Failed to get video edge %s: %s", video_edge_id, err)
         return video_edges
 
-    async def async_get_video_edge(
-        self, space_id: str, video_edge_id: str
-    ) -> dict[str, Any]:
+    async def async_get_video_edge(self, space_id: str, video_edge_id: str) -> dict[str, Any]:
         """Get video edge device details.
 
         Args:
@@ -923,14 +869,10 @@ class AjaxRestApi:
         Returns:
             Automation trigger response
         """
-        return await self._request(
-            "POST", f"hubs/{hub_id}/automations/{automation_id}/trigger"
-        )
+        return await self._request("POST", f"hubs/{hub_id}/automations/{automation_id}/trigger")
 
     # Events methods
-    async def async_get_events(
-        self, hub_id: str, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    async def async_get_events(self, hub_id: str, limit: int = 100) -> list[dict[str, Any]]:
         """Get hub events history.
 
         Args:
@@ -1121,11 +1063,7 @@ class AjaxRestApi:
         """Deep merge two dictionaries, preserving nested structures."""
         result = base.copy()
         for key, value in updates.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value
@@ -1177,9 +1115,7 @@ class AjaxRestApi:
                                 await self.async_refresh_token()
                             except AjaxRestAuthError:
                                 await self.async_login()
-                        return await self._request_no_response(
-                            method, endpoint, data, _retry_on_auth_error=False
-                        )
+                        return await self._request_no_response(method, endpoint, data, _retry_on_auth_error=False)
                     else:
                         raise AjaxRestAuthError("Invalid or expired token")
 
@@ -1191,7 +1127,7 @@ class AjaxRestApi:
         except aiohttp.ClientError as err:
             _LOGGER.error("API request to %s failed: %s", endpoint, err)
             raise AjaxRestApiError(f"API request failed: {err}") from err
-        except asyncio.TimeoutError as err:
+        except TimeoutError as err:
             _LOGGER.error("API request to %s timed out", endpoint)
             raise AjaxRestApiError("API request timeout") from err
 
@@ -1263,9 +1199,7 @@ class AjaxRestApi:
             f"user/{self.user_id}/hubs/{hub_id}/groups",
         )
 
-    async def async_arm_group(
-        self, hub_id: str, group_id: str, ignore_problems: bool = True
-    ) -> None:
+    async def async_arm_group(self, hub_id: str, group_id: str, ignore_problems: bool = True) -> None:
         """Arm a specific group.
 
         Args:
@@ -1282,9 +1216,7 @@ class AjaxRestApi:
             {"command": "ARM", "ignoreProblems": ignore_problems},
         )
 
-    async def async_disarm_group(
-        self, hub_id: str, group_id: str, ignore_problems: bool = True
-    ) -> None:
+    async def async_disarm_group(self, hub_id: str, group_id: str, ignore_problems: bool = True) -> None:
         """Disarm a specific group.
 
         Args:
