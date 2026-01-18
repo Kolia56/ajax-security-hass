@@ -52,9 +52,7 @@ class DoorbellHandler(AjaxDeviceHandler):
                 "device_class": SensorDeviceClass.BATTERY,
                 "native_unit_of_measurement": PERCENTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
-                "value_fn": lambda: self.device.battery_level
-                if self.device.battery_level is not None
-                else None,
+                "value_fn": lambda: self.device.battery_level if self.device.battery_level is not None else None,
                 "enabled_by_default": True,
             }
         )
@@ -66,9 +64,7 @@ class DoorbellHandler(AjaxDeviceHandler):
                 "translation_key": "signal_strength",
                 "native_unit_of_measurement": PERCENTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
-                "value_fn": lambda: self.device.signal_strength
-                if self.device.signal_strength is not None
-                else None,
+                "value_fn": lambda: self.device.signal_strength if self.device.signal_strength is not None else None,
                 "enabled_by_default": True,
             }
         )

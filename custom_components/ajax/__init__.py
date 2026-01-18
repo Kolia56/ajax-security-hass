@@ -213,9 +213,7 @@ async def _async_update_options(hass: HomeAssistant, entry: AjaxConfigEntry) -> 
         if not door_sensor_fast_poll:
             # Stop any running door sensor polling
             _LOGGER.debug("Stopping door sensor polling task")
-            coordinator._manage_door_sensor_polling(
-                False, coordinator._door_sensor_poll_security_state
-            )
+            coordinator._manage_door_sensor_polling(False, coordinator._door_sensor_poll_security_state)
         else:
             # Re-evaluate polling based on current security state
             if coordinator.account:
@@ -231,9 +229,7 @@ async def _async_update_options(hass: HomeAssistant, entry: AjaxConfigEntry) -> 
                         is_disarmed_or_night,
                     )
                     if is_disarmed_or_night:
-                        coordinator._manage_door_sensor_polling(
-                            True, space.security_state
-                        )
+                        coordinator._manage_door_sensor_polling(True, space.security_state)
                         break  # Only need one polling task
 
 
@@ -245,9 +241,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
         target_entry_ids = await async_extract_config_entry_ids(service_call)
         target_entries: list[AjaxConfigEntry] = [
             loaded_entry
-            for loaded_entry in service_call.hass.config_entries.async_loaded_entries(
-                DOMAIN
-            )
+            for loaded_entry in service_call.hass.config_entries.async_loaded_entries(DOMAIN)
             if loaded_entry.entry_id in target_entry_ids or target_entry_ids == set()
         ]
         if not target_entries:
@@ -335,11 +329,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
                             device_id = device_summary.get("id")
                             if device_id:
                                 try:
-                                    full_device = (
-                                        await coordinator.api.async_get_device(
-                                            hub_id, device_id
-                                        )
-                                    )
+                                    full_device = await coordinator.api.async_get_device(hub_id, device_id)
                                     all_devices.append(full_device)
                                 except Exception as dev_err:
                                     _LOGGER.warning(
@@ -349,9 +339,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
                                     )
                                     all_devices.append(device_summary)
                     except Exception as err:
-                        _LOGGER.error(
-                            "Failed to get devices for hub %s: %s", hub_id, err
-                        )
+                        _LOGGER.error("Failed to get devices for hub %s: %s", hub_id, err)
 
             # Fetch cameras for each hub (same pattern as devices)
             for _space_id, space in coordinator.account.spaces.items():
@@ -363,11 +351,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
                             camera_id = camera_summary.get("id")
                             if camera_id:
                                 try:
-                                    full_camera = (
-                                        await coordinator.api.async_get_camera(
-                                            hub_id, camera_id
-                                        )
-                                    )
+                                    full_camera = await coordinator.api.async_get_camera(hub_id, camera_id)
                                     all_cameras.append(full_camera)
                                 except Exception as cam_err:
                                     _LOGGER.warning(
@@ -377,18 +361,14 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
                                     )
                                     all_cameras.append(camera_summary)
                     except Exception as err:
-                        _LOGGER.warning(
-                            "Failed to get cameras for hub %s: %s", hub_id, err
-                        )
+                        _LOGGER.warning("Failed to get cameras for hub %s: %s", hub_id, err)
 
             # Fetch video edges for each space (requires real_space_id)
             for _space_id, space in coordinator.account.spaces.items():
                 real_space_id = space.real_space_id
                 if real_space_id:
                     try:
-                        video_edges_list = await coordinator.api.async_get_video_edges(
-                            real_space_id
-                        )
+                        video_edges_list = await coordinator.api.async_get_video_edges(real_space_id)
                         all_video_edges.extend(video_edges_list)
                     except Exception as err:
                         _LOGGER.warning(
@@ -493,9 +473,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
         )
 
 
-async def _async_setup_areas(
-    hass: HomeAssistant, coordinator: AjaxDataCoordinator
-) -> None:
+async def _async_setup_areas(hass: HomeAssistant, coordinator: AjaxDataCoordinator) -> None:
     """Create HA Areas from Ajax rooms and assign devices to them."""
 
     area_reg = ar.async_get(hass)
@@ -524,16 +502,12 @@ async def _async_setup_areas(
             for device_id, device in space.devices.items():
                 if device.room_id == room_id:
                     # Find the HA device by identifiers
-                    ha_device = device_reg.async_get_device(
-                        identifiers={(DOMAIN, device_id)}
-                    )
+                    ha_device = device_reg.async_get_device(identifiers={(DOMAIN, device_id)})
                     # Only assign area if device has no area yet (respect user changes)
                     if ha_device and ha_device.area_id is None:
                         device_reg.async_update_device(ha_device.id, area_id=area.id)
                         devices_assigned += 1
-                        _LOGGER.debug(
-                            "Assigned device %s to area %s", device.name, room_name
-                        )
+                        _LOGGER.debug("Assigned device %s to area %s", device.name, room_name)
 
     if rooms_created > 0 or devices_assigned > 0:
         _LOGGER.info(

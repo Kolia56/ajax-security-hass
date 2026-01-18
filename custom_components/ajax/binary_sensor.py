@@ -204,9 +204,7 @@ class AjaxBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEntit
 
         # Set enabled by default
         if "enabled_by_default" in sensor_desc:
-            self._attr_entity_registry_enabled_default = sensor_desc[
-                "enabled_by_default"
-            ]
+            self._attr_entity_registry_enabled_default = sensor_desc["enabled_by_default"]
 
         # Force name on entity. Mainly used to assign None (=device name)
         if "name" in sensor_desc:
@@ -264,9 +262,7 @@ class AjaxBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEntit
             return
 
         device_registry = dr.async_get(self.hass)
-        device_entry = device_registry.async_get_device(
-            identifiers={(DOMAIN, self._device_id)}
-        )
+        device_entry = device_registry.async_get_device(identifiers={(DOMAIN, self._device_id)})
         if not device_entry:
             return
 
@@ -320,9 +316,7 @@ class AjaxBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEntit
         return space.devices.get(self._device_id)
 
 
-class AjaxVideoEdgeBinarySensor(
-    CoordinatorEntity[AjaxDataCoordinator], BinarySensorEntity
-):
+class AjaxVideoEdgeBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEntity):
     """Representation of an Ajax Video Edge binary sensor."""
 
     _attr_has_entity_name = True
@@ -350,9 +344,7 @@ class AjaxVideoEdgeBinarySensor(
 
         # Set enabled by default
         if "enabled_by_default" in sensor_desc:
-            self._attr_entity_registry_enabled_default = sensor_desc[
-                "enabled_by_default"
-            ]
+            self._attr_entity_registry_enabled_default = sensor_desc["enabled_by_default"]
 
     @property
     def is_on(self) -> bool | None:
@@ -431,9 +423,7 @@ class AjaxHubBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEn
         "external_power": {
             "device_class": BinarySensorDeviceClass.PLUG,
             "translation_key": "external_power",
-            "value_fn": lambda hd: hd.get("battery", {}).get("state") != "DISCHARGED"
-            if hd.get("battery")
-            else None,
+            "value_fn": lambda hd: hd.get("battery", {}).get("state") != "DISCHARGED" if hd.get("battery") else None,
         },
     }
 

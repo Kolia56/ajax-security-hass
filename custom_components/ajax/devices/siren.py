@@ -48,9 +48,7 @@ class SirenHandler(AjaxDeviceHandler):
                 {
                     "key": "beep_on_arm",
                     "translation_key": "beep_on_arm",
-                    "value_fn": lambda: self.device.attributes.get(
-                        "beep_on_arm_disarm", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("beep_on_arm_disarm", False),
                     "enabled_by_default": True,
                 }
             )
@@ -61,9 +59,7 @@ class SirenHandler(AjaxDeviceHandler):
                 {
                     "key": "beep_on_delay",
                     "translation_key": "beep_on_delay",
-                    "value_fn": lambda: self.device.attributes.get(
-                        "beep_on_delay", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("beep_on_delay", False),
                     "enabled_by_default": True,
                 }
             )
@@ -121,9 +117,7 @@ class SirenHandler(AjaxDeviceHandler):
                 {
                     "key": "alarm_volume_level",
                     "translation_key": "alarm_volume_level",
-                    "value_fn": lambda: self._format_volume(
-                        self.device.attributes.get("siren_volume_level")
-                    ),
+                    "value_fn": lambda: self._format_volume(self.device.attributes.get("siren_volume_level")),
                     "enabled_by_default": True,
                 }
             )
@@ -134,9 +128,7 @@ class SirenHandler(AjaxDeviceHandler):
                 {
                     "key": "beep_volume_level",
                     "translation_key": "beep_volume_level",
-                    "value_fn": lambda: self._format_volume(
-                        self.device.attributes.get("beep_volume_level")
-                    ),
+                    "value_fn": lambda: self._format_volume(self.device.attributes.get("beep_volume_level")),
                     "enabled_by_default": True,
                 }
             )
@@ -147,9 +139,7 @@ class SirenHandler(AjaxDeviceHandler):
                 {
                     "key": "alarm_duration",
                     "translation_key": "alarm_duration",
-                    "value_fn": lambda: self._format_duration(
-                        self.device.attributes.get("alarm_duration")
-                    ),
+                    "value_fn": lambda: self._format_duration(self.device.attributes.get("alarm_duration")),
                     "enabled_by_default": True,
                 }
             )
@@ -189,9 +179,7 @@ class SirenHandler(AjaxDeviceHandler):
                 {
                     "key": "night_mode",
                     "translation_key": "night_mode",
-                    "value_fn": lambda: self.device.attributes.get(
-                        "night_mode_arm", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("night_mode_arm", False),
                     "api_key": "nightModeArm",
                     "enabled_by_default": True,
                 }
@@ -200,10 +188,7 @@ class SirenHandler(AjaxDeviceHandler):
         # Note: beep_on_arm and beep_on_delay are now binary_sensors (read-only via Ajax API)
 
         # Blink while armed (LED) - only for sirens
-        if (
-            "led_indication" in self.device.attributes
-            or "blink_while_armed" in self.device.attributes
-        ):
+        if "led_indication" in self.device.attributes or "blink_while_armed" in self.device.attributes:
             switches.append(
                 {
                     "key": "blink_while_armed",
@@ -224,9 +209,7 @@ class SirenHandler(AjaxDeviceHandler):
                 {
                     "key": "chimes",
                     "translation_key": "chimes",
-                    "value_fn": lambda: self.device.attributes.get(
-                        "chimes_enabled", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("chimes_enabled", False),
                     "api_key": "chimesEnabled",
                     "enabled_by_default": True,
                 }

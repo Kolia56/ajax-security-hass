@@ -102,9 +102,7 @@ class AjaxSSEClient:
                 _LOGGER.info("SSE reconnecting in %d seconds...", self._reconnect_delay)
                 await asyncio.sleep(self._reconnect_delay)
                 # Exponential backoff
-                self._reconnect_delay = min(
-                    self._reconnect_delay * 2, self.MAX_RECONNECT_DELAY
-                )
+                self._reconnect_delay = min(self._reconnect_delay * 2, self.MAX_RECONNECT_DELAY)
 
     async def _connect_and_receive(self) -> None:
         """Connect to SSE endpoint and receive events."""
@@ -179,9 +177,7 @@ class AjaxSSEClient:
             # Call callback
             if self._hass_loop:
                 # Thread-safe callback to HA event loop
-                self._hass_loop.call_soon_threadsafe(
-                    lambda: asyncio.create_task(self._async_callback(event_data))
-                )
+                self._hass_loop.call_soon_threadsafe(lambda: asyncio.create_task(self._async_callback(event_data)))
             else:
                 self._callback(event_data)
 

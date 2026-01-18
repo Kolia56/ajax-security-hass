@@ -63,9 +63,7 @@ class AjaxDoorPlusBaseNumber(CoordinatorEntity[AjaxDataCoordinator], NumberEntit
     _attr_has_entity_name = True
     _attr_mode = NumberMode.SLIDER
 
-    def __init__(
-        self, coordinator: AjaxDataCoordinator, space_id: str, device_id: str
-    ) -> None:
+    def __init__(self, coordinator: AjaxDataCoordinator, space_id: str, device_id: str) -> None:
         super().__init__(coordinator)
         self._space_id = space_id
         self._device_id = device_id
@@ -96,9 +94,7 @@ class AjaxTiltDegreesNumber(AjaxDoorPlusBaseNumber):
     _attr_native_step = 5
     _attr_native_unit_of_measurement = "°"
 
-    def __init__(
-        self, coordinator: AjaxDataCoordinator, space_id: str, device_id: str
-    ) -> None:
+    def __init__(self, coordinator: AjaxDataCoordinator, space_id: str, device_id: str) -> None:
         super().__init__(coordinator, space_id, device_id)
         self._attr_unique_id = f"{device_id}_tilt_degrees"
         self._attr_translation_key = "tilt_degrees"

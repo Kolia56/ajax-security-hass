@@ -49,9 +49,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                     "key": "external_contact",
                     "translation_key": "external_contact",
                     "device_class": BinarySensorDeviceClass.OPENING,
-                    "value_fn": lambda: self.device.attributes.get(
-                        "external_contact_opened", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("external_contact_opened", False),
                     "enabled_by_default": True,
                 }
             )
@@ -113,9 +111,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 "device_class": SensorDeviceClass.BATTERY,
                 "native_unit_of_measurement": PERCENTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
-                "value_fn": lambda: self.device.battery_level
-                if self.device.battery_level is not None
-                else None,
+                "value_fn": lambda: self.device.battery_level if self.device.battery_level is not None else None,
                 "enabled_by_default": True,
             }
         )
@@ -127,9 +123,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 "translation_key": "signal_strength",
                 "native_unit_of_measurement": PERCENTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
-                "value_fn": lambda: self.device.signal_strength
-                if self.device.signal_strength is not None
-                else None,
+                "value_fn": lambda: self.device.signal_strength if self.device.signal_strength is not None else None,
                 "enabled_by_default": True,
             }
         )
@@ -207,8 +201,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 {
                     "key": "indicator_light",
                     "translation_key": "indicator_light",
-                    "value_fn": lambda: self.device.attributes.get("indicatorLightMode")
-                    == "STANDARD",
+                    "value_fn": lambda: self.device.attributes.get("indicatorLightMode") == "STANDARD",
                     "api_key": "indicatorLightMode",
                     "api_value_on": "STANDARD",
                     "api_value_off": "DONT_BLINK_ON_ALARM",
@@ -235,9 +228,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 {
                     "key": "external_contact_enabled",
                     "translation_key": "external_contact_enabled",
-                    "value_fn": lambda: self.device.attributes.get(
-                        "extra_contact_aware", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("extra_contact_aware", False),
                     "api_key": "extraContactAware",
                     "enabled_by_default": True,
                 }
@@ -248,9 +239,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 {
                     "key": "shock_sensor",
                     "translation_key": "shock_sensor",
-                    "value_fn": lambda: self.device.attributes.get(
-                        "shock_sensor_aware", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("shock_sensor_aware", False),
                     "api_key": "shockSensorAware",
                     "enabled_by_default": True,
                 }
@@ -261,9 +250,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 {
                     "key": "ignore_impact",
                     "translation_key": "ignore_impact",
-                    "value_fn": lambda: self.device.attributes.get(
-                        "ignore_simple_impact", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("ignore_simple_impact", False),
                     "api_key": "ignoreSimpleImpact",
                     "enabled_by_default": True,
                 }
@@ -274,9 +261,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 {
                     "key": "tilt_sensor",
                     "translation_key": "tilt_sensor",
-                    "value_fn": lambda: self.device.attributes.get(
-                        "accelerometer_aware", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("accelerometer_aware", False),
                     "api_key": "accelerometerAware",
                     "enabled_by_default": True,
                 }
@@ -287,8 +272,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 {
                     "key": "siren_trigger_reed",
                     "translation_key": "siren_trigger_reed",
-                    "value_fn": lambda: "REED"
-                    in self.device.attributes.get("siren_triggers", []),
+                    "value_fn": lambda: "REED" in self.device.attributes.get("siren_triggers", []),
                     "api_key": "sirenTriggers",
                     "trigger_key": "REED",
                     "enabled_by_default": True,
@@ -299,8 +283,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 {
                     "key": "siren_trigger_shock",
                     "translation_key": "siren_trigger_shock",
-                    "value_fn": lambda: "SHOCK"
-                    in self.device.attributes.get("siren_triggers", []),
+                    "value_fn": lambda: "SHOCK" in self.device.attributes.get("siren_triggers", []),
                     "api_key": "sirenTriggers",
                     "trigger_key": "SHOCK",
                     "enabled_by_default": True,
@@ -311,8 +294,7 @@ class DoorContactHandler(AjaxDeviceHandler):
                 {
                     "key": "siren_trigger_tilt",
                     "translation_key": "siren_trigger_tilt",
-                    "value_fn": lambda: "TILT"
-                    in self.device.attributes.get("siren_triggers", []),
+                    "value_fn": lambda: "TILT" in self.device.attributes.get("siren_triggers", []),
                     "api_key": "sirenTriggers",
                     "trigger_key": "TILT",
                     "enabled_by_default": True,

@@ -41,11 +41,7 @@ async def async_setup_entry(
             # Create alarm control panel for each group if groups mode is enabled
             if space.group_mode_enabled and space.groups:
                 for group_id, _group in space.groups.items():
-                    entities.append(
-                        AjaxGroupAlarmControlPanel(
-                            coordinator, entry, space_id, group_id
-                        )
-                    )
+                    entities.append(AjaxGroupAlarmControlPanel(coordinator, entry, space_id, group_id))
                 _LOGGER.info(
                     "Added %d group alarm panels for space %s",
                     len(space.groups),
@@ -59,9 +55,7 @@ async def async_setup_entry(
         _LOGGER.info("No Ajax spaces found, no alarm panels created (yet)")
 
 
-class AjaxAlarmControlPanel(
-    CoordinatorEntity[AjaxDataCoordinator], AlarmControlPanelEntity
-):
+class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControlPanelEntity):
     """Representation of an Ajax alarm control panel (one per space/hub).
 
     Note: This entity overrides the default availability behavior to always
@@ -70,16 +64,11 @@ class AjaxAlarmControlPanel(
     from "unavailable" back to its normal state.
     """
 
-    _attr_supported_features = (
-        AlarmControlPanelEntityFeature.ARM_AWAY
-        | AlarmControlPanelEntityFeature.ARM_NIGHT
-    )
+    _attr_supported_features = AlarmControlPanelEntityFeature.ARM_AWAY | AlarmControlPanelEntityFeature.ARM_NIGHT
     _attr_code_arm_required = False
     _attr_available = True  # Always available - keep last known state on API errors
 
-    def __init__(
-        self, coordinator: AjaxDataCoordinator, entry: AjaxConfigEntry, space_id: str
-    ) -> None:
+    def __init__(self, coordinator: AjaxDataCoordinator, entry: AjaxConfigEntry, space_id: str) -> None:
         """Initialize the alarm control panel."""
         super().__init__(coordinator)
         self._entry = entry
@@ -100,11 +89,7 @@ class AjaxAlarmControlPanel(
             return {}
 
         # Get hub subtype and color for model name
-        hub_subtype = (
-            space.hub_details.get("hubSubtype", "Security Hub")
-            if space.hub_details
-            else "Security Hub"
-        )
+        hub_subtype = space.hub_details.get("hubSubtype", "Security Hub") if space.hub_details else "Security Hub"
         # Format hub subtype: HUB_2_PLUS -> Hub 2 Plus
         hub_subtype_formatted = hub_subtype.replace("_", " ").title()
 
@@ -112,11 +97,7 @@ class AjaxAlarmControlPanel(
         # Keep color as-is from API (WHITE/BLACK are product colors)
         color_name = str(hub_color).title() if hub_color else ""
 
-        model_name = (
-            f"{hub_subtype_formatted} ({color_name})"
-            if color_name
-            else hub_subtype_formatted
-        )
+        model_name = f"{hub_subtype_formatted} ({color_name})" if color_name else hub_subtype_formatted
 
         device_info = {
             "identifiers": {(DOMAIN, self._space_id)},
@@ -223,9 +204,7 @@ class AjaxAlarmControlPanel(
         space = self.coordinator.get_space(self._space_id)
         if space and space.hub_details:
             device_registry = dr.async_get(self.hass)
-            device_entry = device_registry.async_get_device(
-                identifiers={(DOMAIN, self._space_id)}
-            )
+            device_entry = device_registry.async_get_device(identifiers={(DOMAIN, self._space_id)})
             if device_entry:
                 # Get firmware version
                 firmware_version = None
@@ -244,11 +223,7 @@ class AjaxAlarmControlPanel(
                 hub_subtype_formatted = hub_subtype.replace("_", " ").title()
                 hub_color = space.hub_details.get("color", "")
                 color_name = str(hub_color).title() if hub_color else ""
-                model_name = (
-                    f"{hub_subtype_formatted} ({color_name})"
-                    if color_name
-                    else hub_subtype_formatted
-                )
+                model_name = f"{hub_subtype_formatted} ({color_name})" if color_name else hub_subtype_formatted
 
                 device_registry.async_update_device(
                     device_entry.id,
@@ -274,9 +249,7 @@ class AjaxAlarmControlPanel(
             return
 
         device_registry = dr.async_get(self.hass)
-        device_entry = device_registry.async_get_device(
-            identifiers={(DOMAIN, self._space_id)}
-        )
+        device_entry = device_registry.async_get_device(identifiers={(DOMAIN, self._space_id)})
         if not device_entry:
             _LOGGER.debug("No device entry found for %s", self._space_id)
             return
@@ -298,11 +271,7 @@ class AjaxAlarmControlPanel(
         hub_subtype_formatted = hub_subtype.replace("_", " ").title()
         hub_color = space.hub_details.get("color", "")
         color_name = str(hub_color).title() if hub_color else ""
-        model_name = (
-            f"{hub_subtype_formatted} ({color_name})"
-            if color_name
-            else hub_subtype_formatted
-        )
+        model_name = f"{hub_subtype_formatted} ({color_name})" if color_name else hub_subtype_formatted
 
         _LOGGER.info(
             "Updating hub device: model=%s, hw=%s, color=%s",
@@ -363,9 +332,7 @@ class AjaxAlarmControlPanel(
         return attributes
 
 
-class AjaxGroupAlarmControlPanel(
-    CoordinatorEntity[AjaxDataCoordinator], AlarmControlPanelEntity
-):
+class AjaxGroupAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControlPanelEntity):
     """Representation of an Ajax group alarm control panel.
 
     Each group in the Ajax system gets its own alarm control panel entity,
@@ -421,9 +388,7 @@ class AjaxGroupAlarmControlPanel(
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Send disarm command for this group."""
-        _LOGGER.info(
-            "Disarming Ajax group %s in space %s", self._group_id, self._space_id
-        )
+        _LOGGER.info("Disarming Ajax group %s in space %s", self._group_id, self._space_id)
 
         # Optimistic update
         group = self.coordinator.get_group(self._space_id, self._group_id)

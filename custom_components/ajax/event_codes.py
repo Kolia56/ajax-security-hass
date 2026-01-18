@@ -1058,9 +1058,7 @@ def get_event_message(action_key: str, language: str = DEFAULT_LANGUAGE) -> str:
     return next(iter(messages.values()), action_key)
 
 
-def get_event_type_description(
-    event_type: str, language: str = DEFAULT_LANGUAGE
-) -> str:
+def get_event_type_description(event_type: str, language: str = DEFAULT_LANGUAGE) -> str:
     """Get the translated description for an event type (eventTypeV2).
 
     Args:
@@ -1082,9 +1080,7 @@ def get_event_type_description(
     return next(iter(descriptions.values()), event_type)
 
 
-def parse_event_code(
-    event_code: str, language: str = DEFAULT_LANGUAGE
-) -> dict[str, Any] | None:
+def parse_event_code(event_code: str, language: str = DEFAULT_LANGUAGE) -> dict[str, Any] | None:
     """Parse an event code and return event details.
 
     Args:

@@ -44,9 +44,7 @@ class AjaxPanicButton(CoordinatorEntity[AjaxDataCoordinator], ButtonEntity):
 
     _attr_device_class = ButtonDeviceClass.IDENTIFY
 
-    def __init__(
-        self, coordinator: AjaxDataCoordinator, entry: AjaxConfigEntry, space_id: str
-    ) -> None:
+    def __init__(self, coordinator: AjaxDataCoordinator, entry: AjaxConfigEntry, space_id: str) -> None:
         """Initialize the panic button."""
         super().__init__(coordinator)
         self._entry = entry

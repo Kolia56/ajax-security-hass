@@ -102,9 +102,7 @@ class AjaxSQSClient:
             return
 
         self._running = True
-        self._thread = threading.Thread(
-            target=self._receive_loop, name="SQS-Receiver", daemon=True
-        )
+        self._thread = threading.Thread(target=self._receive_loop, name="SQS-Receiver", daemon=True)
         self._thread.start()
         _LOGGER.info("SQS receiver started")
 
@@ -136,9 +134,7 @@ class AjaxSQSClient:
                     poll_count += 1
                     _LOGGER.debug("SQS poll #%d starting...", poll_count)
                     messages = loop.run_until_complete(self._poll_messages())
-                    _LOGGER.debug(
-                        "SQS poll #%d returned %d messages", poll_count, len(messages)
-                    )
+                    _LOGGER.debug("SQS poll #%d returned %d messages", poll_count, len(messages))
                     for msg in messages:
                         loop.run_until_complete(self._handle_message(msg))
 
@@ -192,9 +188,7 @@ class AjaxSQSClient:
 
             # Call the callback in Home Assistant's event loop
             if self._callback and self._hass_loop:
-                future = asyncio.run_coroutine_threadsafe(
-                    self._callback(body), self._hass_loop
-                )
+                future = asyncio.run_coroutine_threadsafe(self._callback(body), self._hass_loop)
                 # Wait for callback to complete (with timeout)
                 try:
                     future.result(timeout=15)

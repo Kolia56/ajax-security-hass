@@ -34,9 +34,7 @@ class MotionDetectorHandler(AjaxDeviceHandler):
                 "key": "motion",
                 "device_class": BinarySensorDeviceClass.MOTION,
                 # motion_detected is set by SSE/SQS events in real-time
-                "value_fn": lambda: self.device.attributes.get(
-                    "motion_detected", False
-                ),
+                "value_fn": lambda: self.device.attributes.get("motion_detected", False),
                 "enabled_by_default": True,
                 "name": None,
             },
@@ -56,9 +54,7 @@ class MotionDetectorHandler(AjaxDeviceHandler):
                     "key": "glass_break",
                     "translation_key": "glass_break",
                     "device_class": BinarySensorDeviceClass.SAFETY,
-                    "value_fn": lambda: self.device.attributes.get(
-                        "glass_break_detected", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("glass_break_detected", False),
                     "enabled_by_default": True,
                 }
             )
@@ -77,9 +73,7 @@ class MotionDetectorHandler(AjaxDeviceHandler):
                 "device_class": SensorDeviceClass.BATTERY,
                 "native_unit_of_measurement": PERCENTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
-                "value_fn": lambda: self.device.battery_level
-                if self.device.battery_level is not None
-                else None,
+                "value_fn": lambda: self.device.battery_level if self.device.battery_level is not None else None,
                 "enabled_by_default": True,
             }
         )
@@ -91,9 +85,7 @@ class MotionDetectorHandler(AjaxDeviceHandler):
                 "translation_key": "signal_strength",
                 "native_unit_of_measurement": PERCENTAGE,
                 "state_class": SensorStateClass.MEASUREMENT,
-                "value_fn": lambda: self.device.signal_strength
-                if self.device.signal_strength is not None
-                else None,
+                "value_fn": lambda: self.device.signal_strength if self.device.signal_strength is not None else None,
                 "enabled_by_default": True,
             }
         )
@@ -149,8 +141,7 @@ class MotionDetectorHandler(AjaxDeviceHandler):
                 {
                     "key": "indicator_light",
                     "translation_key": "indicator_light",
-                    "value_fn": lambda: self.device.attributes.get("indicatorLightMode")
-                    == "STANDARD",
+                    "value_fn": lambda: self.device.attributes.get("indicatorLightMode") == "STANDARD",
                     "api_key": "indicatorLightMode",
                     "api_value_on": "STANDARD",
                     "api_value_off": "DONT_BLINK_ON_ALARM",

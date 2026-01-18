@@ -33,9 +33,7 @@ class VideoEdgeHandler:
 
         # For each channel, we can have AI detection sensors
         for i, channel in enumerate(channels):
-            channel_id = (
-                channel.get("id", str(i)) if isinstance(channel, dict) else str(i)
-            )
+            channel_id = channel.get("id", str(i)) if isinstance(channel, dict) else str(i)
             channel_name = f"Channel {i + 1}" if len(channels) > 1 else ""
 
             # Motion detection
@@ -43,9 +41,7 @@ class VideoEdgeHandler:
                 {
                     "key": f"motion_{channel_id}" if channel_name else "motion",
                     "translation_key": "video_motion",
-                    "value_fn": lambda cid=channel_id: self._has_detection_by_id(
-                        cid, "VIDEO_MOTION"
-                    ),
+                    "value_fn": lambda cid=channel_id: self._has_detection_by_id(cid, "VIDEO_MOTION"),
                     "enabled_by_default": True,
                     "channel_id": channel_id,
                 }
@@ -56,9 +52,7 @@ class VideoEdgeHandler:
                 {
                     "key": f"human_{channel_id}" if channel_name else "human",
                     "translation_key": "video_human",
-                    "value_fn": lambda cid=channel_id: self._has_detection_by_id(
-                        cid, "VIDEO_HUMAN"
-                    ),
+                    "value_fn": lambda cid=channel_id: self._has_detection_by_id(cid, "VIDEO_HUMAN"),
                     "enabled_by_default": True,
                     "channel_id": channel_id,
                 }
@@ -69,9 +63,7 @@ class VideoEdgeHandler:
                 {
                     "key": f"vehicle_{channel_id}" if channel_name else "vehicle",
                     "translation_key": "video_vehicle",
-                    "value_fn": lambda cid=channel_id: self._has_detection_by_id(
-                        cid, "VIDEO_VEHICLE"
-                    ),
+                    "value_fn": lambda cid=channel_id: self._has_detection_by_id(cid, "VIDEO_VEHICLE"),
                     "enabled_by_default": True,
                     "channel_id": channel_id,
                 }
@@ -82,9 +74,7 @@ class VideoEdgeHandler:
                 {
                     "key": f"pet_{channel_id}" if channel_name else "pet",
                     "translation_key": "video_pet",
-                    "value_fn": lambda cid=channel_id: self._has_detection_by_id(
-                        cid, "VIDEO_PET"
-                    ),
+                    "value_fn": lambda cid=channel_id: self._has_detection_by_id(cid, "VIDEO_PET"),
                     "enabled_by_default": True,
                     "channel_id": channel_id,
                 }

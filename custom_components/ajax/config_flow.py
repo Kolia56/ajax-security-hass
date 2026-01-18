@@ -72,14 +72,10 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
         self._user_input: dict[str, Any] = {}
         self._request_id: str | None = None
         self._auth_mode: str = AUTH_MODE_DIRECT
-        self._spaces: list[
-            dict[str, str]
-        ] = []  # List of {id, name} for discovered spaces
+        self._spaces: list[dict[str, str]] = []  # List of {id, name} for discovered spaces
         self._entry_data: dict[str, Any] = {}  # Prepared entry data
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the initial step - choose authentication mode."""
         if user_input is not None:
             self._auth_mode = user_input[CONF_AUTH_MODE]
@@ -93,9 +89,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
         # Show auth mode selection (2 options only, Proxy is default)
         data_schema = vol.Schema(
             {
-                vol.Required(
-                    CONF_AUTH_MODE, default=AUTH_MODE_PROXY_SECURE
-                ): SelectSelector(
+                vol.Required(CONF_AUTH_MODE, default=AUTH_MODE_PROXY_SECURE): SelectSelector(
                     SelectSelectorConfig(
                         options=[
                             AUTH_MODE_PROXY_SECURE,
@@ -113,9 +107,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
         )
 
-    async def async_step_direct(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_direct(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle direct mode - API key + credentials."""
         errors: dict[str, str] = {}
 
@@ -148,9 +140,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                         # Get proper space name via space binding API
                         hub_name = hub.get("hubName", f"Hub {hub_id[:6]}")
                         try:
-                            space_binding = await self._api.async_get_space_by_hub(
-                                hub_id
-                            )
+                            space_binding = await self._api.async_get_space_by_hub(hub_id)
                             if space_binding and space_binding.get("name"):
                                 hub_name = space_binding.get("name")
                         except Exception:
@@ -160,9 +150,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 await self._api.close()
 
                 # Hash password for secure storage (never store plain password!)
-                password_hash = hashlib.sha256(
-                    user_input[CONF_PASSWORD].encode()
-                ).hexdigest()
+                password_hash = hashlib.sha256(user_input[CONF_PASSWORD].encode()).hexdigest()
 
                 # Prepare entry data
                 self._entry_data = {
@@ -174,13 +162,9 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
 
                 # Add optional AWS SQS credentials if provided
                 if user_input.get(CONF_AWS_ACCESS_KEY_ID):
-                    self._entry_data[CONF_AWS_ACCESS_KEY_ID] = user_input[
-                        CONF_AWS_ACCESS_KEY_ID
-                    ]
+                    self._entry_data[CONF_AWS_ACCESS_KEY_ID] = user_input[CONF_AWS_ACCESS_KEY_ID]
                 if user_input.get(CONF_AWS_SECRET_ACCESS_KEY):
-                    self._entry_data[CONF_AWS_SECRET_ACCESS_KEY] = user_input[
-                        CONF_AWS_SECRET_ACCESS_KEY
-                    ]
+                    self._entry_data[CONF_AWS_SECRET_ACCESS_KEY] = user_input[CONF_AWS_SECRET_ACCESS_KEY]
                 if user_input.get(CONF_QUEUE_NAME):
                     self._entry_data[CONF_QUEUE_NAME] = user_input[CONF_QUEUE_NAME]
 
@@ -204,9 +188,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 return await self.async_step_2fa()
 
             except AjaxRestAuthError as err:
-                _LOGGER.error(
-                    "Authentication failed: %s (type: %s)", err, err.error_type
-                )
+                _LOGGER.error("Authentication failed: %s (type: %s)", err, err.error_type)
                 # Map error type to translation key
                 error_map = {
                     "invalid_api_key": "invalid_api_key",
@@ -241,9 +223,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_proxy(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_proxy(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle proxy mode - proxy URL + credentials."""
         errors: dict[str, str] = {}
 
@@ -280,9 +260,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                             # Get proper space name via space binding API
                             hub_name = hub.get("hubName", f"Hub {hub_id[:6]}")
                             try:
-                                space_binding = await self._api.async_get_space_by_hub(
-                                    hub_id
-                                )
+                                space_binding = await self._api.async_get_space_by_hub(hub_id)
                                 if space_binding and space_binding.get("name"):
                                     hub_name = space_binding.get("name")
                             except Exception:
@@ -295,9 +273,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 await self._api.close()
 
                 # Hash password for secure storage
-                password_hash = hashlib.sha256(
-                    user_input[CONF_PASSWORD].encode()
-                ).hexdigest()
+                password_hash = hashlib.sha256(user_input[CONF_PASSWORD].encode()).hexdigest()
 
                 # Prepare entry data
                 self._entry_data = {
@@ -313,9 +289,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
 
                 # Single space or no spaces - enable all by default
                 if self._spaces:
-                    self._entry_data[CONF_ENABLED_SPACES] = [
-                        s["id"] for s in self._spaces
-                    ]
+                    self._entry_data[CONF_ENABLED_SPACES] = [s["id"] for s in self._spaces]
 
                 # Create entry
                 return self.async_create_entry(
@@ -329,9 +303,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 return await self.async_step_2fa()
 
             except AjaxRestAuthError as err:
-                _LOGGER.error(
-                    "Authentication failed: %s (type: %s)", err, err.error_type
-                )
+                _LOGGER.error("Authentication failed: %s (type: %s)", err, err.error_type)
                 # Map error type to translation key
                 error_map = {
                     "invalid_api_key": "invalid_api_key",
@@ -362,9 +334,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_2fa(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_2fa(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle 2FA verification step."""
         errors: dict[str, str] = {}
 
@@ -384,9 +354,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                         # Get proper space name via space binding API
                         hub_name = hub.get("hubName", f"Hub {hub_id[:6]}")
                         try:
-                            space_binding = await self._api.async_get_space_by_hub(
-                                hub_id
-                            )
+                            space_binding = await self._api.async_get_space_by_hub(hub_id)
                             if space_binding and space_binding.get("name"):
                                 hub_name = space_binding.get("name")
                         except Exception:
@@ -396,9 +364,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 await self._api.close()
 
                 # Hash password for secure storage (never store plain password!)
-                password_hash = hashlib.sha256(
-                    self._user_input[CONF_PASSWORD].encode()
-                ).hexdigest()
+                password_hash = hashlib.sha256(self._user_input[CONF_PASSWORD].encode()).hexdigest()
 
                 # Get auth mode from stored input
                 auth_mode = self._user_input.get(CONF_AUTH_MODE, AUTH_MODE_DIRECT)
@@ -415,17 +381,11 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                     self._entry_data[CONF_API_KEY] = self._user_input[CONF_API_KEY]
 
                     if self._user_input.get(CONF_AWS_ACCESS_KEY_ID):
-                        self._entry_data[CONF_AWS_ACCESS_KEY_ID] = self._user_input[
-                            CONF_AWS_ACCESS_KEY_ID
-                        ]
+                        self._entry_data[CONF_AWS_ACCESS_KEY_ID] = self._user_input[CONF_AWS_ACCESS_KEY_ID]
                     if self._user_input.get(CONF_AWS_SECRET_ACCESS_KEY):
-                        self._entry_data[CONF_AWS_SECRET_ACCESS_KEY] = self._user_input[
-                            CONF_AWS_SECRET_ACCESS_KEY
-                        ]
+                        self._entry_data[CONF_AWS_SECRET_ACCESS_KEY] = self._user_input[CONF_AWS_SECRET_ACCESS_KEY]
                     if self._user_input.get(CONF_QUEUE_NAME):
-                        self._entry_data[CONF_QUEUE_NAME] = self._user_input[
-                            CONF_QUEUE_NAME
-                        ]
+                        self._entry_data[CONF_QUEUE_NAME] = self._user_input[CONF_QUEUE_NAME]
                 else:
                     # Proxy mode: include proxy URL
                     self._entry_data[CONF_PROXY_URL] = self._user_input[CONF_PROXY_URL]
@@ -469,9 +429,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
             },
         )
 
-    async def async_step_select_spaces(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_select_spaces(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle space selection when multiple spaces are found."""
         errors: dict[str, str] = {}
 
@@ -490,9 +448,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
 
         # Build options from discovered spaces
-        space_options = [
-            {"value": space["id"], "label": space["name"]} for space in self._spaces
-        ]
+        space_options = [{"value": space["id"], "label": space["name"]} for space in self._spaces]
 
         # Select all by default
         default_spaces = [space["id"] for space in self._spaces]
@@ -521,23 +477,17 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
             },
         )
 
-    async def async_step_reauth(
-        self, entry_data: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_reauth(self, entry_data: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle re-authentication when token expires."""
         self._user_input = dict(entry_data) if entry_data else {}
         return await self.async_step_reauth_confirm()
 
-    async def async_step_reauth_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle re-authentication confirmation."""
         errors: dict[str, str] = {}
 
         # Get config entry being re-authenticated
-        reauth_entry = self.hass.config_entries.async_get_entry(
-            self.context.get("entry_id", "")
-        )
+        reauth_entry = self.hass.config_entries.async_get_entry(self.context.get("entry_id", ""))
         if not reauth_entry:
             return self.async_abort(reason="reauth_failed")
 
@@ -567,9 +517,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 await self._api.close()
 
                 # Hash new password
-                password_hash = hashlib.sha256(
-                    user_input[CONF_PASSWORD].encode()
-                ).hexdigest()
+                password_hash = hashlib.sha256(user_input[CONF_PASSWORD].encode()).hexdigest()
 
                 # Update config entry with new password
                 new_data = {**reauth_entry.data, CONF_PASSWORD: password_hash}
@@ -623,9 +571,7 @@ class AjaxOptionsFlow(OptionsFlow):
             return "Not configured"
         return f"{value[:4]}****{value[-4:]}"
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage the options - main menu."""
         # Build menu options based on auth mode
         menu_options = ["enabled_spaces", "notifications", "polling_settings"]
@@ -645,9 +591,7 @@ class AjaxOptionsFlow(OptionsFlow):
             menu_options=menu_options,
         )
 
-    async def async_step_enabled_spaces(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_enabled_spaces(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage enabled spaces."""
         errors: dict[str, str] = {}
 
@@ -719,9 +663,7 @@ class AjaxOptionsFlow(OptionsFlow):
             errors=errors,
         )
 
-    async def async_step_notifications(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_notifications(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage notification options."""
         if user_input is not None:
             # Merge with existing options
@@ -729,12 +671,8 @@ class AjaxOptionsFlow(OptionsFlow):
             return self.async_create_entry(title="", data=new_options)
 
         # Get current options
-        current_filter = self.config_entry.options.get(
-            CONF_NOTIFICATION_FILTER, NOTIFICATION_FILTER_NONE
-        )
-        current_persistent = self.config_entry.options.get(
-            CONF_PERSISTENT_NOTIFICATION, False
-        )
+        current_filter = self.config_entry.options.get(CONF_NOTIFICATION_FILTER, NOTIFICATION_FILTER_NONE)
+        current_persistent = self.config_entry.options.get(CONF_PERSISTENT_NOTIFICATION, False)
         current_spaces = self.config_entry.options.get(CONF_MONITORED_SPACES, [])
 
         # Get available spaces from coordinator
@@ -799,9 +737,7 @@ class AjaxOptionsFlow(OptionsFlow):
             data_schema=vol.Schema(schema_dict),
         )
 
-    async def async_step_polling_settings(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_polling_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage polling settings."""
         if user_input is not None:
             # Merge with existing options
@@ -809,9 +745,7 @@ class AjaxOptionsFlow(OptionsFlow):
             return self.async_create_entry(title="", data=new_options)
 
         # Get current options (default: disabled to reduce API calls)
-        current_fast_poll = self.config_entry.options.get(
-            CONF_DOOR_SENSOR_FAST_POLL, False
-        )
+        current_fast_poll = self.config_entry.options.get(CONF_DOOR_SENSOR_FAST_POLL, False)
 
         data_schema = vol.Schema(
             {
@@ -827,9 +761,7 @@ class AjaxOptionsFlow(OptionsFlow):
             data_schema=data_schema,
         )
 
-    async def async_step_proxy_settings(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_proxy_settings(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage proxy settings."""
         errors: dict[str, str] = {}
 
@@ -850,9 +782,7 @@ class AjaxOptionsFlow(OptionsFlow):
                         data=new_data,
                     )
 
-                    return self.async_create_entry(
-                        title="", data=self.config_entry.options
-                    )
+                    return self.async_create_entry(title="", data=self.config_entry.options)
 
         # Get current proxy URL
         current_proxy_url = self.config_entry.data.get(CONF_PROXY_URL, "")
@@ -872,9 +802,7 @@ class AjaxOptionsFlow(OptionsFlow):
             errors=errors,
         )
 
-    async def async_step_aws_credentials(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_aws_credentials(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage AWS SQS credentials."""
         errors: dict[str, str] = {}
 
@@ -886,9 +814,7 @@ class AjaxOptionsFlow(OptionsFlow):
             if user_input.get(CONF_AWS_ACCESS_KEY_ID):
                 new_data[CONF_AWS_ACCESS_KEY_ID] = user_input[CONF_AWS_ACCESS_KEY_ID]
             if user_input.get(CONF_AWS_SECRET_ACCESS_KEY):
-                new_data[CONF_AWS_SECRET_ACCESS_KEY] = user_input[
-                    CONF_AWS_SECRET_ACCESS_KEY
-                ]
+                new_data[CONF_AWS_SECRET_ACCESS_KEY] = user_input[CONF_AWS_SECRET_ACCESS_KEY]
             if user_input.get(CONF_QUEUE_NAME):
                 new_data[CONF_QUEUE_NAME] = user_input[CONF_QUEUE_NAME]
 
@@ -914,9 +840,7 @@ class AjaxOptionsFlow(OptionsFlow):
                 ): str,
                 vol.Optional(
                     CONF_AWS_SECRET_ACCESS_KEY,
-                    description={
-                        "suggested_value": ""
-                    },  # Don't show secret, let user re-enter
+                    description={"suggested_value": ""},  # Don't show secret, let user re-enter
                 ): str,
                 vol.Optional(
                     CONF_QUEUE_NAME,

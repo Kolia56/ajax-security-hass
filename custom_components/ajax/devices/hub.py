@@ -60,9 +60,7 @@ class HubHandler(AjaxDeviceHandler):
                     "key": "external_power",
                     "translation_key": "external_power",
                     "device_class": BinarySensorDeviceClass.POWER,
-                    "value_fn": lambda: self.device.attributes.get(
-                        "externally_powered", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("externally_powered", False),
                     "enabled_by_default": True,
                 }
             )
@@ -74,9 +72,7 @@ class HubHandler(AjaxDeviceHandler):
                     "key": "battery_connected",
                     "translation_key": "battery_connected",
                     "device_class": BinarySensorDeviceClass.BATTERY,
-                    "value_fn": lambda: self.device.attributes.get(
-                        "battery_connected", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("battery_connected", False),
                     "enabled_by_default": True,
                 }
             )
@@ -88,9 +84,7 @@ class HubHandler(AjaxDeviceHandler):
                     "key": "gsm_antenna",
                     "translation_key": "gsm_antenna",
                     "device_class": BinarySensorDeviceClass.CONNECTIVITY,
-                    "value_fn": lambda: self.device.attributes.get(
-                        "gsm_antenna", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("gsm_antenna", False),
                     "enabled_by_default": True,
                 }
             )
@@ -102,9 +96,7 @@ class HubHandler(AjaxDeviceHandler):
                     "key": "jeweller_radio",
                     "translation_key": "jeweller_radio",
                     "device_class": BinarySensorDeviceClass.CONNECTIVITY,
-                    "value_fn": lambda: self.device.attributes.get(
-                        "jeweller_radio", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("jeweller_radio", False),
                     "enabled_by_default": True,
                 }
             )
@@ -116,9 +108,7 @@ class HubHandler(AjaxDeviceHandler):
                     "key": "wings_radio",
                     "translation_key": "wings_radio",
                     "device_class": BinarySensorDeviceClass.CONNECTIVITY,
-                    "value_fn": lambda: self.device.attributes.get(
-                        "wings_radio", False
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("wings_radio", False),
                     "enabled_by_default": True,
                 }
             )
@@ -238,9 +228,7 @@ class HubHandler(AjaxDeviceHandler):
                 {
                     "key": "devices_with_malfunctions",
                     "translation_key": "devices_with_malfunctions",
-                    "value_fn": lambda: self.device.attributes.get(
-                        "devices_with_malfunctions"
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("devices_with_malfunctions"),
                     "state_class": SensorStateClass.MEASUREMENT,
                     "enabled_by_default": True,
                 }
@@ -252,9 +240,7 @@ class HubHandler(AjaxDeviceHandler):
                 {
                     "key": "unread_notifications",
                     "translation_key": "unread_notifications",
-                    "value_fn": lambda: self.device.attributes.get(
-                        "unread_notifications"
-                    ),
+                    "value_fn": lambda: self.device.attributes.get("unread_notifications"),
                     "state_class": SensorStateClass.MEASUREMENT,
                     "enabled_by_default": True,
                 }
@@ -277,9 +263,7 @@ class HubHandler(AjaxDeviceHandler):
                 {
                     "key": "malfunctions",
                     "translation_key": "malfunctions",
-                    "value_fn": lambda: ", ".join(self.device.malfunctions)
-                    if self.device.malfunctions
-                    else "None",
+                    "value_fn": lambda: ", ".join(self.device.malfunctions) if self.device.malfunctions else "None",
                     "enabled_by_default": True,
                 }
             )

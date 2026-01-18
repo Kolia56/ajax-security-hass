@@ -57,9 +57,7 @@ async def async_setup_entry(
 
             if device_type in DEVICES_WITH_DOOR_PLUS_SELECTS:
                 # Shock sensor sensitivity
-                entities.append(
-                    AjaxShockSensitivitySelect(coordinator, space_id, device_id)
-                )
+                entities.append(AjaxShockSensitivitySelect(coordinator, space_id, device_id))
                 _LOGGER.debug(
                     "Created select entities for device: %s",
                     device.name,
@@ -75,9 +73,7 @@ class AjaxDoorPlusBaseSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEntit
 
     _attr_has_entity_name = True
 
-    def __init__(
-        self, coordinator: AjaxDataCoordinator, space_id: str, device_id: str
-    ) -> None:
+    def __init__(self, coordinator: AjaxDataCoordinator, space_id: str, device_id: str) -> None:
         super().__init__(coordinator)
         self._space_id = space_id
         self._device_id = device_id
@@ -106,9 +102,7 @@ class AjaxShockSensitivitySelect(AjaxDoorPlusBaseSelect):
     _attr_entity_category = EntityCategory.CONFIG
     _attr_options = list(SHOCK_SENSITIVITY_OPTIONS.values())
 
-    def __init__(
-        self, coordinator: AjaxDataCoordinator, space_id: str, device_id: str
-    ) -> None:
+    def __init__(self, coordinator: AjaxDataCoordinator, space_id: str, device_id: str) -> None:
         super().__init__(coordinator, space_id, device_id)
         self._attr_unique_id = f"{device_id}_shock_sensitivity"
         self._attr_translation_key = "shock_sensitivity"
