@@ -817,6 +817,13 @@
           "on": "Activado"
         }
       },
+      "siren_on_leak": {
+        "name": "Sirena si fuga",
+        "state": {
+          "off": "Desactivado",
+          "on": "Activado"
+        }
+      },
       "siren_trigger_glass": {
         "name": "Sirena si rotura de cristal",
         "state": {

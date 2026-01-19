@@ -817,6 +817,13 @@
           "on": "Till"
         }
       },
+      "siren_on_leak": {
+        "name": "Siren vid läckage",
+        "state": {
+          "off": "Från",
+          "on": "Till"
+        }
+      },
       "siren_trigger_glass": {
         "name": "Siren vid glasskross",
         "state": {

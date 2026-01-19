@@ -30,8 +30,10 @@ class FloodDetectorHandler(AjaxDeviceHandler):
             {
                 "key": "moisture",
                 "device_class": BinarySensorDeviceClass.MOISTURE,
-                # Note: Ajax API uses 'state' field - ALARM when leak detected
-                "value_fn": lambda: self.device.attributes.get("state") == "ALARM",
+                # Check both REST API attribute and SSE event state
+                "value_fn": lambda: (
+                    self.device.attributes.get("state") == "ALARM" or self.device.attributes.get("leakDetected", False)
+                ),
                 "enabled_by_default": True,
                 "name": None,
             },
@@ -129,14 +131,18 @@ class FloodDetectorHandler(AjaxDeviceHandler):
                 }
             )
 
-        # Night Mode switch
+        # Siren trigger on leak detection
+        # Note: Ajax API swagger confirms LEAK is valid value for sirenTriggers
+        # Always create this switch as sirenTriggers is defined in API spec
         switches.append(
             {
-                "key": "night_mode",
-                "translation_key": "night_mode",
-                "value_fn": lambda: self.device.attributes.get("night_mode_arm", False),
-                "api_key": "nightModeArm",
+                "key": "siren_on_leak",
+                "translation_key": "siren_on_leak",
+                "value_fn": lambda: "LEAK" in self.device.attributes.get("siren_triggers", []),
+                "api_key": "sirenTriggers",
+                "trigger_key": "LEAK",
                 "enabled_by_default": True,
+                "entity_category": None,  # Show as normal switch, not config
             }
         )
 

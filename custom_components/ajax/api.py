@@ -966,7 +966,7 @@ class AjaxRestApi:
         "rollerShutterSupported",
         # Hardware config fields (read-only)
         "color",
-        "assignedExtender",
+        # Note: assignedExtender is required by API, do not exclude
         "cmsDeviceIndex",
         "bypassState",
         "deviceTransmissionPowerMode",

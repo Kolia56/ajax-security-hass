@@ -845,6 +845,13 @@
           "on": "Enabled"
         }
       },
+      "siren_on_leak": {
+        "name": "Siren on leak",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
       "socket": {
         "name": "Socket",
         "state_attributes": {

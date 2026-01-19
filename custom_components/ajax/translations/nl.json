@@ -817,6 +817,13 @@
           "on": "Ingeschakeld"
         }
       },
+      "siren_on_leak": {
+        "name": "Sirene bij lekkage",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
       "siren_trigger_glass": {
         "name": "Sirene bij glasbreuk",
         "state": {

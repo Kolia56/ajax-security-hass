@@ -817,6 +817,13 @@
           "on": "Activé"
         }
       },
+      "siren_on_leak": {
+        "name": "Sirène si fuite",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
       "siren_trigger_glass": {
         "name": "Sirène si bris de vitre",
         "state": {
