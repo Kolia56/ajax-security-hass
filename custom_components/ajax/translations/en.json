@@ -165,6 +165,13 @@
       "gsm_antenna": {
         "name": "GSM antenna"
       },
+      "high_temperature": {
+        "name": "High temperature",
+        "state": {
+          "off": "Normal",
+          "on": "Temperature threshold exceeded"
+        }
+      },
       "jeweller_radio": {
         "name": "Jeweller radio"
       },
@@ -182,8 +189,22 @@
           }
         }
       },
+      "rapid_temperature_rise": {
+        "name": "Rapid temperature rise",
+        "state": {
+          "off": "Normal",
+          "on": "Rapid temperature increase detected"
+        }
+      },
       "shock": {
         "name": "Shock"
+      },
+      "steam": {
+        "name": "Steam detected",
+        "state": {
+          "off": "Clear",
+          "on": "Steam detected"
+        }
       },
       "system_problems": {
         "name": "System problems",
@@ -261,6 +282,13 @@
       }
     },
     "select": {
+      "led_brightness": {
+        "name": "LED brightness",
+        "state": {
+          "MAX": "High",
+          "MIN": "Low"
+        }
+      },
       "shock_sensitivity": {
         "name": "Shock sensitivity",
         "state": {
@@ -311,6 +339,22 @@
           "very_loud": "Very loud"
         }
       },
+      "button_brightness": {
+        "name": "Button LED brightness",
+        "state": {
+          "high": "High",
+          "low": "Low",
+          "off": "Off"
+        }
+      },
+      "button_mode": {
+        "name": "Button mode",
+        "state": {
+          "interconnect_delay": "Interconnect delay",
+          "panic_button": "Panic button",
+          "smart_button": "Smart button"
+        }
+      },
       "bypassed_devices": {
         "name": "Bypassed devices"
       },
@@ -332,6 +376,14 @@
       },
       "devices_with_malfunctions": {
         "name": "Devices with malfunctions"
+      },
+      "false_press_filter": {
+        "name": "False press filter",
+        "state": {
+          "disabled": "Disabled",
+          "double_click": "Double click",
+          "long_push": "Long push"
+        }
       },
       "firmware_version": {
         "name": "Firmware version"
@@ -829,6 +881,20 @@
           "on": "Enabled"
         }
       },
+      "co_alarm_enabled": {
+        "name": "CO alarm",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "current_protection": {
+        "name": "Current protection",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
       "external_contact_enabled": {
         "name": "External contact",
         "state": {
@@ -838,6 +904,13 @@
       },
       "ignore_impact": {
         "name": "Ignore simple impact",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "indication_enabled": {
+        "name": "LED indication",
         "state": {
           "off": "Disabled",
           "on": "Enabled"
@@ -942,8 +1015,29 @@
           }
         }
       },
+      "temp_alarm_enabled": {
+        "name": "High temperature alarm",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "temp_diff_alarm_enabled": {
+        "name": "Rapid temperature rise alarm",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
       "tilt_sensor": {
         "name": "Tilt sensor",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "voltage_protection": {
+        "name": "Voltage protection",
         "state": {
           "off": "Disabled",
           "on": "Enabled"

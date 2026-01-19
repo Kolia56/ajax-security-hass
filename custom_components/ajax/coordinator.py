@@ -1178,6 +1178,30 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             if "indicatorLightMode" in device_data:
                 device.attributes["indicatorLightMode"] = device_data.get("indicatorLightMode")
 
+            # FireProtect 2 specific attributes (smoke, CO, temperature, steam alarms)
+            if "coAlarmEnable" in device_data:
+                device.attributes["coAlarmEnable"] = device_data.get("coAlarmEnable")
+            if "tempAlarmEnable" in device_data:
+                device.attributes["tempAlarmEnable"] = device_data.get("tempAlarmEnable")
+            if "tempDiffAlarmEnable" in device_data:
+                device.attributes["tempDiffAlarmEnable"] = device_data.get("tempDiffAlarmEnable")
+            if "smokeAlarm" in device_data:
+                device.attributes["smokeAlarm"] = device_data.get("smokeAlarm")
+            if "coAlarm" in device_data:
+                device.attributes["coAlarm"] = device_data.get("coAlarm")
+            if "steamAlarm" in device_data:
+                device.attributes["steamAlarm"] = device_data.get("steamAlarm")
+            if "tempAlarm" in device_data:
+                device.attributes["tempAlarm"] = device_data.get("tempAlarm")
+                # Create boolean for binary sensor (TEMP_ALARM_DETECTED vs TEMP_ALARM_NOT_DETECTED)
+                device.attributes["temperatureAlarmDetected"] = device_data.get("tempAlarm") == "TEMP_ALARM_DETECTED"
+            if "tempHighDiffAlarm" in device_data:
+                device.attributes["tempHighDiffAlarm"] = device_data.get("tempHighDiffAlarm")
+                # Create boolean for binary sensor
+                device.attributes["highTemperatureDiffDetected"] = (
+                    device_data.get("tempHighDiffAlarm") == "TEMP_HIGH_DIFF_ALARM_DETECTED"
+                )
+
             # Alerts by sirens setting
             if "alertsBySirens" in device_data:
                 device.attributes["alertsBySirens"] = device_data.get("alertsBySirens", False)
@@ -1197,6 +1221,43 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     device.attributes["is_on"] = "SWITCHED_OFF" not in switch_state
                 else:
                     device.attributes["is_on"] = True
+
+            # Socket specific attributes (power monitoring, protection settings)
+            if "indicationEnabled" in device_data:
+                device.attributes["indicationEnabled"] = device_data.get("indicationEnabled")
+            if "indicationBrightness" in device_data:
+                device.attributes["indicationBrightness"] = device_data.get("indicationBrightness")
+            if "currentProtectionEnabled" in device_data:
+                device.attributes["currentProtectionEnabled"] = device_data.get("currentProtectionEnabled")
+            if "voltageProtectionEnabled" in device_data:
+                device.attributes["voltageProtectionEnabled"] = device_data.get("voltageProtectionEnabled")
+            if "contactNormalState" in device_data:
+                device.attributes["contactNormalState"] = device_data.get("contactNormalState")
+            if "lockupRelayMode" in device_data:
+                device.attributes["lockupRelayMode"] = device_data.get("lockupRelayMode")
+            if "lockupRelayTimeSeconds" in device_data:
+                device.attributes["lockupRelayTimeSeconds"] = device_data.get("lockupRelayTimeSeconds")
+            # Power monitoring values
+            if "powerConsumedWattsPerHour" in device_data:
+                device.attributes["power"] = device_data.get("powerConsumedWattsPerHour")
+            if "currentMilliAmpers" in device_data:
+                # Convert mA to A
+                ma = device_data.get("currentMilliAmpers", 0)
+                device.attributes["current"] = ma / 1000.0 if ma else 0
+            if "voltageVolts" in device_data:
+                device.attributes["voltage"] = device_data.get("voltageVolts")
+
+            # Button specific attributes (panic button, keyfob)
+            if "buttonMode" in device_data:
+                device.attributes["button_mode"] = device_data.get("buttonMode")
+            if "brightness" in device_data:
+                device.attributes["brightness"] = device_data.get("brightness")
+            if "falsePressFilter" in device_data:
+                device.attributes["false_press_filter"] = device_data.get("falsePressFilter")
+            if "customAlarmType" in device_data:
+                device.attributes["custom_alarm_type"] = device_data.get("customAlarmType")
+            if "associatedUserId" in device_data:
+                device.attributes["associated_user_id"] = device_data.get("associatedUserId")
 
             # LightSwitch multi-gang: Parse channelStatuses and button names
             # These are at root level of device_data, not inside "attributes"

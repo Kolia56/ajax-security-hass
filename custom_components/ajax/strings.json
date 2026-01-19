@@ -185,6 +185,27 @@
       "shock": {
         "name": "Shock"
       },
+      "steam": {
+        "name": "Steam detected",
+        "state": {
+          "off": "Clear",
+          "on": "Steam detected"
+        }
+      },
+      "high_temperature": {
+        "name": "High temperature",
+        "state": {
+          "off": "Normal",
+          "on": "Temperature threshold exceeded"
+        }
+      },
+      "rapid_temperature_rise": {
+        "name": "Rapid temperature rise",
+        "state": {
+          "off": "Normal",
+          "on": "Rapid temperature increase detected"
+        }
+      },
       "system_problems": {
         "name": "System problems",
         "state": {
@@ -267,6 +288,13 @@
           "high": "High",
           "low": "Low",
           "normal": "Normal"
+        }
+      },
+      "led_brightness": {
+        "name": "LED brightness",
+        "state": {
+          "MIN": "Low",
+          "MAX": "High"
         }
       }
     },
@@ -606,6 +634,30 @@
           "single_press": "Single press"
         }
       },
+      "button_mode": {
+        "name": "Button mode",
+        "state": {
+          "panic_button": "Panic button",
+          "smart_button": "Smart button",
+          "interconnect_delay": "Interconnect delay"
+        }
+      },
+      "button_brightness": {
+        "name": "Button LED brightness",
+        "state": {
+          "off": "Off",
+          "low": "Low",
+          "high": "High"
+        }
+      },
+      "false_press_filter": {
+        "name": "False press filter",
+        "state": {
+          "long_push": "Long push",
+          "double_click": "Double click",
+          "disabled": "Disabled"
+        }
+      },
       "last_alert": {
         "name": "Last alert",
         "state_attributes": {
@@ -830,6 +882,13 @@
           "on": "Enabled"
         }
       },
+      "co_alarm_enabled": {
+        "name": "CO alarm",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
       "chimes_enabled": {
         "name": "Chime",
         "state": {
@@ -924,6 +983,41 @@
       },
       "siren_trigger_tilt": {
         "name": "Siren on tilt",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "temp_alarm_enabled": {
+        "name": "High temperature alarm",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "temp_diff_alarm_enabled": {
+        "name": "Rapid temperature rise alarm",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "indication_enabled": {
+        "name": "LED indication",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "current_protection": {
+        "name": "Current protection",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "voltage_protection": {
+        "name": "Voltage protection",
         "state": {
           "off": "Disabled",
           "on": "Enabled"

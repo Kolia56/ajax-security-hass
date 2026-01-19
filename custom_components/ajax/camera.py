@@ -6,10 +6,13 @@ using RTSP streaming.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from urllib.parse import quote
 
 from homeassistant.components.camera import Camera, CameraEntityFeature
+from homeassistant.components.ffmpeg import get_ffmpeg_manager
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -36,6 +39,9 @@ VIDEO_EDGE_MODEL_NAMES = {
 # Default RTSP port (Ajax cameras use 8554, not standard 554)
 DEFAULT_RTSP_PORT = 8554
 
+# Snapshot cache duration in seconds (reduces FFmpeg calls)
+SNAPSHOT_CACHE_DURATION = 30
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -52,7 +58,7 @@ async def async_setup_entry(
         for video_edge in space.video_edges.values():
             # Only create camera if we have an IP address
             if video_edge.ip_address:
-                # Create main stream camera
+                # Create main stream camera (high quality, enabled by default)
                 entities.append(
                     AjaxVideoEdgeCamera(
                         coordinator=coordinator,
@@ -60,6 +66,17 @@ async def async_setup_entry(
                         video_edge=video_edge,
                         space_id=space.id,
                         stream_type="main",
+                    )
+                )
+                # Create sub stream camera (low quality, disabled by default)
+                # Useful for 3G/4G connections with limited bandwidth
+                entities.append(
+                    AjaxVideoEdgeCamera(
+                        coordinator=coordinator,
+                        entry=entry,
+                        video_edge=video_edge,
+                        space_id=space.id,
+                        stream_type="sub",
                     )
                 )
 
@@ -73,6 +90,7 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
 
     _attr_has_entity_name = True
     _attr_supported_features = CameraEntityFeature.STREAM
+    _attr_use_stream_for_stills = True  # Use RTSP stream for snapshot images
 
     def __init__(
         self,
@@ -92,16 +110,22 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
         self._stream_type = stream_type
         self._attr_unique_id = f"{video_edge.id}_camera_{stream_type}"
 
-        # Camera name
+        # Camera name and default enabled state
         if stream_type == "main":
             self._attr_name = None  # Use device name
         else:
-            self._attr_name = f"Stream {stream_type}"
+            self._attr_name = "Sub stream"
+            # Sub stream disabled by default (for 3G/4G use)
+            self._attr_entity_registry_enabled_default = False
 
         # Get human-readable model name
         model_name = VIDEO_EDGE_MODEL_NAMES.get(video_edge.video_edge_type, "Video Edge")
         color = video_edge.color.title() if video_edge.color else ""
         model_display = f"{model_name} ({color})" if color else model_name
+
+        # Snapshot cache
+        self._snapshot_cache: bytes | None = None
+        self._snapshot_cache_time: float = 0
 
         # Device info
         self._attr_device_info = {
@@ -208,12 +232,56 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
         return rtsp_url
 
     async def async_camera_image(self, width: int | None = None, height: int | None = None) -> bytes | None:
-        """Return a still image from the camera.
+        """Return a still image from the camera via FFmpeg.
 
-        For RTSP cameras, we rely on the stream component to handle snapshots.
+        Ajax Video Edge cameras don't have HTTP snapshot endpoint.
+        We use FFmpeg to extract a single frame from the RTSP stream.
+        Images are cached for SNAPSHOT_CACHE_DURATION seconds to reduce load.
         """
-        # Let Home Assistant handle snapshot from stream
-        return None
+        # Return cached snapshot if still valid
+        now = time.time()
+        if self._snapshot_cache and (now - self._snapshot_cache_time) < SNAPSHOT_CACHE_DURATION:
+            return self._snapshot_cache
+
+        rtsp_url = await self.stream_source()
+        if not rtsp_url:
+            return self._snapshot_cache  # Return old cache if available
+
+        ffmpeg_manager = get_ffmpeg_manager(self.hass)
+
+        try:
+            # FFmpeg command to extract a single frame as JPEG
+            # Using TCP transport for reliability
+            process = await asyncio.wait_for(
+                asyncio.create_subprocess_exec(
+                    ffmpeg_manager.binary,
+                    "-rtsp_transport",
+                    "tcp",
+                    "-i",
+                    rtsp_url,
+                    "-frames:v",
+                    "1",
+                    "-f",
+                    "image2",
+                    "-",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.DEVNULL,
+                ),
+                timeout=15,
+            )
+
+            stdout, _ = await asyncio.wait_for(process.communicate(), timeout=15)
+            if stdout:
+                self._snapshot_cache = stdout
+                self._snapshot_cache_time = now
+                return stdout
+        except TimeoutError:
+            _LOGGER.debug("Timeout getting snapshot from %s", self._video_edge.name if self._video_edge else "camera")
+        except Exception as err:
+            _LOGGER.debug("Error getting snapshot: %s", err)
+
+        # Return old cache on error
+        return self._snapshot_cache
 
     @callback
     def _handle_coordinator_update(self) -> None:

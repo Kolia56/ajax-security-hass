@@ -3,7 +3,10 @@
 Handles:
 - FireProtect (smoke detector)
 - FireProtect Plus (smoke + CO + temperature)
-- FireProtect 2 (smoke + CO + temperature + SirenControl)
+- FireProtect 2 and all variants (smoke + CO + temperature + steam detection)
+  - FireProtect2, FireProtect2Plus, FireProtect2Sb, FireProtect2PlusSb
+  - FireProtect2Hrb, FireProtect2Hsb, FireProtect2Crb, FireProtect2Csb
+  - FireProtect2Hcrb, FireProtect2Hcsb, and other regional variants
 """
 
 from __future__ import annotations
@@ -47,13 +50,17 @@ class SmokeDetectorHandler(AjaxDeviceHandler):
             },
         ]
 
-        # CO detector (FireProtect Plus, FireProtect 2)
+        # CO detector (FireProtect Plus, FireProtect 2 and all variants)
         # CO alarm is separate from smoke - check for CO-specific state
-        if self.device.raw_type in [
-            "FireProtect2",
-            "FireProtectPlus",
-            "FIRE_PROTECT_2_BASE",
-        ]:
+        # FireProtect2 variants: FireProtect2Plus, FireProtect2Sb, FireProtect2Crb, etc.
+        raw_type = self.device.raw_type or ""
+        has_co = (
+            raw_type.startswith("FireProtect2")
+            or raw_type == "FireProtectPlus"
+            or raw_type == "FIRE_PROTECT_2_BASE"
+            or "coAlarm" in self.device.attributes
+        )
+        if has_co:
             sensors.append(
                 {
                     "key": "co",
@@ -62,7 +69,48 @@ class SmokeDetectorHandler(AjaxDeviceHandler):
                     "value_fn": lambda: (
                         self.device.attributes.get("co_alarm", False)
                         or self.device.attributes.get("co_detected", False)
+                        or self.device.attributes.get("coAlarm") == "CO_ALARM_DETECTED"
                     ),
+                    "enabled_by_default": True,
+                }
+            )
+
+        # Steam detector (FireProtect 2 variants with steam detection)
+        has_steam = "steamAlarm" in self.device.attributes
+        if has_steam:
+            sensors.append(
+                {
+                    "key": "steam",
+                    "translation_key": "steam",
+                    "device_class": BinarySensorDeviceClass.MOISTURE,
+                    "value_fn": lambda: (
+                        self.device.attributes.get("steamAlarm") == "STEAM_ALARM_DETECTED"
+                        or self.device.attributes.get("steam_detected", False)
+                    ),
+                    "enabled_by_default": True,
+                }
+            )
+
+        # High temperature alarm (FireProtect 2 variants)
+        if "temperatureAlarmDetected" in self.device.attributes:
+            sensors.append(
+                {
+                    "key": "high_temperature",
+                    "translation_key": "high_temperature",
+                    "device_class": BinarySensorDeviceClass.HEAT,
+                    "value_fn": lambda: self.device.attributes.get("temperatureAlarmDetected", False),
+                    "enabled_by_default": True,
+                }
+            )
+
+        # Rapid temperature rise alarm (FireProtect 2 variants)
+        if "highTemperatureDiffDetected" in self.device.attributes:
+            sensors.append(
+                {
+                    "key": "rapid_temperature_rise",
+                    "translation_key": "rapid_temperature_rise",
+                    "device_class": BinarySensorDeviceClass.HEAT,
+                    "value_fn": lambda: self.device.attributes.get("highTemperatureDiffDetected", False),
                     "enabled_by_default": True,
                 }
             )
@@ -165,6 +213,52 @@ class SmokeDetectorHandler(AjaxDeviceHandler):
                     "api_value_on": "STANDARD",
                     "api_value_off": "DONT_BLINK_ON_ALARM",
                     "enabled_by_default": True,
+                }
+            )
+
+        # CO alarm enable (FireProtect 2 variants)
+        # bypass_security_check: these are device config, not security commands
+        if "coAlarmEnable" in self.device.attributes:
+            switches.append(
+                {
+                    "key": "co_alarm_enabled",
+                    "translation_key": "co_alarm_enabled",
+                    "value_fn": lambda: self.device.attributes.get("coAlarmEnable") == "CO_ALARM_ENABLED",
+                    "api_key": "coAlarmEnable",
+                    "api_value_on": "CO_ALARM_ENABLED",
+                    "api_value_off": "CO_ALARM_DISABLED",
+                    "enabled_by_default": True,
+                    "bypass_security_check": True,
+                }
+            )
+
+        # Temperature alarm enable (FireProtect 2 variants)
+        if "tempAlarmEnable" in self.device.attributes:
+            switches.append(
+                {
+                    "key": "temp_alarm_enabled",
+                    "translation_key": "temp_alarm_enabled",
+                    "value_fn": lambda: self.device.attributes.get("tempAlarmEnable") == "TEMP_ALARM_ENABLED",
+                    "api_key": "tempAlarmEnable",
+                    "api_value_on": "TEMP_ALARM_ENABLED",
+                    "api_value_off": "TEMP_ALARM_DISABLED",
+                    "enabled_by_default": True,
+                    "bypass_security_check": True,
+                }
+            )
+
+        # Rapid temperature rise alarm enable (FireProtect 2 variants)
+        if "tempDiffAlarmEnable" in self.device.attributes:
+            switches.append(
+                {
+                    "key": "temp_diff_alarm_enabled",
+                    "translation_key": "temp_diff_alarm_enabled",
+                    "value_fn": lambda: self.device.attributes.get("tempDiffAlarmEnable") == "TEMP_DIFF_ALARM_ENABLED",
+                    "api_key": "tempDiffAlarmEnable",
+                    "api_value_on": "TEMP_DIFF_ALARM_ENABLED",
+                    "api_value_off": "TEMP_DIFF_ALARM_DISABLED",
+                    "enabled_by_default": True,
+                    "bypass_security_check": True,
                 }
             )
 

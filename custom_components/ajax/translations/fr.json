@@ -165,6 +165,13 @@
       "gsm_antenna": {
         "name": "Antenne GSM"
       },
+      "high_temperature": {
+        "name": "Température élevée",
+        "state": {
+          "off": "Normal",
+          "on": "Seuil de température dépassé"
+        }
+      },
       "jeweller_radio": {
         "name": "Radio Jeweller"
       },
@@ -182,8 +189,22 @@
           }
         }
       },
+      "rapid_temperature_rise": {
+        "name": "Hausse rapide de température",
+        "state": {
+          "off": "Normal",
+          "on": "Augmentation rapide de température détectée"
+        }
+      },
       "shock": {
         "name": "Capteur de choc"
+      },
+      "steam": {
+        "name": "Vapeur détectée",
+        "state": {
+          "off": "Normal",
+          "on": "Vapeur détectée"
+        }
       },
       "system_problems": {
         "name": "Problèmes système",
@@ -261,6 +282,13 @@
       }
     },
     "select": {
+      "led_brightness": {
+        "name": "Luminosité LED",
+        "state": {
+          "MAX": "Élevé",
+          "MIN": "Faible"
+        }
+      },
       "shock_sensitivity": {
         "name": "Sensibilité choc",
         "state": {
@@ -311,6 +339,22 @@
           "very_loud": "Très fort"
         }
       },
+      "button_brightness": {
+        "name": "Luminosité LED du bouton",
+        "state": {
+          "high": "Élevé",
+          "low": "Faible",
+          "off": "Éteint"
+        }
+      },
+      "button_mode": {
+        "name": "Mode du bouton",
+        "state": {
+          "interconnect_delay": "Délai d'interconnexion",
+          "panic_button": "Bouton panique",
+          "smart_button": "Bouton intelligent"
+        }
+      },
       "bypassed_devices": {
         "name": "Dispositifs bypassés"
       },
@@ -332,6 +376,14 @@
       },
       "devices_with_malfunctions": {
         "name": "Dispositifs avec dysfonctionnements"
+      },
+      "false_press_filter": {
+        "name": "Filtre anti-faux appui",
+        "state": {
+          "disabled": "Désactivé",
+          "double_click": "Double clic",
+          "long_push": "Appui long"
+        }
       },
       "firmware_version": {
         "name": "Version du firmware"
@@ -829,6 +881,20 @@
           "on": "Activé"
         }
       },
+      "co_alarm_enabled": {
+        "name": "Alarme CO",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
+      "current_protection": {
+        "name": "Protection courant",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
       "external_contact_enabled": {
         "name": "Contact externe",
         "state": {
@@ -838,6 +904,13 @@
       },
       "ignore_impact": {
         "name": "Ignorer les impacts simples",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
+      "indication_enabled": {
+        "name": "Indication LED",
         "state": {
           "off": "Désactivé",
           "on": "Activé"
@@ -942,8 +1015,29 @@
           }
         }
       },
+      "temp_alarm_enabled": {
+        "name": "Alarme température élevée",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
+      "temp_diff_alarm_enabled": {
+        "name": "Alarme hausse rapide température",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
       "tilt_sensor": {
         "name": "Capteur d'inclinaison",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
+      "voltage_protection": {
+        "name": "Protection tension",
         "state": {
           "off": "Désactivé",
           "on": "Activé"

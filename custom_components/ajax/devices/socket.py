@@ -14,11 +14,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
-    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+    PERCENTAGE,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
+    UnitOfTemperature,
 )
 
 from .base import AjaxDeviceHandler
@@ -57,16 +58,27 @@ class SocketHandler(AjaxDeviceHandler):
         """Return sensor entities for sockets/relays."""
         sensors = []
 
-        # Signal strength
-        if "signal_strength" in self.device.attributes:
+        # Signal strength (percentage based on signalLevel)
+        sensors.append(
+            {
+                "key": "signal_strength",
+                "translation_key": "signal_strength",
+                "native_unit_of_measurement": PERCENTAGE,
+                "state_class": SensorStateClass.MEASUREMENT,
+                "value_fn": lambda: self.device.signal_strength if self.device.signal_strength is not None else None,
+                "enabled_by_default": True,
+            }
+        )
+
+        # Temperature (Socket has internal temperature sensor)
+        if "temperature" in self.device.attributes or self.device.attributes.get("temperature") is not None:
             sensors.append(
                 {
-                    "key": "signal_strength",
-                    "translation_key": "signal_strength",
-                    "device_class": SensorDeviceClass.SIGNAL_STRENGTH,
-                    "native_unit_of_measurement": SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+                    "key": "temperature",
+                    "device_class": SensorDeviceClass.TEMPERATURE,
+                    "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
                     "state_class": SensorStateClass.MEASUREMENT,
-                    "value_fn": lambda: self.device.attributes.get("signal_strength"),
+                    "value_fn": lambda: self.device.attributes.get("temperature"),
                     "enabled_by_default": True,
                 }
             )
@@ -158,7 +170,7 @@ class SocketHandler(AjaxDeviceHandler):
             return self._get_multi_gang_switches()
 
         # Standard single switch (Socket, Relay, single-gang WallSwitch)
-        return [
+        switches = [
             {
                 "key": "socket",
                 "translation_key": "socket",
@@ -169,6 +181,53 @@ class SocketHandler(AjaxDeviceHandler):
                 "enabled_by_default": True,
             }
         ]
+
+        # LED indication (Socket)
+        if "indicationEnabled" in self.device.attributes:
+            switches.append(
+                {
+                    "key": "indication_enabled",
+                    "translation_key": "indication_enabled",
+                    "value_fn": lambda: self.device.attributes.get("indicationEnabled", False),
+                    "api_key": "indicationEnabled",
+                    "api_value_on": True,
+                    "api_value_off": False,
+                    "enabled_by_default": True,
+                    "bypass_security_check": True,
+                }
+            )
+
+        # Current protection (Socket)
+        if "currentProtectionEnabled" in self.device.attributes:
+            switches.append(
+                {
+                    "key": "current_protection",
+                    "translation_key": "current_protection",
+                    "value_fn": lambda: self.device.attributes.get("currentProtectionEnabled", False),
+                    "api_key": "currentProtectionEnabled",
+                    "api_value_on": True,
+                    "api_value_off": False,
+                    "enabled_by_default": True,
+                    "bypass_security_check": True,
+                }
+            )
+
+        # Voltage protection (Socket)
+        if "voltageProtectionEnabled" in self.device.attributes:
+            switches.append(
+                {
+                    "key": "voltage_protection",
+                    "translation_key": "voltage_protection",
+                    "value_fn": lambda: self.device.attributes.get("voltageProtectionEnabled", False),
+                    "api_key": "voltageProtectionEnabled",
+                    "api_value_on": True,
+                    "api_value_off": False,
+                    "enabled_by_default": True,
+                    "bypass_security_check": True,
+                }
+            )
+
+        return switches
 
     def _get_multi_gang_switches(self) -> list[dict]:
         """Return switch entities for multi-gang LightSwitch devices."""

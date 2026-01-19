@@ -2,6 +2,7 @@
 
 This module creates select entities for Ajax device settings like:
 - shockSensorSensitivity: Shock sensor sensitivity (Désactivé, Faible, Normal, Élevé)
+- indicationBrightness: Socket LED brightness (Min, Max)
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import AjaxConfigEntry
 from .const import DOMAIN
 from .coordinator import AjaxDataCoordinator
-from .models import SecurityState
+from .models import DeviceType, SecurityState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +40,9 @@ SHOCK_SENSITIVITY_OPTIONS = {
 
 # Reverse mapping (key -> value)
 SHOCK_SENSITIVITY_VALUES = {v: k for k, v in SHOCK_SENSITIVITY_OPTIONS.items()}
+
+# LED brightness options for Socket
+LED_BRIGHTNESS_OPTIONS = ["MIN", "MAX"]
 
 
 async def async_setup_entry(
@@ -60,6 +64,14 @@ async def async_setup_entry(
                 entities.append(AjaxShockSensitivitySelect(coordinator, space_id, device_id))
                 _LOGGER.debug(
                     "Created select entities for device: %s",
+                    device.name,
+                )
+
+            # Socket LED brightness
+            if device.type == DeviceType.SOCKET and "indicationBrightness" in device.attributes:
+                entities.append(AjaxLedBrightnessSelect(coordinator, space_id, device_id))
+                _LOGGER.debug(
+                    "Created LED brightness select for device: %s",
                     device.name,
                 )
 
@@ -149,3 +161,71 @@ class AjaxShockSensitivitySelect(AjaxDoorPlusBaseSelect):
                     "error": err,
                 },
             ) from err
+
+
+class AjaxLedBrightnessSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEntity):
+    """Select entity for Socket LED brightness."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_options = LED_BRIGHTNESS_OPTIONS
+
+    def __init__(self, coordinator: AjaxDataCoordinator, space_id: str, device_id: str) -> None:
+        super().__init__(coordinator)
+        self._space_id = space_id
+        self._device_id = device_id
+        self._attr_unique_id = f"{device_id}_led_brightness"
+        self._attr_translation_key = "led_brightness"
+
+    def _get_device(self):
+        space = self.coordinator.get_space(self._space_id)
+        return space.devices.get(self._device_id) if space else None
+
+    @property
+    def available(self) -> bool:
+        device = self._get_device()
+        if not device or not device.online:
+            return False
+        # Hide when LED indication is disabled
+        return device.attributes.get("indicationEnabled", False)
+
+    @property
+    def device_info(self) -> dict[str, Any]:
+        return {"identifiers": {(DOMAIN, self._device_id)}}
+
+    @property
+    def current_option(self) -> str | None:
+        device = self._get_device()
+        if not device:
+            return None
+        return device.attributes.get("indicationBrightness", "MAX")
+
+    async def async_select_option(self, option: str) -> None:
+        """Change the LED brightness."""
+        space = self.coordinator.get_space(self._space_id)
+        if not space:
+            raise HomeAssistantError("space_not_found")
+
+        try:
+            await self.coordinator.api.async_update_device(
+                space.hub_id, self._device_id, {"indicationBrightness": option}
+            )
+            _LOGGER.info(
+                "Set indicationBrightness=%s for device %s",
+                option,
+                self._device_id,
+            )
+            await self.coordinator.async_request_refresh()
+        except Exception as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="failed_to_change",
+                translation_placeholders={
+                    "entity": "LED brightness",
+                    "error": err,
+                },
+            ) from err
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self.async_write_ha_state()

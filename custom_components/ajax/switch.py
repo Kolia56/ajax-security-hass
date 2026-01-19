@@ -186,7 +186,10 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
             return
 
         # Handle Socket/Relay/WallSwitch using /command endpoint
-        if device.type in (DeviceType.SOCKET, DeviceType.RELAY, DeviceType.WALLSWITCH):
+        # BUT only if this is NOT a configuration switch (no api_key means it's the main on/off switch)
+        if device.type in (DeviceType.SOCKET, DeviceType.RELAY, DeviceType.WALLSWITCH) and not self._switch_desc.get(
+            "api_key"
+        ):
             # Check if this is a multi-gang channel switch
             channel = self._switch_desc.get("channel")
             _LOGGER.debug(
@@ -197,7 +200,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
                 value,
                 self._switch_desc,
             )
-            if channel:
+            if channel is not None:
                 await self._set_channel_value(space, device, channel, value)
                 return
 
@@ -260,7 +263,9 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
             api_value = self._switch_desc.get("api_value_off", False)
             api_extra = self._switch_desc.get("api_extra_off", {})
 
-        if space.security_state != SecurityState.DISARMED:
+        # Check security state unless bypass_security_check is set
+        # (for device config switches like FireProtect alarm settings)
+        if not self._switch_desc.get("bypass_security_check", False) and space.security_state != SecurityState.DISARMED:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="system_armed",
@@ -307,6 +312,8 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
                 api_value,
                 self._device_id,
             )
+            # Notify other entities that depend on this attribute
+            self.coordinator.async_update_listeners()
         except Exception as err:
             _LOGGER.error(
                 "Failed to set %s for device %s: %s",

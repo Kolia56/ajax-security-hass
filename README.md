@@ -53,17 +53,23 @@ This integration is **actively developed** but I'm just getting started with Aja
 - ✅ **DoorProtect Plus** (Door/window contact sensor)
 - ✅ **GlassProtect** (Glass break detector)
 - ✅ **HomeSiren** (Indoor siren)
+- ✅ **Socket** (Smart plug with energy monitoring)
+- ✅ **Button** (Panic/smart button)
 
 Users tested:
 - ✅ **Superior Hub Hybrid 4G**
 - ✅ **KeyPad TouchScreen Jeweller** (limited info available from API)
 - ✅ **Superior DoorProtect Plus Jeweller**
-- ✅ **FireProtect 2 RB (Heat/Smoke Jeweller)**
+- ✅ **FireProtect 2 RB (Heat/Smoke/CO Jeweller)**
 - ✅ **Superior HomeSiren Jeweller**
-- ✅ **ReX 2 Jeweller**
+- ✅ **ReX 2 Jeweller** (Range extender)
 - ✅ **StreetSiren Jeweller**
 - ✅ **Superior MotionCam (PhOD) Jeweller**
-- ✅ **MultiTransmitter Fibra** (with external contact state)
+- ✅ **MultiTransmitter Fibra** (with wire input support)
+- ✅ **LeaksProtect** (Flood detector)
+- ✅ **LightSwitch** (1-gang and 2-gang)
+- ✅ **TurretCam / BulletCam / MiniDome** (Video Edge cameras with RTSP)
+- ✅ **Doorbell** (Ajax doorbell)
 
 Since I don't have access to all Ajax devices, **I cannot test every device type**.
 
@@ -99,23 +105,34 @@ Issues, pull requests, and feedback are welcome!
 
 | Category | Devices |
 |----------|---------|
-| **Hubs** | Hub, Hub Plus, Hub 2, Hub 2 Plus, Hub 2 (4G), Hub Hybrid |
-| **Motion Detectors** | MotionProtect, MotionProtect Plus, MotionProtect Outdoor, MotionCam, CombiProtect |
-| **Door/Window** | DoorProtect, DoorProtect Plus, MultiTransmitter (wired inputs) |
-| **Fire Safety** | FireProtect, FireProtect Plus, FireProtect 2 |
+| **Hubs** | Hub, Hub Plus, Hub 2, Hub 2 Plus, Hub 2 (4G), Hub Hybrid (Jeweller & Fibra) |
+| **Motion Detectors** | MotionProtect, MotionProtect Plus, MotionProtect Outdoor, MotionProtect Curtain, MotionCam, MotionCam Outdoor, MotionCam (PhOD), MotionCam Fibra, CombiProtect |
+| **Door/Window** | DoorProtect, DoorProtect Plus, DoorProtect Plus Fibra |
+| **Wired Inputs** | MultiTransmitter, MultiTransmitter Fibra (with wire input support) |
+| **Fire Safety** | FireProtect, FireProtect Plus, FireProtect 2, FireProtect 2 RB (Heat/Smoke/CO) |
 | **Flood** | LeaksProtect |
 | **Glass Break** | GlassProtect |
-| **Sirens** | HomeSiren, StreetSiren, StreetSiren DoubleDeck |
-| **Keypads** | KeyPad, KeyPad Plus, KeyPad TouchScreen |
-| **Smart Devices** | Socket, WallSwitch, LightSwitch, Relay |
-| **Accessories** | SpaceControl, Button, Tag, ReX, ReX 2 |
+| **Sirens** | HomeSiren, HomeSiren Fibra, StreetSiren, StreetSiren Fibra, StreetSiren DoubleDeck |
+| **Keypads** | KeyPad, KeyPad Plus, KeyPad S Plus, KeyPad Combi, KeyPad TouchScreen, KeyPad Outdoor, KeyPad Fibra |
+| **Smart Devices** | Socket, Relay, WallSwitch, LightSwitch (1-gang, 2-gang) |
+| **Buttons** | Button, DoubleButton |
+| **Doorbells** | Doorbell, MotionCam Video Doorbell |
+| **Accessories** | SpaceControl, Tag, ReX, ReX 2 |
+| **Transmitters** | Transmitter, Transmitter Fibra |
+| **Video Surveillance** | TurretCam, BulletCam, MiniDome (with RTSP main/sub streams) |
+| **Other** | SpeakerPhone, LifeQuality (CO2, temperature, humidity), LineSplit Fibra |
 
 ### 📊 Rich Entity Support
 - **Alarm Control Panel** - Full security system control with support for groups/zones
-- **Binary Sensors** - Motion, door/window, smoke, flood, glass break, tamper, power status, moisture
-- **Sensors** - Battery level, signal strength, temperature, humidity, CO2, device counts, room assignment
-- **Switches** - Device settings (always active, night mode, LED indicator, sensitivity, etc.)
+- **Binary Sensors** - Motion, door/window, smoke, flood, glass break, tamper, shock, tilt, steam, high temperature, external power, human/vehicle/pet detection (video)
+- **Sensors** - Battery level, signal strength, temperature, humidity, CO2, device counts, room assignment, alarm volume/duration, last action, button mode, firmware version
+- **Switches** - Device settings (always active, night mode, LED indicator, shock sensor, tilt sensor, chimes, siren triggers, temperature alarms, current/voltage protection, etc.)
+- **Selects** - Shock sensitivity, LED brightness
+- **Numbers** - Tilt threshold configuration
+- **Cameras** - Video Edge cameras with RTSP streaming (main stream + sub stream for low bandwidth)
 - **Button** - Panic button for emergency situations
+- **Device Tracker** - Hub GPS location
+- **Update** - Firmware update status for hubs and video devices
 
 ### 🌍 Multi-Hub & Multi-Language
 - Support for multiple Ajax Hubs in one Home Assistant instance

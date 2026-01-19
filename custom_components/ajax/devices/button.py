@@ -75,6 +75,45 @@ class ButtonHandler(AjaxDeviceHandler):
             }
         )
 
+        # Button mode (PANIC_BUTTON, SMART_BUTTON, INTERCONNECT_DELAY)
+        if "button_mode" in self.device.attributes:
+            sensors.append(
+                {
+                    "key": "button_mode",
+                    "translation_key": "button_mode",
+                    "device_class": SensorDeviceClass.ENUM,
+                    "options": ["panic_button", "smart_button", "interconnect_delay"],
+                    "value_fn": lambda: self.device.attributes.get("button_mode", "").lower().replace("_", "_"),
+                    "enabled_by_default": True,
+                }
+            )
+
+        # LED brightness (OFF, LOW, HIGH)
+        if "brightness" in self.device.attributes:
+            sensors.append(
+                {
+                    "key": "button_brightness",
+                    "translation_key": "button_brightness",
+                    "device_class": SensorDeviceClass.ENUM,
+                    "options": ["off", "low", "high"],
+                    "value_fn": lambda: self.device.attributes.get("brightness", "").lower(),
+                    "enabled_by_default": True,
+                }
+            )
+
+        # False press filter (LONG_PUSH, DOUBLE_CLICK, DISABLED)
+        if "false_press_filter" in self.device.attributes:
+            sensors.append(
+                {
+                    "key": "false_press_filter",
+                    "translation_key": "false_press_filter",
+                    "device_class": SensorDeviceClass.ENUM,
+                    "options": ["long_push", "double_click", "disabled"],
+                    "value_fn": lambda: self.device.attributes.get("false_press_filter", "").lower(),
+                    "enabled_by_default": True,
+                }
+            )
+
         return sensors
 
     def get_switches(self) -> list[dict]:
