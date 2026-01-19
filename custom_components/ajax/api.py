@@ -794,8 +794,15 @@ class AjaxRestApi:
         """
         # First get the space to find VIDEO_EDGE devices
         space_data = await self.async_get_space(space_id)
+        devices = space_data.get("devices", [])
+        _LOGGER.debug(
+            "Space %s has %d devices: %s",
+            space_id,
+            len(devices),
+            [(d.get("id", "?")[:8], d.get("type")) for d in devices],
+        )
         video_edges = []
-        for device in space_data.get("devices", []):
+        for device in devices:
             if device.get("type") == "VIDEO_EDGE":
                 video_edge_id = device.get("id")
                 if video_edge_id:
@@ -819,6 +826,36 @@ class AjaxRestApi:
         return await self._request(
             "GET",
             f"user/{self.user_id}/spaces/{space_id}/devices/video-edges/{video_edge_id}",
+        )
+
+    async def async_get_video_edge_onvif(self, space_id: str, video_edge_id: str) -> dict[str, Any]:
+        """Get video edge ONVIF settings.
+
+        Args:
+            space_id: Space ID
+            video_edge_id: Video edge device ID
+
+        Returns:
+            ONVIF settings dictionary with userAuthEnabled, users, httpPort
+        """
+        return await self._request(
+            "GET",
+            f"user/{self.user_id}/spaces/{space_id}/devices/video-edges/{video_edge_id}/onvif",
+        )
+
+    async def async_get_video_edge_rtsp(self, space_id: str, video_edge_id: str) -> dict[str, Any]:
+        """Get video edge RTSP settings.
+
+        Args:
+            space_id: Space ID
+            video_edge_id: Video edge device ID
+
+        Returns:
+            RTSP settings dictionary with httpPort
+        """
+        return await self._request(
+            "GET",
+            f"user/{self.user_id}/spaces/{space_id}/devices/video-edges/{video_edge_id}/rtsp",
         )
 
     # Light/Button methods

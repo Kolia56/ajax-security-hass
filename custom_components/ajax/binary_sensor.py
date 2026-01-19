@@ -37,9 +37,21 @@ from .devices import (
     VideoEdgeHandler,
     WireInputHandler,
 )
-from .models import AjaxDevice, AjaxVideoEdge, DeviceType
+from .models import AjaxDevice, AjaxVideoEdge, DeviceType, VideoEdgeType
 
 _LOGGER = logging.getLogger(__name__)
+
+# Human-readable model names for video edge devices
+VIDEO_EDGE_MODEL_NAMES = {
+    VideoEdgeType.NVR: "NVR",
+    VideoEdgeType.TURRET: "TurretCam",
+    VideoEdgeType.TURRET_HL: "TurretCam HL",
+    VideoEdgeType.BULLET: "BulletCam",
+    VideoEdgeType.BULLET_HL: "BulletCam HL",
+    VideoEdgeType.MINIDOME: "MiniDome",
+    VideoEdgeType.MINIDOME_HL: "MiniDome HL",
+    VideoEdgeType.UNKNOWN: "Video Edge",
+}
 
 # Mapping of device types to handlers
 DEVICE_HANDLERS = {
@@ -381,7 +393,8 @@ class AjaxVideoEdgeBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySe
         if not video_edge:
             return {}
 
-        model_name = video_edge.video_edge_type.value
+        # Use human-readable model name
+        model_name = VIDEO_EDGE_MODEL_NAMES.get(video_edge.video_edge_type, video_edge.video_edge_type.value)
         if video_edge.color:
             model_name = f"{model_name} ({video_edge.color.title()})"
 

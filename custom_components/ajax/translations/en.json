@@ -206,17 +206,40 @@
       "tilt": {
         "name": "Tilt"
       },
+      "video_edge_lid_closed": {
+        "name": "Lid",
+        "state": {
+          "off": "Closed",
+          "on": "Open"
+        }
+      },
       "video_human": {
-        "name": "Human detected"
+        "name": "Human detection",
+        "state": {
+          "off": "None",
+          "on": "Human detected"
+        }
       },
       "video_motion": {
-        "name": "Motion detected"
+        "name": "Motion detection",
+        "state": {
+          "off": "None",
+          "on": "Motion detected"
+        }
       },
       "video_pet": {
-        "name": "Pet detected"
+        "name": "Pet detection",
+        "state": {
+          "off": "None",
+          "on": "Pet detected"
+        }
       },
       "video_vehicle": {
-        "name": "Vehicle detected"
+        "name": "Vehicle detection",
+        "state": {
+          "off": "None",
+          "on": "Vehicle detected"
+        }
       },
       "wings_radio": {
         "name": "Wings radio"
@@ -692,6 +715,59 @@
       "unread_notifications": {
         "name": "Unread notifications"
       },
+      "video_edge_connection": {
+        "name": "Connection",
+        "state": {
+          "offline": "Offline",
+          "online": "Online",
+          "unknown": "Unknown"
+        }
+      },
+      "video_edge_cpu_usage": {
+        "name": "CPU usage"
+      },
+      "video_edge_ram_usage": {
+        "name": "RAM usage"
+      },
+      "video_edge_record_mode": {
+        "name": "Recording mode",
+        "state": {
+          "disabled": "Disabled",
+          "on_detection": "On detection",
+          "permanent": "Permanent",
+          "unknown": "Unknown"
+        }
+      },
+      "video_edge_record_policy": {
+        "name": "Recording policy",
+        "state": {
+          "always": "Always",
+          "unknown": "Unknown",
+          "when_requested": "When requested"
+        }
+      },
+      "video_edge_storage_status": {
+        "name": "Storage status",
+        "state": {
+          "formatting": "Formatting",
+          "idle": "Idle",
+          "need_format": "Format required",
+          "none": "None",
+          "ready": "Ready"
+        }
+      },
+      "video_edge_storage_temperature": {
+        "name": "Storage temperature"
+      },
+      "video_edge_storage_total": {
+        "name": "Total storage"
+      },
+      "video_edge_uptime": {
+        "name": "Uptime"
+      },
+      "video_edge_wifi_signal": {
+        "name": "Camera WiFi signal"
+      },
       "wifi_signal_level": {
         "name": "Wi-Fi signal"
       }
@@ -873,6 +949,14 @@
           "on": "Enabled"
         }
       }
+    },
+    "update": {
+      "hub_firmware": {
+        "name": "Firmware"
+      },
+      "video_edge_firmware": {
+        "name": "Firmware"
+      }
     }
   },
   "exceptions": {
@@ -928,7 +1012,8 @@
           "enabled_spaces": "Enabled Spaces",
           "notifications": "Notifications",
           "polling_settings": "Polling Settings",
-          "proxy_settings": "Proxy Settings"
+          "proxy_settings": "Proxy Settings",
+          "rtsp_credentials": "RTSP/ONVIF Credentials"
         },
         "title": "Ajax Options"
       },
@@ -960,6 +1045,18 @@
         },
         "description": "Change your Ajax proxy server URL.",
         "title": "Proxy Settings"
+      },
+      "rtsp_credentials": {
+        "data": {
+          "rtsp_password": "ONVIF Password",
+          "rtsp_username": "ONVIF Username"
+        },
+        "data_description": {
+          "rtsp_password": "Password associated with the ONVIF user",
+          "rtsp_username": "Username created in Ajax app for ONVIF"
+        },
+        "description": "Configure ONVIF/RTSP credentials to access Video Edge camera streams.\n\n**Current configuration:**\n- Username: {current_username}\n- Password: {current_password}\n\n⚠️ These credentials must be created in the Ajax app (Camera → Settings → ONVIF).",
+        "title": "RTSP/ONVIF Credentials"
       }
     }
   },

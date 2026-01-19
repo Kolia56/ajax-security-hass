@@ -42,6 +42,8 @@ from .const import (
     CONF_PERSISTENT_NOTIFICATION,
     CONF_PROXY_URL,
     CONF_QUEUE_NAME,
+    CONF_RTSP_PASSWORD,
+    CONF_RTSP_USERNAME,
     DOMAIN,
     NOTIFICATION_FILTER_ALARMS_ONLY,
     NOTIFICATION_FILTER_ALL,
@@ -586,6 +588,9 @@ class AjaxOptionsFlow(OptionsFlow):
         if auth_mode == AUTH_MODE_DIRECT:
             menu_options.append("aws_credentials")
 
+        # Always show RTSP credentials option (for Video Edge cameras)
+        menu_options.append("rtsp_credentials")
+
         return self.async_show_menu(
             step_id="init",
             menu_options=menu_options,
@@ -858,5 +863,43 @@ class AjaxOptionsFlow(OptionsFlow):
                 "current_access_key": self._mask_credential(current_access_key),
                 "current_secret_key": self._mask_credential(current_secret_key),
                 "current_queue": current_queue or "Not configured",
+            },
+        )
+
+    async def async_step_rtsp_credentials(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Manage RTSP/ONVIF credentials for Video Edge cameras."""
+        if user_input is not None:
+            # Update options with RTSP credentials
+            new_options = {**self.config_entry.options}
+
+            # Store credentials (even if empty to clear them)
+            new_options[CONF_RTSP_USERNAME] = user_input.get(CONF_RTSP_USERNAME, "")
+            new_options[CONF_RTSP_PASSWORD] = user_input.get(CONF_RTSP_PASSWORD, "")
+
+            return self.async_create_entry(title="", data=new_options)
+
+        # Get current credentials
+        current_username = self.config_entry.options.get(CONF_RTSP_USERNAME, "")
+        current_password = self.config_entry.options.get(CONF_RTSP_PASSWORD, "")
+
+        data_schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_RTSP_USERNAME,
+                    description={"suggested_value": current_username},
+                ): str,
+                vol.Optional(
+                    CONF_RTSP_PASSWORD,
+                    description={"suggested_value": ""},  # Don't show password
+                ): str,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="rtsp_credentials",
+            data_schema=data_schema,
+            description_placeholders={
+                "current_username": current_username or "Not configured",
+                "current_password": self._mask_credential(current_password) if current_password else "Not configured",
             },
         )

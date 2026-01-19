@@ -43,9 +43,21 @@ from .devices import (
     VideoEdgeHandler,
     WireInputHandler,
 )
-from .models import AjaxDevice, AjaxSpace, AjaxVideoEdge, DeviceType
+from .models import AjaxDevice, AjaxSpace, AjaxVideoEdge, DeviceType, VideoEdgeType
 
 _LOGGER = logging.getLogger(__name__)
+
+# Human-readable model names for video edge devices
+VIDEO_EDGE_MODEL_NAMES = {
+    VideoEdgeType.NVR: "NVR",
+    VideoEdgeType.TURRET: "TurretCam",
+    VideoEdgeType.TURRET_HL: "TurretCam HL",
+    VideoEdgeType.BULLET: "BulletCam",
+    VideoEdgeType.BULLET_HL: "BulletCam HL",
+    VideoEdgeType.MINIDOME: "MiniDome",
+    VideoEdgeType.MINIDOME_HL: "MiniDome HL",
+    VideoEdgeType.UNKNOWN: "Video Edge",
+}
 
 
 # ==============================================================================
@@ -798,6 +810,16 @@ class AjaxVideoEdgeSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
         if "enabled_by_default" in sensor_desc:
             self._attr_entity_registry_enabled_default = sensor_desc["enabled_by_default"]
 
+        # Set device class for enum sensors
+        if sensor_desc.get("device_class") == "enum":
+            self._attr_device_class = SensorDeviceClass.ENUM
+            if "options" in sensor_desc:
+                self._attr_options = sensor_desc["options"]
+
+        # Set native unit of measurement
+        if "native_unit_of_measurement" in sensor_desc:
+            self._attr_native_unit_of_measurement = sensor_desc["native_unit_of_measurement"]
+
     @property
     def native_value(self) -> Any:
         """Return the state of the sensor."""
@@ -833,7 +855,8 @@ class AjaxVideoEdgeSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
         if not video_edge:
             return {}
 
-        model_name = video_edge.video_edge_type.value
+        # Use human-readable model name
+        model_name = VIDEO_EDGE_MODEL_NAMES.get(video_edge.video_edge_type, video_edge.video_edge_type.value)
         if video_edge.color:
             model_name = f"{model_name} ({video_edge.color.title()})"
 

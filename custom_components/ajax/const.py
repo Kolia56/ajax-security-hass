@@ -31,6 +31,10 @@ AUTH_MODE_PROXY_SECURE = "proxy_secure"  # All requests via proxy + SSE
 # Polling configuration
 CONF_DOOR_SENSOR_FAST_POLL = "door_sensor_fast_poll"  # Enable fast door sensor polling
 
+# RTSP/ONVIF credentials for Video Edge cameras
+CONF_RTSP_USERNAME = "rtsp_username"
+CONF_RTSP_PASSWORD = "rtsp_password"
+
 # Notification filter options
 NOTIFICATION_FILTER_NONE = "none"
 NOTIFICATION_FILTER_ALARMS_ONLY = "alarms_only"

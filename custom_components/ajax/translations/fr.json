@@ -206,17 +206,40 @@
       "tilt": {
         "name": "Capteur d'inclinaison"
       },
+      "video_edge_lid_closed": {
+        "name": "Couvercle",
+        "state": {
+          "off": "Fermé",
+          "on": "Ouvert"
+        }
+      },
       "video_human": {
-        "name": "Personne détectée"
+        "name": "Détection personne",
+        "state": {
+          "off": "Aucune",
+          "on": "Personne détectée"
+        }
       },
       "video_motion": {
-        "name": "Mouvement détecté"
+        "name": "Détection mouvement",
+        "state": {
+          "off": "Aucun",
+          "on": "Mouvement détecté"
+        }
       },
       "video_pet": {
-        "name": "Animal détecté"
+        "name": "Détection animal",
+        "state": {
+          "off": "Aucun",
+          "on": "Animal détecté"
+        }
       },
       "video_vehicle": {
-        "name": "Véhicule détecté"
+        "name": "Détection véhicule",
+        "state": {
+          "off": "Aucun",
+          "on": "Véhicule détecté"
+        }
       },
       "wings_radio": {
         "name": "Radio Wings"
@@ -692,6 +715,59 @@
       "unread_notifications": {
         "name": "Notifications non lues"
       },
+      "video_edge_connection": {
+        "name": "Connexion",
+        "state": {
+          "offline": "Hors ligne",
+          "online": "En ligne",
+          "unknown": "Inconnu"
+        }
+      },
+      "video_edge_cpu_usage": {
+        "name": "Utilisation CPU"
+      },
+      "video_edge_ram_usage": {
+        "name": "Utilisation RAM"
+      },
+      "video_edge_record_mode": {
+        "name": "Mode d'enregistrement",
+        "state": {
+          "disabled": "Désactivé",
+          "on_detection": "Sur détection",
+          "permanent": "Permanent",
+          "unknown": "Inconnu"
+        }
+      },
+      "video_edge_record_policy": {
+        "name": "Politique d'enregistrement",
+        "state": {
+          "always": "Toujours",
+          "unknown": "Inconnu",
+          "when_requested": "Sur demande"
+        }
+      },
+      "video_edge_storage_status": {
+        "name": "État du stockage",
+        "state": {
+          "formatting": "Formatage en cours",
+          "idle": "Inactif",
+          "need_format": "Formatage requis",
+          "none": "Aucun",
+          "ready": "Prêt"
+        }
+      },
+      "video_edge_storage_temperature": {
+        "name": "Température stockage"
+      },
+      "video_edge_storage_total": {
+        "name": "Stockage total"
+      },
+      "video_edge_uptime": {
+        "name": "Temps de fonctionnement"
+      },
+      "video_edge_wifi_signal": {
+        "name": "Signal WiFi caméra"
+      },
       "wifi_signal_level": {
         "name": "Signal Wi-Fi"
       }
@@ -873,6 +949,14 @@
           "on": "Activé"
         }
       }
+    },
+    "update": {
+      "hub_firmware": {
+        "name": "Firmware"
+      },
+      "video_edge_firmware": {
+        "name": "Firmware"
+      }
     }
   },
   "exceptions": {
@@ -928,7 +1012,8 @@
           "enabled_spaces": "Espaces activés",
           "notifications": "Notifications",
           "polling_settings": "Paramètres de polling",
-          "proxy_settings": "Paramètres du proxy"
+          "proxy_settings": "Paramètres du proxy",
+          "rtsp_credentials": "Identifiants RTSP/ONVIF"
         },
         "title": "Options Ajax"
       },
@@ -960,6 +1045,18 @@
         },
         "description": "Modifiez l'URL de votre serveur proxy Ajax.",
         "title": "Paramètres du proxy"
+      },
+      "rtsp_credentials": {
+        "data": {
+          "rtsp_password": "Mot de passe ONVIF",
+          "rtsp_username": "Nom d'utilisateur ONVIF"
+        },
+        "data_description": {
+          "rtsp_password": "Mot de passe associé à l'utilisateur ONVIF",
+          "rtsp_username": "Nom d'utilisateur créé dans l'app Ajax pour ONVIF"
+        },
+        "description": "Configurez les identifiants ONVIF/RTSP pour accéder aux flux vidéo des caméras Video Edge.\n\n**Configuration actuelle:**\n- Utilisateur: {current_username}\n- Mot de passe: {current_password}\n\n⚠️ Ces identifiants doivent être créés dans l'app Ajax (Caméra → Paramètres → ONVIF).",
+        "title": "Identifiants RTSP/ONVIF"
       }
     }
   },

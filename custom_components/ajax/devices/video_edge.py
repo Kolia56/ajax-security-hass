@@ -9,10 +9,67 @@ Handles:
 
 from __future__ import annotations
 
+import logging
+import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..models import AjaxVideoEdge
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _parse_iso_duration(duration: str | None) -> str | None:
+    """Parse ISO 8601 duration (e.g., PT19M38.277S) to human-readable format."""
+    if not duration:
+        return None
+
+    # Match ISO 8601 duration format: PT[nH][nM][nS]
+    match = re.match(
+        r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?",
+        duration,
+    )
+    if not match:
+        return duration  # Return as-is if can't parse
+
+    hours = int(match.group(1)) if match.group(1) else 0
+    minutes = int(match.group(2)) if match.group(2) else 0
+    seconds = float(match.group(3)) if match.group(3) else 0
+
+    parts = []
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    if seconds > 0 and hours == 0:  # Only show seconds if less than 1 hour
+        parts.append(f"{int(seconds)}s")
+
+    return " ".join(parts) if parts else "0s"
+
+
+# Record mode translations (API value -> translation key)
+RECORD_MODE_TRANSLATIONS = {
+    "ON_DETECTION": "on_detection",
+    "PERMANENT": "permanent",
+    "DISABLED": "disabled",
+    "UNKNOWN": "unknown",
+}
+
+# Storage status translations (API value -> translation key)
+STORAGE_STATUS_TRANSLATIONS = {
+    "READY": "ready",
+    "IDLE": "idle",
+    "NEED_FORMAT": "need_format",
+    "FORMATTING": "formatting",
+    "NONE": "none",
+}
+
+# Record policy translations (API value -> translation key)
+RECORD_POLICY_TRANSLATIONS = {
+    "ALWAYS": "always",
+    "WHEN_REQUESTED": "when_requested",
+    "UNKNOWN": "unknown",
+}
 
 
 class VideoEdgeHandler:
@@ -21,6 +78,12 @@ class VideoEdgeHandler:
     def __init__(self, video_edge: AjaxVideoEdge) -> None:
         """Initialize the handler."""
         self.video_edge = video_edge
+        # Debug: log raw data to see all available fields
+        _LOGGER.debug(
+            "VideoEdge %s raw_data: %s",
+            video_edge.name,
+            video_edge.raw_data,
+        )
 
     def get_binary_sensors(self) -> list[dict]:
         """Return binary sensor entities for video edges."""
@@ -80,11 +143,26 @@ class VideoEdgeHandler:
                 }
             )
 
+        # Lid closed sensor (from systemInfo)
+        # API returns lidClosed=True when closed, but we want on=open, off=closed
+        system_info = self.video_edge.raw_data.get("systemInfo", {})
+        if "lidClosed" in system_info:
+            sensors.append(
+                {
+                    "key": "lid_closed",
+                    "translation_key": "video_edge_lid_closed",
+                    "value_fn": lambda: not self.video_edge.raw_data.get("systemInfo", {}).get("lidClosed", True),
+                    "enabled_by_default": True,
+                    "device_class": "opening",
+                }
+            )
+
         return sensors
 
     def get_sensors(self) -> list[dict]:
         """Return sensor entities for video edges."""
         sensors = []
+        raw_data = self.video_edge.raw_data
 
         # IP Address
         if self.video_edge.ip_address:
@@ -122,7 +200,193 @@ class VideoEdgeHandler:
                 }
             )
 
+        # System info sensors
+        system_info = raw_data.get("systemInfo", {})
+        if system_info:
+            # Uptime (parsed from ISO 8601 duration)
+            if "uptime" in system_info:
+                sensors.append(
+                    {
+                        "key": "uptime",
+                        "translation_key": "video_edge_uptime",
+                        "value_fn": lambda: _parse_iso_duration(
+                            self.video_edge.raw_data.get("systemInfo", {}).get("uptime")
+                        ),
+                        "enabled_by_default": True,
+                        "entity_category": "diagnostic",
+                    }
+                )
+
+            # CPU usage
+            if "averageCpuConsumption" in system_info:
+                sensors.append(
+                    {
+                        "key": "cpu_usage",
+                        "translation_key": "video_edge_cpu_usage",
+                        "native_unit_of_measurement": "%",
+                        "value_fn": lambda: self.video_edge.raw_data.get("systemInfo", {}).get("averageCpuConsumption"),
+                        "enabled_by_default": True,
+                        "entity_category": "diagnostic",
+                    }
+                )
+
+            # RAM usage
+            if "ramConsumption" in system_info:
+                sensors.append(
+                    {
+                        "key": "ram_usage",
+                        "translation_key": "video_edge_ram_usage",
+                        "native_unit_of_measurement": "%",
+                        "value_fn": lambda: self.video_edge.raw_data.get("systemInfo", {}).get("ramConsumption"),
+                        "enabled_by_default": True,
+                        "entity_category": "diagnostic",
+                    }
+                )
+
+        # Storage info
+        storage_devices = raw_data.get("storageDevices", [])
+        if storage_devices and len(storage_devices) > 0:
+            storage = storage_devices[0]
+            # Storage size (convert bytes to GB)
+            if "sizeTotal" in storage:
+                sensors.append(
+                    {
+                        "key": "storage_total",
+                        "translation_key": "video_edge_storage_total",
+                        "native_unit_of_measurement": "GB",
+                        "value_fn": lambda: round(
+                            self.video_edge.raw_data.get("storageDevices", [{}])[0].get("sizeTotal", 0) / (1024**3),
+                            1,
+                        ),
+                        "enabled_by_default": True,
+                        "entity_category": "diagnostic",
+                    }
+                )
+
+            # Storage temperature
+            if "temperature" in storage:
+                sensors.append(
+                    {
+                        "key": "storage_temperature",
+                        "translation_key": "video_edge_storage_temperature",
+                        "native_unit_of_measurement": "°C",
+                        "value_fn": lambda: self.video_edge.raw_data.get("storageDevices", [{}])[0].get("temperature"),
+                        "enabled_by_default": True,
+                        "entity_category": "diagnostic",
+                    }
+                )
+
+            # Storage status (state: READY, NEED_FORMAT, FORMATTING, etc.)
+            storage_status = storage.get("status", {})
+            if storage_status and "state" in storage_status:
+                sensors.append(
+                    {
+                        "key": "storage_status",
+                        "translation_key": "video_edge_storage_status",
+                        "device_class": "enum",
+                        "options": ["ready", "idle", "need_format", "formatting", "none"],
+                        "value_fn": lambda: self._get_storage_status(),
+                        "enabled_by_default": True,
+                        "entity_category": "diagnostic",
+                    }
+                )
+
+        # Connection state (ONLINE/OFFLINE)
+        sensors.append(
+            {
+                "key": "connection_state",
+                "translation_key": "video_edge_connection",
+                "device_class": "enum",
+                "options": ["online", "offline", "unknown"],
+                "value_fn": lambda: self.video_edge.connection_state.lower()
+                if self.video_edge.connection_state
+                else "unknown",
+                "enabled_by_default": True,
+                "entity_category": "diagnostic",
+            }
+        )
+
+        # WiFi signal strength
+        network = raw_data.get("networkInterface", {})
+        wifi = network.get("wifi", {})
+        if wifi and "signalStrength" in wifi:
+            sensors.append(
+                {
+                    "key": "wifi_signal",
+                    "translation_key": "video_edge_wifi_signal",
+                    "native_unit_of_measurement": "%",
+                    "value_fn": lambda: self.video_edge.raw_data.get("networkInterface", {})
+                    .get("wifi", {})
+                    .get("signalStrength"),
+                    "enabled_by_default": True,
+                    "entity_category": "diagnostic",
+                }
+            )
+
+        # Record mode and policy per channel (as enum sensors with translations)
+        channels = self.video_edge.channels
+        if isinstance(channels, list):
+            for i, channel in enumerate(channels):
+                if isinstance(channel, dict):
+                    channel_id = channel.get("id", str(i))
+                    channel_suffix = f"_{channel_id}" if len(channels) > 1 else ""
+
+                    # Record mode
+                    if "recordMode" in channel:
+                        sensors.append(
+                            {
+                                "key": f"record_mode{channel_suffix}",
+                                "translation_key": "video_edge_record_mode",
+                                "device_class": "enum",
+                                "options": ["on_detection", "permanent", "disabled", "unknown"],
+                                "value_fn": lambda cid=channel_id: self._get_channel_record_mode(cid),
+                                "enabled_by_default": True,
+                                "entity_category": "diagnostic",
+                            }
+                        )
+
+                    # Record policy
+                    if "recordPolicy" in channel:
+                        sensors.append(
+                            {
+                                "key": f"record_policy{channel_suffix}",
+                                "translation_key": "video_edge_record_policy",
+                                "device_class": "enum",
+                                "options": ["always", "when_requested", "unknown"],
+                                "value_fn": lambda cid=channel_id: self._get_channel_record_policy(cid),
+                                "enabled_by_default": True,
+                                "entity_category": "diagnostic",
+                            }
+                        )
+
         return sensors
+
+    def _get_channel_record_mode(self, channel_id: str) -> str | None:
+        """Get record mode for a specific channel (translated to lowercase key)."""
+        channel = self._get_channel_by_id(channel_id)
+        if channel:
+            mode = channel.get("recordMode", "UNKNOWN")
+            # Convert API value to translation key (lowercase)
+            return RECORD_MODE_TRANSLATIONS.get(mode, mode.lower())
+        return None
+
+    def _get_channel_record_policy(self, channel_id: str) -> str | None:
+        """Get record policy for a specific channel (translated to lowercase key)."""
+        channel = self._get_channel_by_id(channel_id)
+        if channel:
+            policy = channel.get("recordPolicy", "UNKNOWN")
+            # Convert API value to translation key (lowercase)
+            return RECORD_POLICY_TRANSLATIONS.get(policy, policy.lower())
+        return None
+
+    def _get_storage_status(self) -> str:
+        """Get storage status (translated to lowercase key)."""
+        storage_devices = self.video_edge.raw_data.get("storageDevices", [])
+        if storage_devices and len(storage_devices) > 0:
+            status = storage_devices[0].get("status", {})
+            state = status.get("state", "NONE")
+            return STORAGE_STATUS_TRANSLATIONS.get(state, state.lower())
+        return "none"
 
     def _get_channel_by_id(self, channel_id: str) -> dict | None:
         """Get channel dict by ID from current video_edge.channels."""
