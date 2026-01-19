@@ -285,8 +285,8 @@
       "led_brightness": {
         "name": "LED brightness",
         "state": {
-          "MAX": "High",
-          "MIN": "Low"
+          "max": "High",
+          "min": "Low"
         }
       },
       "shock_sensitivity": {

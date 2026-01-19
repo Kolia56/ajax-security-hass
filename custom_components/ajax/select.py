@@ -41,8 +41,8 @@ SHOCK_SENSITIVITY_OPTIONS = {
 # Reverse mapping (key -> value)
 SHOCK_SENSITIVITY_VALUES = {v: k for k, v in SHOCK_SENSITIVITY_OPTIONS.items()}
 
-# LED brightness options for Socket
-LED_BRIGHTNESS_OPTIONS = ["MIN", "MAX"]
+# LED brightness options for Socket (lowercase for HA translation keys)
+LED_BRIGHTNESS_OPTIONS = ["min", "max"]
 
 
 async def async_setup_entry(
@@ -198,7 +198,9 @@ class AjaxLedBrightnessSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEnti
         device = self._get_device()
         if not device:
             return None
-        return device.attributes.get("indicationBrightness", "MAX")
+        # API returns uppercase (MIN/MAX), convert to lowercase for HA
+        value = device.attributes.get("indicationBrightness", "MAX")
+        return value.lower() if value else "max"
 
     async def async_select_option(self, option: str) -> None:
         """Change the LED brightness."""
@@ -206,13 +208,16 @@ class AjaxLedBrightnessSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEnti
         if not space:
             raise HomeAssistantError("space_not_found")
 
+        # Convert lowercase HA option to uppercase for API
+        api_value = option.upper()
+
         try:
             await self.coordinator.api.async_update_device(
-                space.hub_id, self._device_id, {"indicationBrightness": option}
+                space.hub_id, self._device_id, {"indicationBrightness": api_value}
             )
             _LOGGER.info(
                 "Set indicationBrightness=%s for device %s",
-                option,
+                api_value,
                 self._device_id,
             )
             await self.coordinator.async_request_refresh()

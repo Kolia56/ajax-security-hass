@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.76] - 2026-01-19
+
+### Added
+- **Button device sensors**: button_mode, button_brightness, false_press_filter
+- **Camera sub stream**: Low bandwidth stream for 3G/4G connections (disabled by default)
+- **Socket LED brightness selector**: MIN/MAX brightness configuration
+- **FireProtect 2 switches**: CO alarm, high temperature alarm, rapid temperature rise alarm
+- **Binary sensors**: high_temperature, rapid_temperature_rise, steam detection
+
+### Changed
+- LED brightness selector now hidden when LED indication is disabled
+- Switch state changes now notify listeners for immediate UI update
+- Updated README with complete device support documentation
+
 ## [0.7.75] - 2026-01-19
 
 ### Added
