@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.77] - 2026-01-20
+
+### Added
+- **NVR multi-channel camera support**: Each NVR channel now creates its own camera entity with correct RTSP URL
+- **NVR channel sub streams**: Low bandwidth stream for each channel (disabled by default)
+- **AI detection sensors on source camera**: Motion, human, vehicle, pet detections from NVR are now attached to the source camera device with `linked_camera` attribute
+- **Diagnostic service**: `ajax.get_nvr_recordings` to test NVR recordings API endpoint
+
+### Fixed
+- **Issue #75**: Crash when firmware `updateStatus` is null - now handles null values properly
+- **Issue #74**: Notifications appearing even when notification filter set to "None"
+
+### Notes
+- NVR recordings API returns 404 - recordings not accessible via Ajax Cloud API
+- NVR ONVIF doesn't expose Recording/Replay capabilities - recordings only available via Ajax app
+
 ## [0.7.76] - 2026-01-19
 
 ### Added
