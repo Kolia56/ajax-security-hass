@@ -25,7 +25,7 @@ RETRY_BACKOFF_BASE = 1.0  # Base delay in seconds
 RETRY_BACKOFF_MAX = 30.0  # Maximum delay in seconds
 
 # Rate limiting configuration
-RATE_LIMIT_REQUESTS = 30  # Max requests per window
+RATE_LIMIT_REQUESTS = 60  # Max requests per window
 RATE_LIMIT_WINDOW = 60  # Window in seconds
 
 
@@ -833,13 +833,15 @@ class AjaxRestApi:
         """Set WaterStop valve state.
 
         Uses the /command endpoint for valve control.
+        WaterStop uses SWITCH_ON (open) / SWITCH_OFF (close) commands.
 
         Args:
             hub_id: Hub ID
             device_id: Device ID
             open_valve: True to open valve, False to close
         """
-        command = "OPEN" if open_valve else "CLOSE"
+        # WaterStop uses same commands as switches: SWITCH_ON = open, SWITCH_OFF = close
+        command = "SWITCH_ON" if open_valve else "SWITCH_OFF"
         await self.async_send_device_command(hub_id, device_id, command, "WaterStop")
 
     # Socket methods
