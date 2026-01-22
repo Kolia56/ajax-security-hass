@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1] - 2026-01-22
+
+### Fixed
+- WaterStop valve commands: use `SWITCH_ON`/`SWITCH_OFF` instead of `OPEN`/`CLOSE`
+
+### Changed
+- Increase rate limit from 30 to 60 requests per minute
+
 ## [0.8.0] - 2026-01-22
 
 ### Added
