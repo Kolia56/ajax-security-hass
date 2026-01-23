@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - 2026-01-23
+
+### Added
+- Support for new device types:
+  - DoorProtectSPlus (door contact with shock/tilt sensors)
+  - MotionCamSPhod (motion detector with photo verification)
+  - CurtainOutdoorJeweller (outdoor curtain motion detector)
+  - GlassProtectS (glass break detector)
+  - LightSwitchTwoChannelTwoWay (two-channel light switch)
+  - StreetSirenSDoubleDeck (outdoor siren)
+  - HomeSirenS (indoor siren)
+  - INDOOR video edge camera type (indoor WiFi camera)
+
+### Fixed
+- Active connection sensor random order issue (#81): channels now sorted alphabetically
+
 ## [0.10.0] - 2026-01-23
 
 ### Added
