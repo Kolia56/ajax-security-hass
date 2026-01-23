@@ -106,20 +106,20 @@ Issues, pull requests, and feedback are welcome!
 | Category | Devices |
 |----------|---------|
 | **Hubs** | Hub, Hub Plus, Hub 2, Hub 2 Plus, Hub 2 (4G), Hub Hybrid (Jeweller & Fibra) |
-| **Motion Detectors** | MotionProtect, MotionProtect Plus, MotionProtect Outdoor, MotionProtect Curtain, MotionCam, MotionCam Outdoor, MotionCam (PhOD), MotionCam Fibra, CombiProtect |
-| **Door/Window** | DoorProtect, DoorProtect Plus, DoorProtect Plus Fibra |
+| **Motion Detectors** | MotionProtect, MotionProtect Plus, MotionProtect Outdoor, MotionProtect Curtain, Curtain Outdoor, MotionCam, MotionCam Outdoor, MotionCam (PhOD), MotionCam S (PhOD), MotionCam Fibra, CombiProtect |
+| **Door/Window** | DoorProtect, DoorProtect Plus, DoorProtect Plus Fibra, DoorProtect S Plus |
 | **Wired Inputs** | MultiTransmitter, MultiTransmitter Fibra (with wire input support) |
 | **Fire Safety** | FireProtect, FireProtect Plus, FireProtect 2, FireProtect 2 RB (Heat/Smoke/CO) |
-| **Flood** | LeaksProtect |
-| **Glass Break** | GlassProtect |
-| **Sirens** | HomeSiren, HomeSiren Fibra, StreetSiren, StreetSiren Fibra, StreetSiren DoubleDeck |
+| **Flood** | LeaksProtect, WaterStop |
+| **Glass Break** | GlassProtect, GlassProtect S |
+| **Sirens** | HomeSiren, HomeSiren S, HomeSiren Fibra, StreetSiren, StreetSiren Fibra, StreetSiren DoubleDeck, StreetSiren S DoubleDeck |
 | **Keypads** | KeyPad, KeyPad Plus, KeyPad S Plus, KeyPad Combi, KeyPad TouchScreen, KeyPad Outdoor, KeyPad Fibra |
-| **Smart Devices** | Socket, Relay, WallSwitch, LightSwitch (1-gang, 2-gang) |
+| **Smart Devices** | Socket, SocketOutlet, Relay, WallSwitch, LightSwitch (1-gang, 2-gang, 2-channel 2-way) |
 | **Buttons** | Button, DoubleButton |
 | **Doorbells** | Doorbell, MotionCam Video Doorbell |
 | **Accessories** | SpaceControl, Tag, ReX, ReX 2 |
 | **Transmitters** | Transmitter, Transmitter Fibra |
-| **Video Surveillance** | TurretCam, BulletCam, MiniDome (with RTSP main/sub streams) |
+| **Video Surveillance** | TurretCam, BulletCam, MiniDome, Indoor Camera (with RTSP main/sub streams) |
 | **Other** | SpeakerPhone, LifeQuality (CO2, temperature, humidity), LineSplit Fibra |
 
 ### 📊 Rich Entity Support
