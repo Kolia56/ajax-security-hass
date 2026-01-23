@@ -188,6 +188,18 @@ class VideoEdgeHandler:
                 }
             )
 
+            # Line crossing detection
+            sensors.append(
+                {
+                    "key": f"line_crossing_{channel_id}" if use_channel_suffix else "line_crossing",
+                    "translation_key": "video_line_crossing",
+                    "value_fn": lambda cid=channel_id: self._has_detection_by_id(cid, "VIDEO_LINE_CROSSING"),
+                    "enabled_by_default": True,
+                    "channel_id": channel_id,
+                    "target_video_edge_id": target_ve_id,
+                }
+            )
+
         # Lid/tamper sensor (from systemInfo)
         # API returns lidClosed=True when closed, but we want on=tampered (open), off=ok (closed)
         # Use device_class TAMPER without translation_key so HA uses automatic translation

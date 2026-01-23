@@ -261,6 +261,13 @@
           "on": "Personne détectée"
         }
       },
+      "video_line_crossing": {
+        "name": "Franchissement de ligne",
+        "state": {
+          "off": "Aucun",
+          "on": "Ligne franchie"
+        }
+      },
       "video_motion": {
         "name": "Détection mouvement",
         "state": {

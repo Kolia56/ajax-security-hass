@@ -241,6 +241,13 @@
           "on": "Human detected"
         }
       },
+      "video_line_crossing": {
+        "name": "Line crossing",
+        "state": {
+          "off": "None",
+          "on": "Line crossed"
+        }
+      },
       "video_motion": {
         "name": "Motion detection",
         "state": {

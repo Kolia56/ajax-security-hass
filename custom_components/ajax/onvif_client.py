@@ -413,6 +413,18 @@ class AjaxOnvifClient:
                     active=state,
                 )
 
+            # Parse Ajax Line Crossing Detection
+            # Topic: tns1:RuleEngine/tnsajax:LineDetector/Crossing
+            # Data: Crossed = true/false (or similar)
+            if "LineDetector/Crossing" in topic:
+                crossed = data_items.get("Crossed", data_items.get("State", "false")).lower() == "true"
+                return OnvifDetectionEvent(
+                    video_edge_id=self.video_edge.id,
+                    channel_id=channel_id,
+                    detection_type="VIDEO_LINE_CROSSING",
+                    active=crossed,
+                )
+
             # Parse Ajax Doorbell Ring
             # Topic: tns1:RuleEngine/RingDetector/Detection
             # Data: Detected = true/false
