@@ -61,8 +61,8 @@ class AjaxOnvifManager:
             True if connection successful, False otherwise
         """
         if not video_edge.ip_address:
-            _LOGGER.debug(
-                "Skipping ONVIF for %s: no IP address",
+            _LOGGER.warning(
+                "ONVIF: Skipping %s - no IP address available",
                 video_edge.name,
             )
             return False
@@ -123,8 +123,10 @@ class AjaxOnvifManager:
             video_edges: List of video edge devices to connect
         """
         if not self._username or not self._password:
-            _LOGGER.debug("ONVIF credentials not configured, skipping")
+            _LOGGER.info("ONVIF: Credentials not configured - skipping local video detection")
             return
+
+        _LOGGER.info("ONVIF: Starting with credentials (user=%s)", self._username)
 
         # Check if NVR is present - if so, use only NVR for ONVIF
         nvrs = [ve for ve in video_edges if ve.video_edge_type == VideoEdgeType.NVR]
@@ -133,20 +135,20 @@ class AjaxOnvifManager:
         if nvrs:
             # NVR present - connect only to NVR(s), skip individual cameras
             targets = nvrs
-            _LOGGER.debug(
-                "NVR detected - using NVR for ONVIF (skipping %d individual cameras)",
+            _LOGGER.info(
+                "ONVIF: NVR detected - using NVR for events (skipping %d individual cameras)",
                 len(cameras),
             )
         else:
             # No NVR - connect to individual cameras
             targets = cameras
-            _LOGGER.debug(
-                "No NVR - connecting to %d individual cameras",
+            _LOGGER.info(
+                "ONVIF: No NVR - connecting to %d individual camera(s)",
                 len(cameras),
             )
 
         if not targets:
-            _LOGGER.debug("No video edges to connect")
+            _LOGGER.info("ONVIF: No video edge devices found to connect")
             return
 
         # Connect to selected targets concurrently

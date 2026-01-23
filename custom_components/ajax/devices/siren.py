@@ -41,13 +41,16 @@ class SirenHandler(AjaxDeviceHandler):
             )
 
         # Externally powered (StreetSiren only)
-        if "externally_powered" in self.device.attributes:
+        # Check both normalized and raw attribute names
+        if "externally_powered" in self.device.attributes or "externallyPowered" in self.device.attributes:
             sensors.append(
                 {
                     "key": "externally_powered",
                     "translation_key": "externally_powered",
                     "device_class": BinarySensorDeviceClass.PLUG,
-                    "value_fn": lambda: self.device.attributes.get("externally_powered", False),
+                    "value_fn": lambda: self.device.attributes.get(
+                        "externally_powered", self.device.attributes.get("externallyPowered", False)
+                    ),
                     "enabled_by_default": True,
                 }
             )

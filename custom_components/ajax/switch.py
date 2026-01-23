@@ -25,11 +25,13 @@ from .devices import (
     DoorContactHandler,
     FloodDetectorHandler,
     GlassBreakHandler,
+    LifeQualityHandler,
     MotionDetectorHandler,
     RepeaterHandler,
     SirenHandler,
     SmokeDetectorHandler,
     SocketHandler,
+    TransmitterHandler,
     WireInputHandler,
 )
 from .models import AjaxDevice, DeviceType, SecurityState
@@ -46,7 +48,7 @@ DEVICE_HANDLERS = {
     DeviceType.FLOOD_DETECTOR: FloodDetectorHandler,
     DeviceType.GLASS_BREAK: GlassBreakHandler,
     DeviceType.SIREN: SirenHandler,
-    DeviceType.TRANSMITTER: SirenHandler,
+    DeviceType.TRANSMITTER: TransmitterHandler,
     DeviceType.MULTI_TRANSMITTER: SirenHandler,
     DeviceType.SOCKET: SocketHandler,
     DeviceType.RELAY: SocketHandler,
@@ -54,6 +56,7 @@ DEVICE_HANDLERS = {
     DeviceType.BUTTON: ButtonHandler,
     DeviceType.DOORBELL: DoorbellHandler,
     DeviceType.REPEATER: RepeaterHandler,
+    DeviceType.LIFE_QUALITY: LifeQualityHandler,
 }
 
 
@@ -279,6 +282,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
             "nightModeArm": "night_mode_arm",
             "alwaysActive": "always_active",
             "extraContactAware": "extra_contact_aware",
+            "externalContactAlwaysActive": "external_contact_always_active",
             "shockSensorAware": "shock_sensor_aware",
             "accelerometerAware": "accelerometer_aware",
             "ignoreSimpleImpact": "ignore_simple_impact",

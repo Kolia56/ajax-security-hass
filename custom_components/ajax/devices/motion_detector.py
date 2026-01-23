@@ -160,4 +160,16 @@ class MotionDetectorHandler(AjaxDeviceHandler):
             }
         )
 
+        # Siren trigger for motion
+        switches.append(
+            {
+                "key": "siren_trigger_motion",
+                "translation_key": "siren_trigger_motion",
+                "value_fn": lambda: "MOTION" in self.device.attributes.get("siren_triggers", []),
+                "api_key": "sirenTriggers",
+                "trigger_key": "MOTION",
+                "enabled_by_default": True,
+            }
+        )
+
         return switches

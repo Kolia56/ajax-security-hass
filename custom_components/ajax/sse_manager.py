@@ -176,7 +176,7 @@ class SSEManager:
 
             # Parse event code for type info
             code_info = parse_event_code(event_code)
-            event_type = code_info.get("type", "UNKNOWN") if code_info else "UNKNOWN"
+            event_type = code_info.get("category", "unknown") if code_info else "unknown"
             transition = code_info.get("transition", "TRIGGERED") if code_info else "TRIGGERED"
 
             # Also check eventTypeV2 for video AI events

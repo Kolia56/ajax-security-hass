@@ -109,10 +109,12 @@ class AjaxOnvifClient:
             return False
 
         try:
-            _LOGGER.debug(
-                "Connecting to %s via ONVIF at %s",
+            _LOGGER.info(
+                "ONVIF: Connecting to %s at %s:%s (user=%s)",
                 self.video_edge.name,
                 self.video_edge.ip_address,
+                DEFAULT_ONVIF_PORT,
+                self._username,
             )
 
             # Create ONVIF camera instance with correct WSDL path
@@ -124,19 +126,24 @@ class AjaxOnvifClient:
                 wsdl_dir=WSDL_DIR,
             )
 
+            _LOGGER.info("ONVIF: Camera instance created, updating xaddrs...")
+
             # Update camera services
             await self._camera.update_xaddrs()
 
             _LOGGER.info(
-                "Connected to %s via ONVIF",
+                "ONVIF: Successfully connected to %s",
                 self.video_edge.name,
             )
             return True
 
         except (ONVIFError, Fault, TimeoutError, OSError) as err:
-            _LOGGER.warning(
-                "Failed to connect to %s via ONVIF: %s",
+            _LOGGER.error(
+                "ONVIF: Failed to connect to %s at %s:%s - %s: %s",
                 self.video_edge.name,
+                self.video_edge.ip_address,
+                DEFAULT_ONVIF_PORT,
+                type(err).__name__,
                 err,
             )
             self._camera = None
@@ -152,6 +159,8 @@ class AjaxOnvifClient:
             return False
 
         try:
+            _LOGGER.info("ONVIF: Creating PullPoint subscription for %s...", self.video_edge.name)
+
             # Create PullPoint manager (like HA's official ONVIF integration)
             # subscription_lost_callback is called when subscription expires
             self._pullpoint_manager = await self._camera.create_pullpoint_manager(
@@ -159,19 +168,22 @@ class AjaxOnvifClient:
                 self._on_subscription_lost,
             )
 
+            _LOGGER.info("ONVIF: PullPoint manager created, setting sync point...")
+
             # Set synchronization point to get current state
             await self._pullpoint_manager.set_synchronization_point()
 
             _LOGGER.info(
-                "%s: ONVIF PullPoint subscription created",
+                "ONVIF: PullPoint subscription active for %s",
                 self.video_edge.name,
             )
             return True
 
         except (ONVIFError, Fault, TimeoutError, OSError) as err:
-            _LOGGER.warning(
-                "%s: Failed to create PullPoint subscription: %s",
+            _LOGGER.error(
+                "ONVIF: Failed to create PullPoint subscription for %s - %s: %s",
                 self.video_edge.name,
+                type(err).__name__,
                 err,
             )
             return False
@@ -194,8 +206,8 @@ class AjaxOnvifClient:
         self._running = True
         self._poll_task = asyncio.create_task(self._poll_loop())
 
-        _LOGGER.debug(
-            "%s: Started ONVIF event polling",
+        _LOGGER.info(
+            "ONVIF: Started event polling for %s",
             self.video_edge.name,
         )
 
@@ -257,6 +269,7 @@ class AjaxOnvifClient:
             if response and hasattr(response, "NotificationMessage"):
                 messages = response.NotificationMessage
                 if messages:
+                    _LOGGER.info("ONVIF: Received %d message(s) from %s", len(messages), self.video_edge.name)
                     for msg in messages:
                         await self._process_message(msg)
 

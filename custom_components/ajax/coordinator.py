@@ -267,29 +267,31 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 if not self.account:
                     continue
 
-                # Poll door sensors for each space
+                # Poll door sensors and transmitters for each space
                 for space_id, space in self.account.spaces.items():
                     current_state = space.security_state
 
                     # Determine which sensors to poll based on security state
                     if current_state == SecurityState.DISARMED:
-                        # When disarmed: poll all door sensors
-                        door_sensors = [
-                            device for device in space.devices.values() if device.type == DeviceType.DOOR_CONTACT
+                        # When disarmed: poll all door sensors and transmitters
+                        contact_sensors = [
+                            device
+                            for device in space.devices.values()
+                            if device.type in (DeviceType.DOOR_CONTACT, DeviceType.TRANSMITTER)
                         ]
                     elif current_state == SecurityState.NIGHT_MODE:
                         # When in night mode: only poll sensors excluded from night mode
-                        door_sensors = [
+                        contact_sensors = [
                             device
                             for device in space.devices.values()
-                            if device.type == DeviceType.DOOR_CONTACT
+                            if device.type in (DeviceType.DOOR_CONTACT, DeviceType.TRANSMITTER)
                             and not device.attributes.get("night_mode_arm", True)
                         ]
                     else:
                         # Skip for other armed states
                         continue
 
-                    if not door_sensors:
+                    if not contact_sensors:
                         continue
 
                     try:
@@ -301,12 +303,13 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                             device_id = device_summary.get("id")
                             if device_id and device_id in space.devices:
                                 device = space.devices[device_id]
-                                if device.type == DeviceType.DOOR_CONTACT:
-                                    # With enrich=True, detailed data is in "model" sub-object
-                                    device_data = dict(device_summary)
-                                    if "model" in device_summary:
-                                        device_data.update(device_summary["model"])
 
+                                # With enrich=True, detailed data is in "model" sub-object
+                                device_data = dict(device_summary)
+                                if "model" in device_summary:
+                                    device_data.update(device_summary["model"])
+
+                                if device.type == DeviceType.DOOR_CONTACT:
                                     # Get current state
                                     old_door_state = device.attributes.get("door_opened")
 
@@ -345,6 +348,21 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                             device.name,
                                             old_door_state,
                                             new_door_state,
+                                        )
+                                        updated = True
+
+                                elif device.type == DeviceType.TRANSMITTER:
+                                    # Handle Transmitter external contact state
+                                    old_triggered = device.attributes.get("externalContactTriggered")
+                                    new_triggered = device_data.get("externalContactTriggered")
+
+                                    if new_triggered is not None and old_triggered != new_triggered:
+                                        device.attributes["externalContactTriggered"] = new_triggered
+                                        _LOGGER.debug(
+                                            "Transmitter %s contact changed: %s -> %s",
+                                            device.name,
+                                            old_triggered,
+                                            new_triggered,
                                         )
                                         updated = True
 

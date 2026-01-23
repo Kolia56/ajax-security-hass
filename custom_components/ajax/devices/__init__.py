@@ -26,12 +26,14 @@ from .doorbell import DoorbellHandler
 from .flood_detector import FloodDetectorHandler
 from .glass_break import GlassBreakHandler
 from .hub import HubHandler
+from .life_quality import LifeQualityHandler
 from .light import LightHandler
 from .motion_detector import MotionDetectorHandler
 from .repeater import RepeaterHandler
 from .siren import SirenHandler
 from .smoke_detector import SmokeDetectorHandler
 from .socket import SocketHandler
+from .transmitter import TransmitterHandler
 from .video_edge import VideoEdgeHandler
 from .waterstop import WaterStopHandler
 
@@ -43,12 +45,14 @@ __all__ = [
     "FloodDetectorHandler",
     "GlassBreakHandler",
     "HubHandler",
+    "LifeQualityHandler",
     "LightHandler",
     "MotionDetectorHandler",
     "RepeaterHandler",
     "SirenHandler",
     "SmokeDetectorHandler",
     "SocketHandler",
+    "TransmitterHandler",
     "VideoEdgeHandler",
     "WaterStopHandler",
     "WireInputHandler",

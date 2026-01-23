@@ -117,6 +117,17 @@ class FloodDetectorHandler(AjaxDeviceHandler):
         """Return switch entities for flood detectors."""
         switches = []
 
+        # Always Active switch
+        switches.append(
+            {
+                "key": "always_active",
+                "translation_key": "always_active",
+                "value_fn": lambda: self.device.attributes.get("always_active", False),
+                "api_key": "alwaysActive",
+                "enabled_by_default": True,
+            }
+        )
+
         # LED Indicator switch
         if "indicatorLightMode" in self.device.attributes:
             switches.append(

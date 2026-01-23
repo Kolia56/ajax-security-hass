@@ -143,6 +143,13 @@
       "beep_on_delay": {
         "name": "Beep on entry/exit delay"
       },
+      "co2_problem": {
+        "name": "CO₂ level",
+        "state": {
+          "off": "Normal",
+          "on": "High CO₂"
+        }
+      },
       "connection": {
         "name": "Hub connection",
         "state": {
@@ -309,6 +316,9 @@
       "active_connection": {
         "name": "Active connection"
       },
+      "alarm_delay": {
+        "name": "Alarm delay"
+      },
       "alarm_duration": {
         "name": "Alarm Duration",
         "state": {
@@ -321,6 +331,12 @@
           "continuous": "Continuous"
         }
       },
+      "alarm_mode": {
+        "name": "Alarm mode"
+      },
+      "alarm_type": {
+        "name": "Alarm type"
+      },
       "alarm_volume_level": {
         "name": "Alarm Volume",
         "state": {
@@ -332,6 +348,9 @@
           "quiet": "Quiet",
           "very_loud": "Very loud"
         }
+      },
+      "arm_delay": {
+        "name": "Arm delay"
       },
       "battery_state": {
         "name": "Battery state"
@@ -364,6 +383,12 @@
       },
       "bypassed_devices": {
         "name": "Bypassed devices"
+      },
+      "calibration_state": {
+        "name": "Calibration state"
+      },
+      "contact_mode": {
+        "name": "Contact mode"
       },
       "device_color": {
         "name": "Device color",
@@ -723,6 +748,9 @@
       "photos_per_alarm": {
         "name": "Photos per alarm"
       },
+      "power_supply_mode": {
+        "name": "Power supply mode"
+      },
       "recent_events": {
         "name": "Recent events",
         "state": {
@@ -832,6 +860,13 @@
       }
     },
     "switch": {
+      "accelerometer": {
+        "name": "Accelerometer",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
       "alerts_by_sirens": {
         "name": "Alerts by sirens",
         "state": {
@@ -980,8 +1015,36 @@
           "on": "Enabled"
         }
       },
+      "siren_trigger_acceleration": {
+        "name": "Siren on acceleration",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_co": {
+        "name": "Siren on CO",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_contact": {
+        "name": "Siren on external contact",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
       "siren_trigger_glass": {
         "name": "Siren on glass break",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_motion": {
+        "name": "Siren on motion",
         "state": {
           "off": "Disabled",
           "on": "Enabled"
@@ -996,6 +1059,27 @@
       },
       "siren_trigger_shock": {
         "name": "Siren on shock",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_smoke": {
+        "name": "Siren on smoke",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_temp_diff": {
+        "name": "Siren on rapid temperature rise",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_temperature": {
+        "name": "Siren on high temperature",
         "state": {
           "off": "Disabled",
           "on": "Enabled"

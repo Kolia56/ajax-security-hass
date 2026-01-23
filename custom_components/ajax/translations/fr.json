@@ -153,6 +153,13 @@
       "beep_on_delay": {
         "name": "Bip au délai d'entrée/sortie"
       },
+      "co2_problem": {
+        "name": "Niveau CO₂",
+        "state": {
+          "off": "Normal",
+          "on": "CO₂ élevé"
+        }
+      },
       "connection": {
         "name": "Connexion hub",
         "state": {
@@ -378,6 +385,9 @@
       "active_connection": {
         "name": "Connexion active"
       },
+      "alarm_delay": {
+        "name": "Délai d'alarme"
+      },
       "alarm_duration": {
         "name": "Durée de l'alarme",
         "state": {
@@ -390,6 +400,12 @@
           "continuous": "Continue"
         }
       },
+      "alarm_mode": {
+        "name": "Mode d'alarme"
+      },
+      "alarm_type": {
+        "name": "Type d'alarme"
+      },
       "alarm_volume_level": {
         "name": "Volume de l'alarme",
         "state": {
@@ -401,6 +417,9 @@
           "quiet": "Silencieux",
           "very_loud": "Très fort"
         }
+      },
+      "arm_delay": {
+        "name": "Délai d'armement"
       },
       "battery_state": {
         "name": "État de la batterie"
@@ -433,6 +452,12 @@
       },
       "bypassed_devices": {
         "name": "Dispositifs bypassés"
+      },
+      "calibration_state": {
+        "name": "État de calibration"
+      },
+      "contact_mode": {
+        "name": "Mode de contact"
       },
       "device_color": {
         "name": "Couleur du dispositif",
@@ -795,6 +820,9 @@
       "photos_per_alarm": {
         "name": "Photos par alarme"
       },
+      "power_supply_mode": {
+        "name": "Mode d'alimentation"
+      },
       "recent_events": {
         "name": "Dernier événement",
         "state": {
@@ -938,6 +966,13 @@
       }
     },
     "switch": {
+      "accelerometer": {
+        "name": "Accéléromètre",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
       "alert_if_moved": {
         "name": "Alerte si déplacée",
         "state": {
@@ -1093,8 +1128,36 @@
           "on": "Activé"
         }
       },
+      "siren_trigger_acceleration": {
+        "name": "Sirène si accélération",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
+      "siren_trigger_co": {
+        "name": "Sirène si CO",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
+      "siren_trigger_contact": {
+        "name": "Sirène si contact externe",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
       "siren_trigger_glass": {
         "name": "Sirène si bris de vitre",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
+      "siren_trigger_motion": {
+        "name": "Sirène si mouvement",
         "state": {
           "off": "Désactivé",
           "on": "Activé"
@@ -1109,6 +1172,27 @@
       },
       "siren_trigger_shock": {
         "name": "Sirène si choc",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
+      "siren_trigger_smoke": {
+        "name": "Sirène si fumée",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
+      "siren_trigger_temp_diff": {
+        "name": "Sirène si hausse rapide température",
+        "state": {
+          "off": "Désactivé",
+          "on": "Activé"
+        }
+      },
+      "siren_trigger_temperature": {
+        "name": "Sirène si haute température",
         "state": {
           "off": "Désactivé",
           "on": "Activé"

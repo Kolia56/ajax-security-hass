@@ -29,11 +29,13 @@ from .devices import (
     FloodDetectorHandler,
     GlassBreakHandler,
     HubHandler,
+    LifeQualityHandler,
     MotionDetectorHandler,
     RepeaterHandler,
     SirenHandler,
     SmokeDetectorHandler,
     SocketHandler,
+    TransmitterHandler,
     VideoEdgeHandler,
     WaterStopHandler,
     WireInputHandler,
@@ -68,7 +70,7 @@ DEVICE_HANDLERS = {
     DeviceType.WALLSWITCH: SocketHandler,
     DeviceType.SIREN: SirenHandler,
     DeviceType.SPEAKERPHONE: SirenHandler,
-    DeviceType.TRANSMITTER: SirenHandler,
+    DeviceType.TRANSMITTER: TransmitterHandler,
     DeviceType.MULTI_TRANSMITTER: SirenHandler,
     DeviceType.KEYPAD: SirenHandler,
     DeviceType.BUTTON: ButtonHandler,
@@ -76,6 +78,7 @@ DEVICE_HANDLERS = {
     DeviceType.REPEATER: RepeaterHandler,
     DeviceType.HUB: HubHandler,
     DeviceType.WATERSTOP: WaterStopHandler,
+    DeviceType.LIFE_QUALITY: LifeQualityHandler,
 }
 
 

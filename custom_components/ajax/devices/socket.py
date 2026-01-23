@@ -84,7 +84,8 @@ class SocketHandler(AjaxDeviceHandler):
             )
 
         # Power consumption (Socket with power monitoring)
-        if "power" in self.device.attributes:
+        # Check both normalized and raw attribute names
+        if "power" in self.device.attributes or "powerConsumptionWatts" in self.device.attributes:
             sensors.append(
                 {
                     "key": "power",
@@ -92,27 +93,33 @@ class SocketHandler(AjaxDeviceHandler):
                     "device_class": SensorDeviceClass.POWER,
                     "native_unit_of_measurement": UnitOfPower.WATT,
                     "state_class": SensorStateClass.MEASUREMENT,
-                    "value_fn": lambda: self.device.attributes.get("power"),
+                    "value_fn": lambda: self.device.attributes.get(
+                        "power", self.device.attributes.get("powerConsumptionWatts")
+                    ),
                     "enabled_by_default": True,
                 }
             )
 
         # Energy consumption (Socket with power monitoring)
-        if "energy" in self.device.attributes:
+        # Check both normalized and raw attribute names
+        if "energy" in self.device.attributes or "powerConsumedWattsPerHour" in self.device.attributes:
             sensors.append(
                 {
                     "key": "energy",
                     "translation_key": "energy",
                     "device_class": SensorDeviceClass.ENERGY,
-                    "native_unit_of_measurement": UnitOfEnergy.KILO_WATT_HOUR,
+                    "native_unit_of_measurement": UnitOfEnergy.WATT_HOUR,
                     "state_class": SensorStateClass.TOTAL_INCREASING,
-                    "value_fn": lambda: self.device.attributes.get("energy"),
+                    "value_fn": lambda: self.device.attributes.get(
+                        "energy", self.device.attributes.get("powerConsumedWattsPerHour")
+                    ),
                     "enabled_by_default": True,
                 }
             )
 
         # Voltage (Socket with power monitoring)
-        if "voltage" in self.device.attributes:
+        # Check both normalized and raw attribute names
+        if "voltage" in self.device.attributes or "voltageVolts" in self.device.attributes:
             sensors.append(
                 {
                     "key": "voltage",
@@ -120,22 +127,34 @@ class SocketHandler(AjaxDeviceHandler):
                     "device_class": SensorDeviceClass.VOLTAGE,
                     "native_unit_of_measurement": UnitOfElectricPotential.VOLT,
                     "state_class": SensorStateClass.MEASUREMENT,
-                    "value_fn": lambda: self.device.attributes.get("voltage"),
-                    "enabled_by_default": False,
+                    "value_fn": lambda: self.device.attributes.get(
+                        "voltage", self.device.attributes.get("voltageVolts")
+                    ),
+                    "enabled_by_default": True,
                 }
             )
 
         # Current (Socket with power monitoring)
-        if "current" in self.device.attributes:
+        # Check both normalized and raw attribute names (convert mA to A)
+        if (
+            "current" in self.device.attributes
+            or "currentMilliAmpere" in self.device.attributes
+            or "currentMilliAmpers" in self.device.attributes
+        ):
             sensors.append(
                 {
                     "key": "current",
                     "translation_key": "current",
                     "device_class": SensorDeviceClass.CURRENT,
-                    "native_unit_of_measurement": UnitOfElectricCurrent.AMPERE,
+                    "native_unit_of_measurement": UnitOfElectricCurrent.MILLIAMPERE,
                     "state_class": SensorStateClass.MEASUREMENT,
-                    "value_fn": lambda: self.device.attributes.get("current"),
-                    "enabled_by_default": False,
+                    "value_fn": lambda: self.device.attributes.get(
+                        "current",
+                        self.device.attributes.get(
+                            "currentMilliAmpere", self.device.attributes.get("currentMilliAmpers")
+                        ),
+                    ),
+                    "enabled_by_default": True,
                 }
             )
 

@@ -262,4 +262,64 @@ class SmokeDetectorHandler(AjaxDeviceHandler):
                 }
             )
 
+        # Siren triggers for FireProtect2 variants
+        siren_triggers = self.device.attributes.get("siren_triggers", [])
+        if siren_triggers:
+            # Smoke trigger
+            if "SMOKE" in siren_triggers or "smokeAlarm" in self.device.attributes:
+                switches.append(
+                    {
+                        "key": "siren_trigger_smoke",
+                        "translation_key": "siren_trigger_smoke",
+                        "value_fn": lambda: "SMOKE" in self.device.attributes.get("siren_triggers", []),
+                        "api_key": "sirenTriggers",
+                        "trigger_key": "SMOKE",
+                        "enabled_by_default": True,
+                        "bypass_security_check": True,
+                    }
+                )
+
+            # CO trigger
+            if "CO" in siren_triggers or "CCO" in siren_triggers or "coAlarm" in self.device.attributes:
+                switches.append(
+                    {
+                        "key": "siren_trigger_co",
+                        "translation_key": "siren_trigger_co",
+                        "value_fn": lambda: "CO" in self.device.attributes.get("siren_triggers", [])
+                        or "CCO" in self.device.attributes.get("siren_triggers", []),
+                        "api_key": "sirenTriggers",
+                        "trigger_key": "CO",
+                        "enabled_by_default": True,
+                        "bypass_security_check": True,
+                    }
+                )
+
+            # Temperature trigger
+            if "TEMPERATURE" in siren_triggers:
+                switches.append(
+                    {
+                        "key": "siren_trigger_temperature",
+                        "translation_key": "siren_trigger_temperature",
+                        "value_fn": lambda: "TEMPERATURE" in self.device.attributes.get("siren_triggers", []),
+                        "api_key": "sirenTriggers",
+                        "trigger_key": "TEMPERATURE",
+                        "enabled_by_default": True,
+                        "bypass_security_check": True,
+                    }
+                )
+
+            # Temperature diff trigger
+            if "TEMPERATURE_DIFF" in siren_triggers:
+                switches.append(
+                    {
+                        "key": "siren_trigger_temp_diff",
+                        "translation_key": "siren_trigger_temp_diff",
+                        "value_fn": lambda: "TEMPERATURE_DIFF" in self.device.attributes.get("siren_triggers", []),
+                        "api_key": "sirenTriggers",
+                        "trigger_key": "TEMPERATURE_DIFF",
+                        "enabled_by_default": True,
+                        "bypass_security_check": True,
+                    }
+                )
+
         return switches
