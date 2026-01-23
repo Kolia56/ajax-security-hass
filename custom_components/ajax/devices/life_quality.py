@@ -43,7 +43,29 @@ class LifeQualityHandler(AjaxDeviceHandler):
                 "key": "co2_problem",
                 "device_class": BinarySensorDeviceClass.PROBLEM,
                 "translation_key": "co2_problem",
-                "value_fn": lambda: self._is_co2_high(),
+                "value_fn": lambda: self._is_co2_problem(),
+                "enabled_by_default": True,
+            }
+        )
+
+        # Temperature problem (out of comfort range)
+        sensors.append(
+            {
+                "key": "temperature_problem",
+                "device_class": BinarySensorDeviceClass.PROBLEM,
+                "translation_key": "temperature_problem",
+                "value_fn": lambda: self._is_temperature_problem(),
+                "enabled_by_default": True,
+            }
+        )
+
+        # Humidity problem (out of comfort range)
+        sensors.append(
+            {
+                "key": "humidity_problem",
+                "device_class": BinarySensorDeviceClass.PROBLEM,
+                "translation_key": "humidity_problem",
+                "value_fn": lambda: self._is_humidity_problem(),
                 "enabled_by_default": True,
             }
         )
@@ -162,10 +184,30 @@ class LifeQualityHandler(AjaxDeviceHandler):
             return round(actual_humidity / 10.0, 1)
         return None
 
-    def _is_co2_high(self) -> bool:
+    def _is_co2_problem(self) -> bool:
         """Check if CO2 level is above comfort threshold."""
         co2 = self.device.attributes.get("actualCO2")
         max_comfort = self.device.attributes.get("maxComfortCO2", 1000)
         if co2 is not None and max_comfort is not None:
             return co2 > max_comfort
+        return False
+
+    def _is_temperature_problem(self) -> bool:
+        """Check if temperature is outside comfort range."""
+        temp = self.device.attributes.get("actualTemperature")
+        min_comfort = self.device.attributes.get("minComfortTemperature")
+        max_comfort = self.device.attributes.get("maxComfortTemperature")
+        if temp is not None and min_comfort is not None and max_comfort is not None:
+            return temp < min_comfort or temp > max_comfort
+        return False
+
+    def _is_humidity_problem(self) -> bool:
+        """Check if humidity is outside comfort range."""
+        humidity = self.device.attributes.get("actualHumidity")
+        # Humidity thresholds are in %, actualHumidity is in 0.1% (e.g., 470 = 47.0%)
+        min_comfort = self.device.attributes.get("minComfortHumidity")
+        max_comfort = self.device.attributes.get("maxComfortHumidity")
+        if humidity is not None and min_comfort is not None and max_comfort is not None:
+            # Convert thresholds to same unit as actualHumidity (0.1%)
+            return humidity < (min_comfort * 10) or humidity > (max_comfort * 10)
         return False

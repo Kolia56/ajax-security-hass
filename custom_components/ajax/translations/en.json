@@ -179,6 +179,13 @@
           "on": "Temperature threshold exceeded"
         }
       },
+      "humidity_problem": {
+        "name": "Humidity",
+        "state": {
+          "off": "Normal",
+          "on": "Out of range"
+        }
+      },
       "jeweller_radio": {
         "name": "Jeweller radio"
       },
@@ -229,6 +236,13 @@
           "total_malfunctions": {
             "name": "Total malfunctions"
           }
+        }
+      },
+      "temperature_problem": {
+        "name": "Temperature",
+        "state": {
+          "off": "Normal",
+          "on": "Out of range"
         }
       },
       "tilt": {

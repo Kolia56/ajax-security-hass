@@ -153,6 +153,27 @@
       "beep_on_delay": {
         "name": "Beep on entry/exit delay"
       },
+      "co2_problem": {
+        "name": "CO₂ level",
+        "state": {
+          "off": "Normal",
+          "on": "High CO₂"
+        }
+      },
+      "temperature_problem": {
+        "name": "Temperature",
+        "state": {
+          "off": "Normal",
+          "on": "Out of range"
+        }
+      },
+      "humidity_problem": {
+        "name": "Humidity",
+        "state": {
+          "off": "Normal",
+          "on": "Out of range"
+        }
+      },
       "connection": {
         "name": "Hub connection",
         "state": {

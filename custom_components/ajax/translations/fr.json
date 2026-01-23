@@ -192,6 +192,13 @@
           "on": "Seuil de température dépassé"
         }
       },
+      "humidity_problem": {
+        "name": "Humidité",
+        "state": {
+          "off": "Normal",
+          "on": "Hors plage"
+        }
+      },
       "jeweller_radio": {
         "name": "Radio Jeweller"
       },
@@ -242,6 +249,13 @@
           "total_malfunctions": {
             "name": "Total dysfonctionnements"
           }
+        }
+      },
+      "temperature_problem": {
+        "name": "Température",
+        "state": {
+          "off": "Normal",
+          "on": "Hors plage"
         }
       },
       "tilt": {
