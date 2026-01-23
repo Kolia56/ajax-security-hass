@@ -33,6 +33,7 @@ VIDEO_EDGE_MODEL_NAMES = {
     VideoEdgeType.BULLET_HL: "BulletCam HL",
     VideoEdgeType.MINIDOME: "MiniDome",
     VideoEdgeType.MINIDOME_HL: "MiniDome HL",
+    VideoEdgeType.INDOOR: "Indoor Camera",
     VideoEdgeType.UNKNOWN: "Video Edge",
 }
 

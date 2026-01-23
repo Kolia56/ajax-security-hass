@@ -59,6 +59,7 @@ VIDEO_EDGE_MODEL_NAMES = {
     VideoEdgeType.BULLET_HL: "BulletCam HL",
     VideoEdgeType.MINIDOME: "MiniDome",
     VideoEdgeType.MINIDOME_HL: "MiniDome HL",
+    VideoEdgeType.INDOOR: "Indoor Camera",
     VideoEdgeType.UNKNOWN: "Video Edge",
 }
 
@@ -379,12 +380,13 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         should_create=lambda space: space.hub_details and space.hub_details.get("gradeMode"),
     ),
     # Active Channels (WiFi, Ethernet, GSM) - disabled by default (changes too often)
+    # IMPORTANT: sorted() prevents state changes from random API order
     AjaxSpaceSensorDescription(
         key="hub_active_channels",
         translation_key="hub_active_channels",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
-        value_fn=lambda space: ", ".join(space.hub_details.get("activeChannels", []))
+        value_fn=lambda space: ", ".join(sorted(space.hub_details.get("activeChannels", [])))
         if space.hub_details and space.hub_details.get("activeChannels")
         else None,
         should_create=lambda space: space.hub_details and space.hub_details.get("activeChannels"),

@@ -34,6 +34,7 @@ SELECT_DEVICE_HANDLERS = {
 DEVICES_WITH_DOOR_PLUS_SELECTS = [
     "DoorProtectPlus",
     "DoorProtectPlusFibra",
+    "DoorProtectSPlus",
 ]
 
 # Shock sensitivity options mapping (value -> translation key)

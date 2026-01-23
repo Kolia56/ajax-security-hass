@@ -162,12 +162,15 @@ class HubHandler(AjaxDeviceHandler):
             )
 
         # Active connection type (Ethernet, WiFi, GSM, etc.)
+        # IMPORTANT: sorted() prevents state changes from random API order
         if "active_connection" in self.device.attributes:
             sensors.append(
                 {
                     "key": "active_connection",
                     "translation_key": "active_connection",
-                    "value_fn": lambda: self.device.attributes.get("active_connection"),
+                    "value_fn": lambda: ", ".join(sorted(self.device.attributes.get("active_connection", [])))
+                    if isinstance(self.device.attributes.get("active_connection"), list)
+                    else self.device.attributes.get("active_connection"),
                     "enabled_by_default": True,
                 }
             )

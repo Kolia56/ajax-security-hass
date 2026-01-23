@@ -231,6 +231,7 @@ class VideoEdgeType(Enum):
     BULLET_HL = "BULLET_HL"
     MINIDOME = "MINIDOME"
     MINIDOME_HL = "MINIDOME_HL"
+    INDOOR = "INDOOR"  # Indoor WiFi camera
     UNKNOWN = "UNKNOWN"
 
 

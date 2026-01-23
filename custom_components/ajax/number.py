@@ -29,6 +29,7 @@ _LOGGER = logging.getLogger(__name__)
 DEVICES_WITH_DOOR_PLUS_NUMBERS = [
     "DoorProtectPlus",
     "DoorProtectPlusFibra",
+    "DoorProtectSPlus",
 ]
 
 # Device types that support current threshold
