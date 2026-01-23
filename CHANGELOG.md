@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2026-01-23
+
+### Added
+- Line crossing detection for Video Edge cameras (ONVIF)
+
 ## [0.8.1] - 2026-01-22
 
 ### Fixed
