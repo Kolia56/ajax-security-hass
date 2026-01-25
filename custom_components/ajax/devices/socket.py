@@ -189,8 +189,9 @@ class SocketHandler(AjaxDeviceHandler):
 
     def get_switches(self) -> list[dict]:
         """Return switch entities for sockets/relays."""
-        # Check if this is a multi-gang LightSwitch device
-        if self.device.attributes.get("is_multi_gang"):
+        # Check if this is a LightSwitch device with channel(s)
+        # LightSwitchTwoWay has only channel 1, LightSwitchTwoGang/TwoChannelTwoWay have both
+        if self.device.attributes.get("has_channel_1") or self.device.attributes.get("has_channel_2"):
             return self._get_multi_gang_switches()
 
         # Standard single switch (Socket, Relay, single-gang WallSwitch)
@@ -258,31 +259,33 @@ class SocketHandler(AjaxDeviceHandler):
         switches = []
 
         # Channel 1 (API uses 0-indexed channels)
-        channel_1_name = self.device.attributes.get("channel_1_name", "Channel 1")
-        switches.append(
-            {
-                "key": "channel_1",
-                "name": channel_1_name,
-                "value_fn": lambda: self.device.attributes.get("channel_1_on", False),
-                "icon": "mdi:light-switch",
-                "enabled_by_default": True,
-                "entity_category": None,
-                "channel": 0,
-            }
-        )
+        if self.device.attributes.get("has_channel_1", True):
+            channel_1_name = self.device.attributes.get("channel_1_name", "Channel 1")
+            switches.append(
+                {
+                    "key": "channel_1",
+                    "name": channel_1_name,
+                    "value_fn": lambda: self.device.attributes.get("channel_1_on", False),
+                    "icon": "mdi:light-switch",
+                    "enabled_by_default": True,
+                    "entity_category": None,
+                    "channel": 0,
+                }
+            )
 
-        # Channel 2 (API uses 0-indexed channels)
-        channel_2_name = self.device.attributes.get("channel_2_name", "Channel 2")
-        switches.append(
-            {
-                "key": "channel_2",
-                "name": channel_2_name,
-                "value_fn": lambda: self.device.attributes.get("channel_2_on", False),
-                "icon": "mdi:light-switch",
-                "enabled_by_default": True,
-                "entity_category": None,
-                "channel": 1,
-            }
-        )
+        # Channel 2 (API uses 0-indexed channels) - only if device has second channel
+        if self.device.attributes.get("has_channel_2", False):
+            channel_2_name = self.device.attributes.get("channel_2_name", "Channel 2")
+            switches.append(
+                {
+                    "key": "channel_2",
+                    "name": channel_2_name,
+                    "value_fn": lambda: self.device.attributes.get("channel_2_on", False),
+                    "icon": "mdi:light-switch",
+                    "enabled_by_default": True,
+                    "entity_category": None,
+                    "channel": 1,
+                }
+            )
 
         return switches

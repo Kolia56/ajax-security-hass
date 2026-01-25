@@ -1621,7 +1621,12 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     device.attributes["channel_1_name"] = button_one.get("buttonName", "Channel 1")
                 if button_two:
                     device.attributes["channel_2_name"] = button_two.get("buttonName", "Channel 2")
-                device.attributes["is_multi_gang"] = bool(button_one or button_two)
+                # Multi-gang only if BOTH buttons exist (LightSwitchTwoGang, LightSwitchTwoChannelTwoWay)
+                # LightSwitchTwoWay has only buttonOne (single channel with two-way control)
+                device.attributes["is_multi_gang"] = bool(button_one and button_two)
+                # Track which channels exist for proper switch creation
+                device.attributes["has_channel_1"] = bool(button_one)
+                device.attributes["has_channel_2"] = bool(button_two)
 
             # Update device metadata (API uses "color" not "device_color")
             device.device_color = device_data.get("color")
