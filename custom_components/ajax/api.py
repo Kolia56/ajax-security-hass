@@ -15,6 +15,7 @@ from .const import (
     AJAX_REST_API_TIMEOUT,
     AUTH_MODE_DIRECT,
     AUTH_MODE_PROXY_SECURE,
+    INTEGRATION_VERSION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -128,6 +129,10 @@ class AjaxRestApi:
         }
         if api_key:
             self._base_headers["X-Api-Key"] = api_key
+
+        # Add client version header for proxy mode (required by proxy >= 0.11.2)
+        if self.proxy_mode == AUTH_MODE_PROXY_SECURE:
+            self._base_headers["X-Client-Version"] = INTEGRATION_VERSION
 
     @property
     def is_proxy_mode(self) -> bool:

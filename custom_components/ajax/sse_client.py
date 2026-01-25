@@ -21,6 +21,8 @@ from typing import Any
 
 import aiohttp
 
+from .const import INTEGRATION_VERSION
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -111,6 +113,7 @@ class AjaxSSEClient:
 
         headers = {
             "X-Session-Token": self.session_token,
+            "X-Client-Version": INTEGRATION_VERSION,
             "Accept": "text/event-stream",
             "Cache-Control": "no-cache",
         }

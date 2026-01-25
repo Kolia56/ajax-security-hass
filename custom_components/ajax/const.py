@@ -2,12 +2,33 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
     from .coordinator import AjaxDataCoordinator
+
+
+def get_integration_version() -> str:
+    """Get the integration version from manifest.json.
+
+    Returns:
+        Version string (e.g., "0.11.2")
+    """
+    manifest_path = Path(__file__).parent / "manifest.json"
+    try:
+        with manifest_path.open() as f:
+            manifest = json.load(f)
+            return manifest.get("version", "0.0.0")
+    except (OSError, json.JSONDecodeError):
+        return "0.0.0"
+
+
+# Integration version (read once at import time)
+INTEGRATION_VERSION = get_integration_version()
 
 # Integration domain
 DOMAIN = "ajax"
