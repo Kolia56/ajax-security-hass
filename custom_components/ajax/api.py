@@ -568,9 +568,23 @@ class AjaxRestApi:
                     _LOGGER.error("Access denied (403) - Insufficient permissions")
                     raise AjaxRestAuthError("Access denied")
                 elif response.status == 429:
-                    # Rate limited by server
+                    # Rate limited by server - retry with backoff
                     retry_after = int(response.headers.get("Retry-After", "60"))
-                    _LOGGER.warning("Rate limited by server, waiting %ds", retry_after)
+                    if _retry_count < MAX_RETRIES:
+                        # Cap retry_after to reasonable max (don't wait 60s on first retry)
+                        wait_time = min(retry_after, 5 + (_retry_count * 5))
+                        _LOGGER.warning(
+                            "Rate limited on %s, waiting %ds (attempt %d/%d)",
+                            endpoint,
+                            wait_time,
+                            _retry_count + 1,
+                            MAX_RETRIES,
+                        )
+                        await asyncio.sleep(wait_time)
+                        return await self._request(
+                            method, endpoint, data, _retry_on_auth_error, _retry_count + 1, bypass_cache
+                        )
+                    _LOGGER.error("Rate limited on %s after %d retries", endpoint, MAX_RETRIES)
                     raise AjaxRestRateLimitError(f"Rate limited, retry after {retry_after}s")
 
                 # Handle server errors (5xx) as transient - retry with backoff
@@ -613,6 +627,17 @@ class AjaxRestApi:
 
                     # Cache hit indicator (for debugging/logging)
                     self.last_cache_hit = response.headers.get("X-Cache") == "HIT"
+
+                    # Log cache status for debugging
+                    cache_status = response.headers.get("X-Cache", "N/A")
+                    if cache_status != "N/A":
+                        _LOGGER.debug(
+                            "Proxy cache %s for %s (TTL: %ss, suggested interval: %ss)",
+                            cache_status,
+                            endpoint,
+                            self.last_cache_ttl or "N/A",
+                            self.suggested_interval or "N/A",
+                        )
 
                 return await response.json()
 

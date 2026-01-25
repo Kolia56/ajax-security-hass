@@ -462,15 +462,22 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 await self._async_update_spaces_from_hubs(full_refresh=True)
                 self._last_metadata_refresh = time.time()
 
-                # Load devices, video edges, and notifications in parallel for all spaces
-                tasks = []
-                for space_id in self.account.spaces:
-                    tasks.append(self._async_update_devices(space_id))
-                    tasks.append(self._async_update_video_edges(space_id))
-                    tasks.append(self._async_update_notifications(space_id, limit=20))
-
-                # Execute all API calls in parallel for faster startup
-                await asyncio.gather(*tasks, return_exceptions=True)
+                # Load devices, video edges, and notifications
+                # In proxy mode, execute sequentially to avoid rate limiting burst
+                # In direct mode, execute in parallel for faster startup
+                if self.api.is_proxy_mode:
+                    _LOGGER.debug("Proxy mode: loading data sequentially to avoid rate limits")
+                    for space_id in self.account.spaces:
+                        await self._async_update_devices(space_id)
+                        await self._async_update_video_edges(space_id)
+                        await self._async_update_notifications(space_id, limit=20)
+                else:
+                    tasks = []
+                    for space_id in self.account.spaces:
+                        tasks.append(self._async_update_devices(space_id))
+                        tasks.append(self._async_update_video_edges(space_id))
+                        tasks.append(self._async_update_notifications(space_id, limit=20))
+                    await asyncio.gather(*tasks, return_exceptions=True)
 
                 # Mark initial load as complete
                 self._initial_load_done = True
