@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
+
+from homeassistant.components.sensor import SensorDeviceClass
 
 from ..models import VideoEdgeType
 
@@ -21,8 +24,18 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
-def _parse_iso_duration(duration: str | None) -> str | None:
-    """Parse ISO 8601 duration (e.g., PT19M38.277S) to human-readable format."""
+def _parse_iso_duration_to_timestamp(duration: str | None) -> datetime | None:
+    """Parse ISO 8601 duration and return the start timestamp (now - duration).
+
+    This converts an uptime duration (e.g., PT17H30M) to a timestamp representing
+    when the device started, which Home Assistant can display as "since X time ago".
+
+    Args:
+        duration: ISO 8601 duration string (e.g., "PT17H30M15.5S")
+
+    Returns:
+        datetime of when the device started (UTC), or None if parsing fails
+    """
     if not duration:
         return None
 
@@ -32,21 +45,17 @@ def _parse_iso_duration(duration: str | None) -> str | None:
         duration,
     )
     if not match:
-        return duration  # Return as-is if can't parse
+        return None
 
     hours = int(match.group(1)) if match.group(1) else 0
     minutes = int(match.group(2)) if match.group(2) else 0
     seconds = float(match.group(3)) if match.group(3) else 0
 
-    parts = []
-    if hours > 0:
-        parts.append(f"{hours}h")
-    if minutes > 0:
-        parts.append(f"{minutes}m")
-    if seconds > 0 and hours == 0:  # Only show seconds if less than 1 hour
-        parts.append(f"{int(seconds)}s")
+    # Calculate the start time by subtracting the uptime from now
+    uptime_delta = timedelta(hours=hours, minutes=minutes, seconds=seconds)
+    start_time = datetime.now(UTC) - uptime_delta
 
-    return " ".join(parts) if parts else "0s"
+    return start_time
 
 
 # Record mode translations (API value -> translation key)
@@ -276,13 +285,15 @@ class VideoEdgeHandler:
         # System info sensors
         system_info = raw_data.get("systemInfo", {})
         if system_info:
-            # Uptime (parsed from ISO 8601 duration)
+            # Uptime as timestamp (start time = now - uptime duration)
+            # Using TIMESTAMP device_class allows HA to display "since X time ago"
             if "uptime" in system_info:
                 sensors.append(
                     {
                         "key": "uptime",
                         "translation_key": "video_edge_uptime",
-                        "value_fn": lambda: _parse_iso_duration(
+                        "device_class": SensorDeviceClass.TIMESTAMP,
+                        "value_fn": lambda: _parse_iso_duration_to_timestamp(
                             self.video_edge.raw_data.get("systemInfo", {}).get("uptime")
                         ),
                         "enabled_by_default": True,
