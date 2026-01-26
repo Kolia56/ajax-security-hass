@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.1] - 2026-01-26
+
+### Added
+- LightSwitchDimmer support with brightness control
+- Manual Call Point (MCP) fire alarm device support
+- `verify_ssl` option for self-signed certificates
+- LightSwitch settings entities (touch sensitivity, touch mode, LED, child lock)
+
+### Changed
+- Uptime sensor converted to timestamp entity for better UX
+
+### Fixed
+- SSE group arm/disarm events not refreshing group states (#32)
+- Proxy startup stability and cache debug logs
+- LightSwitch multi-gang channel control with additionalParam format
+
 ## [0.13.0] - 2026-01-25
 
 ### Added
