@@ -160,6 +160,15 @@ Issues, pull requests, and feedback are welcome!
 2. Copy the `custom_components/ajax` folder to your Home Assistant `config/custom_components/` directory
 3. Restart Home Assistant
 
+### Removal
+
+1. Go to **Settings** → **Devices & Services**
+2. Find **Ajax Security System** and click it
+3. Click the 3 dots menu → **Delete**
+4. Restart Home Assistant
+5. If installed via HACS, go to HACS → Integrations → Ajax Security System → **Remove**
+6. If installed manually, delete the `custom_components/ajax` folder
+
 ## ⚙️ Configuration
 
 ### Basic Setup
