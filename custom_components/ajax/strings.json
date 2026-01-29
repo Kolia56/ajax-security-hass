@@ -1504,7 +1504,7 @@
           "verify_ssl": "Verify SSL Certificate"
         },
         "data_description": {
-          "proxy_url": "Example: https://my-proxy.example.com",
+          "proxy_url": "Full URL of your Ajax proxy server",
           "verify_ssl": "Disable for self-signed certificates"
         },
         "description": "Change your Ajax proxy server URL and SSL settings.",
