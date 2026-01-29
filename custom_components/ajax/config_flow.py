@@ -18,6 +18,7 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
     SelectSelectorMode,
 )
+from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 
 from . import AjaxConfigEntry
 from .api import (
@@ -192,6 +193,8 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
 
             except AjaxRestAuthError as err:
                 _LOGGER.error("Authentication failed: %s (type: %s)", err, err.error_type)
+                if self._api:
+                    await self._api.close()
                 # Map error type to translation key
                 error_map = {
                     "invalid_api_key": "invalid_api_key",
@@ -202,9 +205,13 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = error_map.get(err.error_type, "invalid_auth")
             except AjaxRestApiError as err:
                 _LOGGER.error("Cannot connect to Ajax API: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "cannot_connect"
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "unknown"
 
         # Show configuration form for direct mode
@@ -308,6 +315,8 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
 
             except AjaxRestAuthError as err:
                 _LOGGER.error("Authentication failed: %s (type: %s)", err, err.error_type)
+                if self._api:
+                    await self._api.close()
                 # Map error type to translation key
                 error_map = {
                     "invalid_api_key": "invalid_api_key",
@@ -318,9 +327,13 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = error_map.get(err.error_type, "invalid_auth")
             except AjaxRestApiError as err:
                 _LOGGER.error("Cannot connect to proxy: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "cannot_connect"
             except Exception as err:
                 _LOGGER.exception("Unexpected exception: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "unknown"
 
         # Show configuration form for proxy mode
@@ -398,6 +411,15 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                     # Proxy mode: include proxy URL
                     self._entry_data[CONF_PROXY_URL] = self._user_input[CONF_PROXY_URL]
 
+                # Check if this is a reauth flow
+                if self.context.get("source") == "reauth":
+                    reauth_entry = self.hass.config_entries.async_get_entry(self.context.get("entry_id", ""))
+                    if reauth_entry:
+                        new_data = {**reauth_entry.data, CONF_PASSWORD: password_hash}
+                        self.hass.config_entries.async_update_entry(reauth_entry, data=new_data)
+                        await self.hass.config_entries.async_reload(reauth_entry.entry_id)
+                        return self.async_abort(reason="reauth_successful")
+
                 # If multiple spaces, let user select which to enable
                 if len(self._spaces) > 1:
                     return await self.async_step_select_spaces()
@@ -416,9 +438,13 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_2fa"
             except AjaxRestApiError as err:
                 _LOGGER.error("2FA verification failed: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "cannot_connect"
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception("Unexpected exception during 2FA: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "unknown"
 
         # Show 2FA form
@@ -484,6 +510,13 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 "space_count": str(len(self._spaces)),
             },
         )
+
+    async def async_step_dhcp(self, discovery_info: DhcpServiceInfo) -> ConfigFlowResult:
+        """Handle DHCP discovery of Ajax hubs."""
+        await self.async_set_unique_id(discovery_info.macaddress)
+        self._abort_if_unique_id_configured()
+        self.context["title_placeholders"] = {"name": discovery_info.hostname or "Ajax Hub"}
+        return await self.async_step_user()
 
     async def async_step_reauth(self, entry_data: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle re-authentication when token expires."""

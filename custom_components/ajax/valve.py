@@ -21,6 +21,7 @@ from .devices import WaterStopHandler
 from .models import AjaxDevice, DeviceType
 
 _LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 1
 
 # Mapping of device types to handlers
 DEVICE_HANDLERS = {

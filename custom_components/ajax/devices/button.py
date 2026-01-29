@@ -83,7 +83,7 @@ class ButtonHandler(AjaxDeviceHandler):
                     "translation_key": "button_mode",
                     "device_class": SensorDeviceClass.ENUM,
                     "options": ["panic_button", "smart_button", "interconnect_delay"],
-                    "value_fn": lambda: self.device.attributes.get("button_mode", "").lower().replace("_", "_"),
+                    "value_fn": lambda: self.device.attributes.get("button_mode", "").lower(),
                     "enabled_by_default": True,
                 }
             )

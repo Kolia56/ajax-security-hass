@@ -97,7 +97,7 @@ class LightSwitchHandler(AjaxDeviceHandler):
         )
 
         # Temperature (internal)
-        if "temperature" in self.device.attributes or self.device.attributes.get("temperature") is not None:
+        if "temperature" in self.device.attributes:
             sensors.append(
                 {
                     "key": "temperature",
@@ -158,19 +158,18 @@ class LightSwitchHandler(AjaxDeviceHandler):
                 }
             )
 
-            # Child lock (if available)
-            if "CHILD_LOCK_ENABLED" in self.device.attributes.get("settingsSwitch", []) or True:
-                switches.append(
-                    {
-                        "key": "child_lock",
-                        "translation_key": "child_lock",
-                        "value_fn": lambda: "CHILD_LOCK_ENABLED" in self.device.attributes.get("settingsSwitch", []),
-                        "api_key": "settingsSwitch",
-                        "settings_key": "CHILD_LOCK_ENABLED",
-                        "enabled_by_default": True,
-                        "bypass_security_check": True,
-                    }
-                )
+            # Child lock (always available on LightSwitch with settingsSwitch)
+            switches.append(
+                {
+                    "key": "child_lock",
+                    "translation_key": "child_lock",
+                    "value_fn": lambda: "CHILD_LOCK_ENABLED" in self.device.attributes.get("settingsSwitch", []),
+                    "api_key": "settingsSwitch",
+                    "settings_key": "CHILD_LOCK_ENABLED",
+                    "enabled_by_default": True,
+                    "bypass_security_check": True,
+                }
+            )
 
             # State memory (remember state after power outage)
             switches.append(

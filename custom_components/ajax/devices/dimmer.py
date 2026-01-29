@@ -95,7 +95,7 @@ class DimmerHandler(AjaxDeviceHandler):
         )
 
         # Temperature (internal)
-        if "temperature" in self.device.attributes or self.device.attributes.get("temperature") is not None:
+        if "temperature" in self.device.attributes:
             sensors.append(
                 {
                     "key": "temperature",

@@ -197,7 +197,9 @@ class AjaxSSEClient:
                 # Thread-safe callback to HA event loop
                 self._hass_loop.call_soon_threadsafe(lambda: asyncio.create_task(self._async_callback(event_data)))
             else:
-                self._callback(event_data)
+                result = self._callback(event_data)
+                if asyncio.iscoroutine(result):
+                    await result
 
         except json.JSONDecodeError:
             _LOGGER.error("Invalid JSON in SSE event: %s", data[:100])

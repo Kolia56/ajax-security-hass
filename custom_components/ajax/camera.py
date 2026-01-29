@@ -21,22 +21,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import AjaxConfigEntry
 from .const import CONF_RTSP_PASSWORD, CONF_RTSP_USERNAME, DOMAIN, MANUFACTURER
 from .coordinator import AjaxDataCoordinator
-from .models import AjaxVideoEdge, VideoEdgeType
+from .models import VIDEO_EDGE_MODEL_NAMES, AjaxVideoEdge, VideoEdgeType
 
 _LOGGER = logging.getLogger(__name__)
-
-# Human-readable model names for video edge devices
-VIDEO_EDGE_MODEL_NAMES = {
-    VideoEdgeType.NVR: "NVR",
-    VideoEdgeType.TURRET: "TurretCam",
-    VideoEdgeType.TURRET_HL: "TurretCam HL",
-    VideoEdgeType.BULLET: "BulletCam",
-    VideoEdgeType.BULLET_HL: "BulletCam HL",
-    VideoEdgeType.MINIDOME: "MiniDome",
-    VideoEdgeType.MINIDOME_HL: "MiniDome HL",
-    VideoEdgeType.INDOOR: "Indoor Camera",
-    VideoEdgeType.UNKNOWN: "Video Edge",
-}
+PARALLEL_UPDATES = 1
 
 # Default RTSP port (Ajax cameras use 8554, not standard 554)
 DEFAULT_RTSP_PORT = 8554

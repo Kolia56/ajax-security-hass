@@ -25,6 +25,7 @@ from .devices.siren import SirenHandler
 from .models import AjaxDevice, DeviceType, SecurityState
 
 _LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 1
 
 # Device handlers that support get_selects()
 SELECT_DEVICE_HANDLERS = {
@@ -237,6 +238,8 @@ class AjaxDoorPlusBaseSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEntit
 class AjaxShockSensitivitySelect(AjaxDoorPlusBaseSelect):
     """Select entity for shock sensor sensitivity."""
 
+    __slots__ = ()
+
     _attr_entity_category = EntityCategory.CONFIG
     _attr_options = list(SHOCK_SENSITIVITY_OPTIONS.values())
 
@@ -443,6 +446,8 @@ class AjaxIndicationModeSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEnt
 
 class AjaxDimmerSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEntity):
     """Select entity for LightSwitchDimmer settings."""
+
+    __slots__ = ("_space_id", "_device_id", "_select_def")
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.CONFIG

@@ -43,22 +43,15 @@ from .devices import (
     WaterStopHandler,
     WireInputHandler,
 )
-from .models import AjaxDevice, AjaxVideoEdge, DeviceType, VideoEdgeType
+from .models import (
+    VIDEO_EDGE_MODEL_NAMES,
+    AjaxDevice,
+    AjaxVideoEdge,
+    DeviceType,
+)
 
 _LOGGER = logging.getLogger(__name__)
-
-# Human-readable model names for video edge devices
-VIDEO_EDGE_MODEL_NAMES = {
-    VideoEdgeType.NVR: "NVR",
-    VideoEdgeType.TURRET: "TurretCam",
-    VideoEdgeType.TURRET_HL: "TurretCam HL",
-    VideoEdgeType.BULLET: "BulletCam",
-    VideoEdgeType.BULLET_HL: "BulletCam HL",
-    VideoEdgeType.MINIDOME: "MiniDome",
-    VideoEdgeType.MINIDOME_HL: "MiniDome HL",
-    VideoEdgeType.INDOOR: "Indoor Camera",
-    VideoEdgeType.UNKNOWN: "Video Edge",
-}
+PARALLEL_UPDATES = 1
 
 # Mapping of device types to handlers
 DEVICE_HANDLERS = {

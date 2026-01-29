@@ -25,6 +25,7 @@ from .coordinator import AjaxDataCoordinator
 from .models import AjaxDevice, DeviceType
 
 _LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 1
 
 # Device types that support dimming
 DIMMABLE_DEVICE_TYPES = {DeviceType.WALLSWITCH}

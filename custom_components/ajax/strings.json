@@ -342,6 +342,13 @@
           "off": "Problem",
           "on": "OK"
         }
+      },
+      "video_line_crossing": {
+        "name": "Line crossing",
+        "state": {
+          "off": "None",
+          "on": "Detected"
+        }
       }
     },
     "button": {
@@ -386,12 +393,6 @@
       },
       "disarm_brightness": {
         "name": "Brightness when disarmed"
-      },
-      "current_brightness": {
-        "name": "Current brightness"
-      },
-      "data_channel_quality": {
-        "name": "Data channel quality"
       }
     },
     "select": {
@@ -1041,6 +1042,51 @@
       },
       "waterstop_prevention_period": {
         "name": "Prevention period"
+      },
+      "connection_type": {
+        "name": "Connection type"
+      },
+      "contact_mode": {
+        "name": "Contact mode"
+      },
+      "alarm_type": {
+        "name": "Alarm type"
+      },
+      "alarm_mode": {
+        "name": "Alarm mode"
+      },
+      "power_supply_mode": {
+        "name": "Power supply mode"
+      },
+      "arm_delay": {
+        "name": "Arm delay"
+      },
+      "alarm_delay": {
+        "name": "Alarm delay"
+      },
+      "calibration_state": {
+        "name": "Calibration state"
+      },
+      "power": {
+        "name": "Power"
+      },
+      "energy": {
+        "name": "Energy"
+      },
+      "voltage": {
+        "name": "Voltage"
+      },
+      "current": {
+        "name": "Current"
+      },
+      "brightness": {
+        "name": "Brightness"
+      },
+      "current_brightness": {
+        "name": "Current brightness"
+      },
+      "data_channel_quality": {
+        "name": "Data channel quality"
       }
     },
     "valve": {
@@ -1312,6 +1358,62 @@
       },
       "dimmer_calibration": {
         "name": "Dimmer calibration",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_motion": {
+        "name": "Siren on motion",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_smoke": {
+        "name": "Siren on smoke",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_co": {
+        "name": "Siren on CO",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_temperature": {
+        "name": "Siren on high temperature",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_temp_diff": {
+        "name": "Siren on rapid temperature rise",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_contact": {
+        "name": "Siren on contact",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_acceleration": {
+        "name": "Siren on acceleration",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "accelerometer": {
+        "name": "Accelerometer",
         "state": {
           "off": "Disabled",
           "on": "Enabled"

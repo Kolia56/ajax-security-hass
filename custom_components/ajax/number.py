@@ -25,6 +25,7 @@ from .coordinator import AjaxDataCoordinator
 from .models import AjaxDevice, DeviceType, SecurityState
 
 _LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 1
 
 # Device types that support DoorProtect Plus number settings
 DEVICES_WITH_DOOR_PLUS_NUMBERS = [
@@ -447,6 +448,8 @@ class AjaxLedBrightnessV2Number(CoordinatorEntity[AjaxDataCoordinator], NumberEn
 
 class AjaxDimmerNumber(CoordinatorEntity[AjaxDataCoordinator], NumberEntity):
     """Number entity for LightSwitchDimmer settings."""
+
+    __slots__ = ("_space_id", "_device_id", "_number_def")
 
     _attr_has_entity_name = True
     _attr_mode = NumberMode.SLIDER

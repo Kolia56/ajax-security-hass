@@ -40,6 +40,7 @@ from .const import (
     CONF_QUEUE_NAME,
     CONF_VERIFY_SSL,
     DOMAIN,
+    INTEGRATION_VERSION,
     AjaxConfigEntry,
 )
 from .coordinator import AjaxDataCoordinator
@@ -85,7 +86,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: AjaxConfigEntry) -> bool:
     """Set up Ajax Security System from a config entry."""
-    _LOGGER.info("Ajax integration v0.11.2 starting...")
+    _LOGGER.info("Ajax integration v%s starting...", INTEGRATION_VERSION)
 
     # Get authentication mode (default to direct for backwards compatibility)
     auth_mode = entry.data.get(CONF_AUTH_MODE, AUTH_MODE_DIRECT)
@@ -619,7 +620,7 @@ async def _async_setup_areas(hass: HomeAssistant, coordinator: AjaxDataCoordinat
 
     for _space_id, space in coordinator.account.spaces.items():
         # Get rooms map from space
-        rooms_map = getattr(space, "_rooms_map", {})
+        rooms_map = space.rooms_map
 
         for room_id, room_name in rooms_map.items():
             if not room_name:

@@ -75,7 +75,7 @@ class AjaxSQSClient:
         """Connect to SQS and get queue URL."""
         try:
             # Run in executor to avoid blocking
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             self._queue_url = await loop.run_in_executor(None, self._get_queue_url_sync)
             _LOGGER.info("Connected to SQS: %s", self._queue_name)
             return True

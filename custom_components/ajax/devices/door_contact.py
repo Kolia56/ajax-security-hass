@@ -350,12 +350,6 @@ class WireInputHandler(DoorContactHandler):
 
         # Note: No translation_key needed - HA provides automatic translation for TEMPERATURE device_class
         if "temperature" in self.device.attributes:
-            from homeassistant.components.sensor import (
-                SensorDeviceClass,
-                SensorStateClass,
-            )
-            from homeassistant.const import UnitOfTemperature
-
             sensors.append(
                 {
                     "key": "temperature",

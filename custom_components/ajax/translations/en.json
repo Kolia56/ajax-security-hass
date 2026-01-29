@@ -52,12 +52,14 @@
         "data": {
           "email": "Email Address",
           "password": "Password",
-          "proxy_url": "Proxy URL"
+          "proxy_url": "Proxy URL",
+          "verify_ssl": "Verify SSL Certificate"
         },
         "data_description": {
           "email": "Your Ajax account email address",
           "password": "Your Ajax account password",
-          "proxy_url": "Ajax proxy server URL"
+          "proxy_url": "Ajax proxy server URL",
+          "verify_ssl": "Disable if using self-signed certificate (HTTPS)"
         },
         "description": "Connect via an Ajax proxy server.\n\n⚠️ **User account only** (not PRO/Enterprise accounts).\n\nEvents will be received in real-time via SSE.",
         "title": "Proxy Connection"
@@ -310,6 +312,13 @@
           "on": "Human detected"
         }
       },
+      "video_line_crossing": {
+        "name": "Line crossing",
+        "state": {
+          "off": "None",
+          "on": "Detected"
+        }
+      },
       "video_motion": {
         "name": "Motion detection",
         "state": {
@@ -467,6 +476,9 @@
       "active_connection": {
         "name": "Active connection"
       },
+      "alarm_delay": {
+        "name": "Alarm delay"
+      },
       "alarm_duration": {
         "name": "Alarm Duration",
         "state": {
@@ -478,6 +490,12 @@
           "5_minutes": "5 minutes",
           "continuous": "Continuous"
         }
+      },
+      "alarm_mode": {
+        "name": "Alarm mode"
+      },
+      "alarm_type": {
+        "name": "Alarm type"
       },
       "alarm_volume_level": {
         "name": "Alarm Volume",
@@ -491,6 +509,9 @@
           "very_loud": "Very loud"
         }
       },
+      "arm_delay": {
+        "name": "Arm delay"
+      },
       "battery_state": {
         "name": "Battery state"
       },
@@ -503,6 +524,9 @@
           "quiet": "Quiet",
           "very_loud": "Very loud"
         }
+      },
+      "brightness": {
+        "name": "Brightness"
       },
       "button_brightness": {
         "name": "Button LED brightness",
@@ -523,10 +547,30 @@
       "bypassed_devices": {
         "name": "Bypassed devices"
       },
+      "calibration_state": {
+        "name": "Calibration state"
+      },
+      "connection_type": {
+        "name": "Connection type"
+      },
+      "contact_mode": {
+        "name": "Contact mode"
+      },
+      "current": {
+        "name": "Current"
+      },
+      "current_brightness": {
+        "name": "Current brightness"
+      },
+      "data_channel_quality": {
+        "name": "Data channel quality"
+      },
       "device_color": {
         "name": "Device color",
         "state": {
           "black": "Black",
+          "blue": "Blue",
+          "red": "Red",
           "white": "White"
         }
       },
@@ -541,6 +585,9 @@
       },
       "devices_with_malfunctions": {
         "name": "Devices with malfunctions"
+      },
+      "energy": {
+        "name": "Energy"
       },
       "false_press_filter": {
         "name": "False press filter",
@@ -852,6 +899,13 @@
       "malfunctions": {
         "name": "Malfunctions"
       },
+      "mcp_switch_state": {
+        "name": "Button state",
+        "state": {
+          "button_pressed": "Pressed",
+          "button_unpressed": "Normal"
+        }
+      },
       "network_status": {
         "name": "Mobile network"
       },
@@ -883,6 +937,12 @@
       },
       "photos_per_alarm": {
         "name": "Photos per alarm"
+      },
+      "power": {
+        "name": "Power"
+      },
+      "power_supply_mode": {
+        "name": "Power supply mode"
       },
       "recent_events": {
         "name": "Recent events",
@@ -997,6 +1057,9 @@
       "video_edge_wifi_signal": {
         "name": "Camera WiFi signal"
       },
+      "voltage": {
+        "name": "Voltage"
+      },
       "waterstop_external_power": {
         "name": "Power source",
         "state": {
@@ -1027,6 +1090,13 @@
       }
     },
     "switch": {
+      "accelerometer": {
+        "name": "Accelerometer",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
       "alert_if_moved": {
         "name": "Alert if moved",
         "state": {
@@ -1210,8 +1280,36 @@
           "on": "Enabled"
         }
       },
+      "siren_trigger_acceleration": {
+        "name": "Siren on acceleration",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_co": {
+        "name": "Siren on CO",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_contact": {
+        "name": "Siren on contact",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
       "siren_trigger_glass": {
         "name": "Siren on glass break",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_motion": {
+        "name": "Siren on motion",
         "state": {
           "off": "Disabled",
           "on": "Enabled"
@@ -1226,6 +1324,27 @@
       },
       "siren_trigger_shock": {
         "name": "Siren on shock",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_smoke": {
+        "name": "Siren on smoke",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_temp_diff": {
+        "name": "Siren on rapid temperature rise",
+        "state": {
+          "off": "Disabled",
+          "on": "Enabled"
+        }
+      },
+      "siren_trigger_temperature": {
+        "name": "Siren on high temperature",
         "state": {
           "off": "Disabled",
           "on": "Enabled"
@@ -1395,12 +1514,14 @@
       },
       "proxy_settings": {
         "data": {
-          "proxy_url": "Proxy URL"
+          "proxy_url": "Proxy URL",
+          "verify_ssl": "Verify SSL Certificate"
         },
         "data_description": {
-          "proxy_url": "Example: https://my-proxy.example.com"
+          "proxy_url": "Example: https://my-proxy.example.com",
+          "verify_ssl": "Disable for self-signed certificates"
         },
-        "description": "Change your Ajax proxy server URL.",
+        "description": "Change your Ajax proxy server URL and SSL settings.",
         "title": "Proxy Settings"
       },
       "rtsp_credentials": {

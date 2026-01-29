@@ -22,6 +22,7 @@ from .coordinator import AjaxDataCoordinator
 from .models import GroupState, SecurityState
 
 _LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(

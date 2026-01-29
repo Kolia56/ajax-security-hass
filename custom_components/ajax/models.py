@@ -279,6 +279,20 @@ class AjaxVideoEdge:
         return f"VideoEdge({self.name}, type={self.video_edge_type.value})"
 
 
+# Human-readable model names for video edge devices
+VIDEO_EDGE_MODEL_NAMES: dict[VideoEdgeType, str] = {
+    VideoEdgeType.NVR: "NVR",
+    VideoEdgeType.TURRET: "TurretCam",
+    VideoEdgeType.TURRET_HL: "TurretCam HL",
+    VideoEdgeType.BULLET: "BulletCam",
+    VideoEdgeType.BULLET_HL: "BulletCam HL",
+    VideoEdgeType.MINIDOME: "MiniDome",
+    VideoEdgeType.MINIDOME_HL: "MiniDome HL",
+    VideoEdgeType.INDOOR: "Indoor Camera",
+    VideoEdgeType.UNKNOWN: "Video Edge",
+}
+
+
 @dataclass
 class AjaxNotification:
     """Represents a notification from Ajax."""

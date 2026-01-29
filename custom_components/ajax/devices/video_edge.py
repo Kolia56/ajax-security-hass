@@ -14,6 +14,7 @@ import re
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass
 
 from ..models import VideoEdgeType
@@ -103,6 +104,13 @@ class VideoEdgeHandler:
             video_edge.video_edge_type.value,
             list(video_edge.raw_data.keys()) if video_edge.raw_data else [],
         )
+
+    def _get_first_storage(self) -> dict[str, Any]:
+        """Get the first storage device safely, returning empty dict if none."""
+        devices = self.video_edge.raw_data.get("storageDevices", [])
+        if isinstance(devices, list) and len(devices) > 0:
+            return devices[0]
+        return {}
 
     def get_binary_sensors(self) -> list[dict]:
         """Return binary sensor entities for video edges."""
@@ -217,7 +225,7 @@ class VideoEdgeHandler:
             sensors.append(
                 {
                     "key": "tamper",
-                    "device_class": "tamper",
+                    "device_class": BinarySensorDeviceClass.TAMPER,
                     "value_fn": lambda: not self.video_edge.raw_data.get("systemInfo", {}).get("lidClosed", True),
                     "enabled_by_default": True,
                 }
@@ -339,7 +347,7 @@ class VideoEdgeHandler:
                         "translation_key": "video_edge_storage_total",
                         "native_unit_of_measurement": "GB",
                         "value_fn": lambda: round(
-                            self.video_edge.raw_data.get("storageDevices", [{}])[0].get("sizeTotal", 0) / (1024**3),
+                            self._get_first_storage().get("sizeTotal", 0) / (1024**3),
                             1,
                         ),
                         "enabled_by_default": True,
@@ -354,7 +362,7 @@ class VideoEdgeHandler:
                         "key": "storage_temperature",
                         "translation_key": "video_edge_storage_temperature",
                         "native_unit_of_measurement": "°C",
-                        "value_fn": lambda: self.video_edge.raw_data.get("storageDevices", [{}])[0].get("temperature"),
+                        "value_fn": lambda: self._get_first_storage().get("temperature"),
                         "enabled_by_default": True,
                         "entity_category": "diagnostic",
                     }
@@ -367,7 +375,7 @@ class VideoEdgeHandler:
                     {
                         "key": "storage_status",
                         "translation_key": "video_edge_storage_status",
-                        "device_class": "enum",
+                        "device_class": SensorDeviceClass.ENUM,
                         "options": ["ready", "idle", "need_format", "formatting", "none"],
                         "value_fn": lambda: self._get_storage_status(),
                         "enabled_by_default": True,
@@ -380,7 +388,7 @@ class VideoEdgeHandler:
             {
                 "key": "connection_state",
                 "translation_key": "video_edge_connection",
-                "device_class": "enum",
+                "device_class": SensorDeviceClass.ENUM,
                 "options": ["online", "offline", "unknown"],
                 "value_fn": lambda: self.video_edge.connection_state.lower()
                 if self.video_edge.connection_state
@@ -434,7 +442,7 @@ class VideoEdgeHandler:
                             {
                                 "key": f"record_mode{channel_suffix}",
                                 "translation_key": "video_edge_record_mode",
-                                "device_class": "enum",
+                                "device_class": SensorDeviceClass.ENUM,
                                 "options": ["on_detection", "permanent", "disabled", "unknown"],
                                 "value_fn": lambda cid=channel_id: self._get_channel_record_mode(cid),
                                 "enabled_by_default": True,
@@ -448,7 +456,7 @@ class VideoEdgeHandler:
                             {
                                 "key": f"record_policy{channel_suffix}",
                                 "translation_key": "video_edge_record_policy",
-                                "device_class": "enum",
+                                "device_class": SensorDeviceClass.ENUM,
                                 "options": ["always", "when_requested", "unknown"],
                                 "value_fn": lambda cid=channel_id: self._get_channel_record_policy(cid),
                                 "enabled_by_default": True,
@@ -467,9 +475,7 @@ class VideoEdgeHandler:
                             "key": "archive_depth",
                             "translation_key": "video_edge_archive_depth",
                             "native_unit_of_measurement": "d",
-                            "value_fn": lambda: self.video_edge.raw_data.get("storageDevices", [{}])[0].get(
-                                "archiveDepth"
-                            ),
+                            "value_fn": lambda: self._get_first_storage().get("archiveDepth"),
                             "enabled_by_default": True,
                         }
                     )
@@ -716,46 +722,3 @@ class VideoEdgeHandler:
                         break  # Found this NVR, move to next one
 
         return linked_nvrs
-
-    def _is_channel_linked_to_ajax_camera(self, channel: dict) -> bool:
-        """Check if an NVR channel is linked to an EXTERNAL Ajax camera (via sourceAliases).
-
-        NVR channels that record from Ajax cameras (TurretCam, BulletCam, etc.)
-        have sourceAliases with a PRIMARY source pointing to the Ajax camera.
-        We skip AI detection sensors for these channels because the Ajax camera
-        already has its own detection sensors (avoiding duplicates).
-
-        IMPORTANT: We check that the PRIMARY source's videoEdgeId is DIFFERENT
-        from the current video edge's ID. This ensures we don't skip sensors
-        for cameras that reference themselves in sourceAliases.
-
-        Future NVRs with AI detection on non-Ajax cameras will create sensors
-        since they won't have a PRIMARY source with an Ajax video edge type.
-        """
-        if not isinstance(channel, dict):
-            return False
-
-        source_aliases = channel.get("sourceAliases", {})
-        if not isinstance(source_aliases, dict):
-            return False
-
-        sources = source_aliases.get("sources", [])
-        if not isinstance(sources, list):
-            return False
-
-        # Check if there's a PRIMARY source with an Ajax camera type
-        # that is DIFFERENT from the current video edge (external camera)
-        ajax_camera_types = {"TURRET", "TURRET_HL", "BULLET", "BULLET_HL", "MINIDOME", "MINIDOME_HL"}
-        current_ve_id = self.video_edge.id
-
-        for source in sources:
-            if not isinstance(source, dict):
-                continue
-            if source.get("sourceType") == "PRIMARY":
-                source_type = source.get("type", "")
-                source_ve_id = source.get("videoEdgeId", "")
-                # Only consider it linked if it's an Ajax camera AND it's a different device
-                if source_type in ajax_camera_types and source_ve_id != current_ve_id:
-                    return True
-
-        return False

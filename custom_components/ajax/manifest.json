@@ -3,7 +3,7 @@
   "name": "Ajax Security System",
   "codeowners": ["@foXaCe"],
   "config_flow": true,
-  "dependencies": ["ffmpeg"],
+  "dependencies": ["ffmpeg", "logbook"],
   "dhcp": [
     {
       "hostname": "ajax-*",

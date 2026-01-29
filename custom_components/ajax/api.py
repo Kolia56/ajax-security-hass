@@ -1531,6 +1531,21 @@ class AjaxRestApi:
             {"command": command, "ignoreProblems": True},
         )
 
+    async def async_press_panic_button(self, hub_id: str) -> None:
+        """Trigger panic alarm for a hub.
+
+        Args:
+            hub_id: Hub ID
+        """
+        if not self.user_id:
+            raise AjaxRestApiError("No user_id available. Call async_login() first.")
+
+        await self._request_no_response(
+            "PUT",
+            f"user/{self.user_id}/hubs/{hub_id}/commands/arming",
+            {"command": "PANIC"},
+        )
+
     # Group commands
     async def async_get_groups(self, hub_id: str) -> list[dict[str, Any]]:
         """Get all groups for a hub.

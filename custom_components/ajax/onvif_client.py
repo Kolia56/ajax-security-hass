@@ -299,6 +299,13 @@ class AjaxOnvifClient:
             if not topic:
                 return
 
+            # Log every topic for debugging (helps identify unknown events)
+            _LOGGER.debug(
+                "%s: ONVIF topic: %s",
+                self.video_edge.name,
+                topic,
+            )
+
             # Extract message data
             message_data = None
             if hasattr(msg, "Message") and msg.Message:
@@ -378,19 +385,41 @@ class AjaxOnvifClient:
                         if name and value is not None:
                             data_items[str(name)] = str(value)
 
-            # Parse Ajax Object Detection (Human, Vehicle, Pet)
-            # Topic: tns1:RuleEngine/ObjectDetection/Object
-            # Data: ClassTypes = Human/Vehicle/dog/cat
-            if "ObjectDetection/Object" in topic:
-                class_type = data_items.get("ClassTypes", "").lower()
-                detection_type = None
+            # Log data items for debugging
+            if data_items:
+                _LOGGER.debug(
+                    "%s: ONVIF data: %s (topic: %s)",
+                    self.video_edge.name,
+                    data_items,
+                    topic,
+                )
 
-                if class_type in ("human", "person"):
-                    detection_type = "VIDEO_HUMAN"
-                elif class_type == "vehicle":
-                    detection_type = "VIDEO_VEHICLE"
-                elif class_type in ("dog", "cat", "pet"):
-                    detection_type = "VIDEO_PET"
+            # Parse Ajax Object Detection (Human, Vehicle, Pet)
+            # Topic variants:
+            #   tns1:RuleEngine/ObjectDetection/Object (generic ONVIF)
+            #   tns1:RuleEngine/tnsajax:ObjectDetector/Detection (Ajax-specific)
+            if "ObjectDetection/Object" in topic or "ObjectDetector/Detection" in topic:
+                class_types_raw = data_items.get("ClassTypes", "").lower()
+                # Ajax can send comma-separated: "Animal,Human,Vehicle"
+                class_types = [c.strip() for c in class_types_raw.split(",") if c.strip()]
+
+                if not class_types:
+                    # Empty ClassTypes = end of detection
+                    return None
+
+                # Return the highest priority detection
+                # Priority: Human > Vehicle > Pet
+                detection_type = None
+                for ct in class_types:
+                    if ct in ("human", "person"):
+                        detection_type = "VIDEO_HUMAN"
+                        break
+                    elif ct == "vehicle":
+                        if detection_type != "VIDEO_HUMAN":
+                            detection_type = "VIDEO_VEHICLE"
+                    elif ct in ("animal", "dog", "cat", "pet"):
+                        if detection_type not in ("VIDEO_HUMAN", "VIDEO_VEHICLE"):
+                            detection_type = "VIDEO_PET"
 
                 if detection_type:
                     return OnvifDetectionEvent(
@@ -399,14 +428,13 @@ class AjaxOnvifClient:
                         detection_type=detection_type,
                         active=True,
                     )
-                # Empty ClassTypes = no active detection, ignore
                 return None
 
             # Parse Ajax Motion Detection
             # Topic: tns1:RuleEngine/tnsajax:MotionDetector/Detection
-            # Data: Detected = true/false
+            # Data: State = true/false (Ajax R&D) or Detected = true/false
             if "MotionDetector/Detection" in topic:
-                detected = data_items.get("Detected", "false").lower() == "true"
+                detected = data_items.get("State", data_items.get("Detected", "false")).lower() == "true"
                 return OnvifDetectionEvent(
                     video_edge_id=self.video_edge.id,
                     channel_id=channel_id,
@@ -427,15 +455,19 @@ class AjaxOnvifClient:
                 )
 
             # Parse Ajax Line Crossing Detection
-            # Topic: tns1:RuleEngine/tnsajax:LineDetector/Crossing
-            # Data: Crossed = true/false (or similar)
-            if "LineDetector/Crossing" in topic:
-                crossed = data_items.get("Crossed", data_items.get("State", "false")).lower() == "true"
+            # Topic variants:
+            #   tns1:RuleEngine/tnsajax:LineDetector/Crossing
+            #   tns1:RuleEngine/LineDetector/Crossed (Ajax R&D)
+            # Data: ClassTypes = "Animal"/"Human"/"Vehicle" or combination
+            if "LineDetector/Crossing" in topic or "LineDetector/Crossed" in topic:
+                class_type = data_items.get("ClassTypes", "").lower()
+                # Line crossing is active when ClassTypes is non-empty
+                active = bool(class_type)
                 return OnvifDetectionEvent(
                     video_edge_id=self.video_edge.id,
                     channel_id=channel_id,
                     detection_type="VIDEO_LINE_CROSSING",
-                    active=crossed,
+                    active=active,
                 )
 
             # Parse Ajax Doorbell Ring

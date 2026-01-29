@@ -21,6 +21,7 @@ from .const import DOMAIN, MANUFACTURER
 from .coordinator import AjaxDataCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(

@@ -40,6 +40,7 @@ from .devices import (
 from .models import AjaxDevice, DeviceType, SecurityState
 
 _LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 1
 
 # Mapping of device types to handlers (excluding dimmer - handled separately)
 DEVICE_HANDLERS = {
@@ -625,6 +626,8 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
 class AjaxDimmerSettingsSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
     """Switch entity for LightSwitchDimmer settings (settingsSwitch list)."""
 
+    __slots__ = ("_space_id", "_device_id", "_switch_def")
+
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.CONFIG
 
@@ -693,33 +696,39 @@ class AjaxDimmerSettingsSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEnt
             raise HomeAssistantError("Hub not found")
 
         settings_key = self._switch_def["settings_key"]
-        current_settings = list(device.attributes.get("settingsSwitch", []))
+        old_settings = list(device.attributes.get("settingsSwitch", []))
+        new_settings = list(old_settings)
 
-        if value and settings_key not in current_settings:
-            current_settings.append(settings_key)
-        elif not value and settings_key in current_settings:
-            current_settings.remove(settings_key)
+        if value and settings_key not in new_settings:
+            new_settings.append(settings_key)
+        elif not value and settings_key in new_settings:
+            new_settings.remove(settings_key)
 
         # Optimistic update
-        device.attributes["settingsSwitch"] = current_settings
+        device.attributes["settingsSwitch"] = new_settings
         self.async_write_ha_state()
 
         try:
             await self.coordinator.api.async_update_device(
-                space.hub_id, self._device_id, {"settingsSwitch": current_settings}
+                space.hub_id, self._device_id, {"settingsSwitch": new_settings}
             )
             _LOGGER.info(
                 "Set settingsSwitch=%s for device %s",
-                current_settings,
+                new_settings,
                 self._device_id,
             )
         except Exception as err:
             _LOGGER.error("Failed to set settingsSwitch: %s", err)
+            # Rollback optimistic update
+            device.attributes["settingsSwitch"] = old_settings
+            self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
 
 
 class AjaxDimmerBoolSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
     """Switch entity for LightSwitchDimmer boolean attributes."""
+
+    __slots__ = ("_space_id", "_device_id", "_attr_key", "_api_key")
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.CONFIG
@@ -790,7 +799,8 @@ class AjaxDimmerBoolSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity)
         if not space.hub_id:
             raise HomeAssistantError("Hub not found")
 
-        # Optimistic update
+        # Optimistic update with rollback
+        old_value = device.attributes.get(self._attr_key)
         device.attributes[self._attr_key] = value
         self.async_write_ha_state()
 
@@ -804,11 +814,16 @@ class AjaxDimmerBoolSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity)
             )
         except Exception as err:
             _LOGGER.error("Failed to set %s: %s", self._api_key, err)
+            # Rollback optimistic update
+            device.attributes[self._attr_key] = old_value
+            self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
 
 
 class AjaxDimmerCalibrationSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
     """Switch entity for LightSwitchDimmer calibration (nested in dimmerSettings)."""
+
+    __slots__ = ("_space_id", "_device_id")
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.CONFIG

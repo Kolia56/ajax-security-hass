@@ -21,7 +21,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.debounce import Debouncer
@@ -268,7 +268,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         if should_poll and self._door_sensor_poll_task is None:
             # Start door sensor polling when disarmed or in night mode
-            self._door_sensor_poll_task = asyncio.create_task(self._async_poll_door_sensors_loop())
+            self._door_sensor_poll_task = self.config_entry.async_create_background_task(
+                self.hass, self._async_poll_door_sensors_loop(), "ajax_door_sensor_poll"
+            )
             _LOGGER.info(
                 "Started door sensor fast polling (every %ds, state: %s)",
                 UPDATE_INTERVAL_DOOR_SENSORS,
@@ -422,10 +424,14 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         """Force a full metadata refresh (rooms, users, groups).
 
         Can be called from a service or button to manually refresh.
+        Uses async_refresh() instead of async_request_refresh() to bypass
+        the DataUpdateCoordinator debouncer and execute immediately.
+        async_request_refresh() defers to the debounce timer (30-60s),
+        which causes group state updates to be delayed.
         """
-        _LOGGER.info("Forcing full metadata refresh (flag set)")
+        _LOGGER.info("Forcing full metadata refresh (immediate)")
         self._force_metadata_refresh = True  # Set flag to force refresh
-        await self.async_request_refresh()
+        await self.async_refresh()
 
     async def async_request_refresh_bypass_cache(self) -> None:
         """Request a refresh that bypasses the proxy cache.
@@ -444,6 +450,10 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         - Full metadata refresh (hourly): Rooms, users, groups
         """
         try:
+            # Log when connection is restored after a failure
+            if not self.last_update_success:
+                _LOGGER.info("Connection to Ajax API restored")
+
             # Check if we need to bypass proxy cache (after SSE event or user action)
             if self._bypass_cache_next_refresh:
                 self.api._bypass_cache_once = True
@@ -484,6 +494,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 self._initial_load_done = True
                 _LOGGER.info("Initial data load complete")
 
+                # Clean up HA device registry: remove devices deleted from Ajax
+                self._async_cleanup_stale_devices()
+
                 # Start door sensor polling if any space is disarmed or in night mode
                 for space in self.account.spaces.values():
                     if space.security_state in (
@@ -497,14 +510,16 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 # Priority: SSE (proxy mode) > SQS (direct mode)
                 if not self._sse_initialized and self._sse_url:
                     # Proxy mode: use SSE for real-time events
-                    asyncio.create_task(self._async_init_sse())
+                    self.config_entry.async_create_background_task(self.hass, self._async_init_sse(), "ajax_init_sse")
                 elif not self._sqs_initialized and self._aws_access_key_id:
                     # Direct mode: use SQS for real-time events
-                    asyncio.create_task(self._async_init_sqs())
+                    self.config_entry.async_create_background_task(self.hass, self._async_init_sqs(), "ajax_init_sqs")
 
                 # Initialize ONVIF for local AI detections (works even when disarmed)
                 if not self._onvif_initialized:
-                    asyncio.create_task(self._async_init_onvif())
+                    self.config_entry.async_create_background_task(
+                        self.hass, self._async_init_onvif(), "ajax_init_onvif"
+                    )
             else:
                 # Periodic update - optimized polling
                 # Check if we need full metadata refresh (hourly or forced)
@@ -534,17 +549,19 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         except AjaxRestAuthError as err:
             raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
         except AjaxRestApiError as err:
+            if self.last_update_success:
+                _LOGGER.warning("Connection to Ajax API lost: %s", err)
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
     async def _async_fast_poll_door_sensor(self, space_id: str, device_id: str) -> None:
         """Fast poll a door sensor after opening to quickly detect closure."""
         poll_interval = 3  # Poll every 3 seconds
         max_duration = 120  # Stop after 2 minutes
-        start_time = asyncio.get_event_loop().time()
+        start_time = asyncio.get_running_loop().time()
 
         try:
             while True:
-                elapsed = asyncio.get_event_loop().time() - start_time
+                elapsed = asyncio.get_running_loop().time() - start_time
                 if elapsed > max_duration:
                     break
 
@@ -1212,6 +1229,51 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     else:
                         self._create_event_from_state_change(space, old_state, security_state)
 
+    @callback
+    def _async_cleanup_stale_devices(self) -> None:
+        """Remove HA device registry entries for devices no longer in Ajax.
+
+        After initial load, compare HA device registry with known Ajax devices.
+        This catches devices deleted from Ajax while HA was offline.
+        """
+        if self.account is None:
+            return
+
+        # Collect all known Ajax device IDs across all spaces
+        known_ids: set[str] = set()
+        for space in self.account.spaces.values():
+            # Hub/space itself is registered as a device
+            known_ids.add(space.id)
+            if space.hub_id:
+                known_ids.add(space.hub_id)
+            # Regular devices
+            known_ids.update(space.devices.keys())
+            # Video edge cameras
+            known_ids.update(space.video_edges.keys())
+
+        # Scan HA device registry for Ajax devices
+        device_registry = dr.async_get(self.hass)
+        stale_devices: list[tuple[str, str]] = []  # (ha_device_id, ajax_id)
+
+        for ha_device in device_registry.devices.values():
+            for domain, identifier in ha_device.identifiers:
+                if domain == DOMAIN and identifier not in known_ids:
+                    stale_devices.append((ha_device.id, identifier))
+
+        # Remove stale devices
+        for ha_device_id, ajax_id in stale_devices:
+            device_registry.async_remove_device(ha_device_id)
+            _LOGGER.info(
+                "Auto-removed stale device (Ajax ID: %s) from HA registry - no longer in Ajax account",
+                ajax_id,
+            )
+
+        if stale_devices:
+            _LOGGER.info(
+                "Cleaned up %d stale device(s) from HA registry",
+                len(stale_devices),
+            )
+
     async def _async_update_devices(self, space_id: str) -> None:
         """Update devices for a specific space."""
         if self.account is None:
@@ -1756,34 +1818,41 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             _LOGGER.info("Discovered %d new device(s) in space %s", new_devices_count, space_id)
 
         # Clean up devices that no longer exist in Ajax
-        # Compare existing devices with those received from API
-        existing_device_ids = set(space.devices.keys())
-        removed_device_ids = existing_device_ids - processed_ids
+        # Safety: only remove if API returned at least some devices (avoid wiping on empty response)
+        if processed_ids and space.devices:
+            existing_device_ids = set(space.devices.keys())
+            removed_device_ids = existing_device_ids - processed_ids
 
-        if removed_device_ids:
-            device_registry = dr.async_get(self.hass)
-            for device_id in removed_device_ids:
-                device = space.devices.get(device_id)
-                device_name = device.name if device else device_id
+            if removed_device_ids:
+                device_registry = dr.async_get(self.hass)
+                for device_id in removed_device_ids:
+                    device = space.devices.get(device_id)
+                    device_name = device.name if device else device_id
 
-                # Remove from HA device registry
-                ha_device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
-                if ha_device:
-                    device_registry.async_remove_device(ha_device.id)
-                    _LOGGER.info(
-                        "Removed device '%s' (ID: %s) from Home Assistant - no longer exists in Ajax",
-                        device_name,
-                        device_id,
-                    )
+                    # Remove from HA device registry
+                    ha_device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
+                    if ha_device:
+                        device_registry.async_remove_device(ha_device.id)
+                        _LOGGER.info(
+                            "Auto-removed device '%s' (ID: %s) from Home Assistant - deleted from Ajax",
+                            device_name,
+                            device_id,
+                        )
+                    else:
+                        _LOGGER.debug(
+                            "Device '%s' (ID: %s) not found in HA registry, removing from internal tracking only",
+                            device_name,
+                            device_id,
+                        )
 
-                # Remove from internal tracking
-                del space.devices[device_id]
+                    # Remove from internal tracking
+                    del space.devices[device_id]
 
-            _LOGGER.info(
-                "Cleaned up %d removed device(s) from space %s",
-                len(removed_device_ids),
-                space_id,
-            )
+                _LOGGER.info(
+                    "Cleaned up %d removed device(s) from space %s",
+                    len(removed_device_ids),
+                    space_id,
+                )
 
     def _normalize_device_attributes(self, api_attributes: dict[str, Any], device_type: DeviceType) -> dict[str, Any]:
         """Normalize Ajax API attributes to internal format.
@@ -2024,10 +2093,14 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 space_id,
             )
 
+            processed_ve_ids: set[str] = set()
+
             for ve_data in video_edges_data:
                 ve_id = ve_data.get("id")
                 if not ve_id:
                     continue
+
+                processed_ve_ids.add(ve_id)
 
                 # Parse video edge type
                 ve_type_str = ve_data.get("type", "UNKNOWN")
@@ -2122,6 +2195,43 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     video_edge.room_id = room_id
                     video_edge.room_name = room_name
                     video_edge.raw_data = ve_data
+
+            # Clean up video edges that no longer exist in Ajax
+            # Safety: only remove if API returned at least some devices (avoid wiping on empty response)
+            if processed_ve_ids and space.video_edges:
+                existing_ve_ids = set(space.video_edges.keys())
+                removed_ve_ids = existing_ve_ids - processed_ve_ids
+
+                if removed_ve_ids:
+                    device_registry = dr.async_get(self.hass)
+                    for ve_id in removed_ve_ids:
+                        video_edge = space.video_edges.get(ve_id)
+                        ve_name = video_edge.name if video_edge else ve_id
+
+                        # Remove from HA device registry
+                        ha_device = device_registry.async_get_device(identifiers={(DOMAIN, ve_id)})
+                        if ha_device:
+                            device_registry.async_remove_device(ha_device.id)
+                            _LOGGER.info(
+                                "Auto-removed video edge '%s' (ID: %s) from Home Assistant - deleted from Ajax",
+                                ve_name,
+                                ve_id,
+                            )
+                        else:
+                            _LOGGER.debug(
+                                "Video edge '%s' (ID: %s) not found in HA registry, removing from internal tracking only",
+                                ve_name,
+                                ve_id,
+                            )
+
+                        # Remove from internal tracking
+                        del space.video_edges[ve_id]
+
+                    _LOGGER.info(
+                        "Cleaned up %d removed video edge(s) from space %s",
+                        len(removed_ve_ids),
+                        space_id,
+                    )
 
         except Exception as err:
             _LOGGER.warning("Error updating video edges for space %s: %s", space_id, err)
@@ -2669,7 +2779,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         _LOGGER.warning("PANIC BUTTON pressed for space %s", space_id)
 
         try:
-            await self.api.async_press_panic_button(space_id)  # type: ignore[attr-defined]
+            await self.api.async_press_panic_button(space_id)
             # No state update needed, panic is instantaneous
 
         except AjaxRestApiError as err:
