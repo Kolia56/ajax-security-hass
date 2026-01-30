@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.3] - 2026-01-30
+
+### Changed
+- Comprehensive code review: fix race conditions, improve thread safety, deduplicate events
+- SQS client now uses `threading.Event` for safe thread signaling
+- SQS poll errors use exponential backoff (5s→30s max)
+- SQS manager deduplicates events within 5s window
+- SSE manager cleans dedup dict in-place to avoid reassignment
+- Login error handling catches specific exceptions instead of bare `Exception`
+- SQS event handler propagates `asyncio.CancelledError`
+- Extract `_build_hub_info()` helper to remove device info duplication
+- Modernize CI pipeline and add removal documentation
+
+### Fixed
+- Race condition on `_bypass_cache_once` flag in API client
+- All translation files updated and completed (de, es, fr, nl, sv, uk)
+- Remove URL from `proxy_url` description for hassfest compliance
+
 ## [0.13.2] - 2026-01-27
 
 ### Fixed
