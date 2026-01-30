@@ -73,7 +73,6 @@ class AjaxHubTracker(CoordinatorEntity[AjaxDataCoordinator], TrackerEntity):
 
         self._attr_unique_id = f"{space_id}_location"
         self._attr_translation_key = "position"
-        self._attr_has_entity_name = True
 
     @property
     def source_type(self) -> SourceType:

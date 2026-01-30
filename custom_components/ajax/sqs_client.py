@@ -6,7 +6,6 @@ import asyncio
 import json
 import logging
 import threading
-import time
 from collections.abc import Callable
 from typing import Any
 
@@ -51,7 +50,7 @@ class AjaxSQSClient:
 
         self._session = get_session()
         self._queue_url: str | None = None
-        self._running = False
+        self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
 
     @property
@@ -95,20 +94,20 @@ class AjaxSQSClient:
 
     async def start_receiving(self) -> None:
         """Start the background receive thread."""
-        if self._running:
+        if self._thread and self._thread.is_alive():
             return
         if not self._queue_url:
             _LOGGER.error("Cannot start: not connected")
             return
 
-        self._running = True
+        self._stop_event.clear()
         self._thread = threading.Thread(target=self._receive_loop, name="SQS-Receiver", daemon=True)
         self._thread.start()
         _LOGGER.info("SQS receiver started")
 
     async def stop_receiving(self) -> None:
         """Stop the background receive thread."""
-        self._running = False
+        self._stop_event.set()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=25)  # Wait for current poll to finish
         self._thread = None
@@ -128,12 +127,14 @@ class AjaxSQSClient:
         asyncio.set_event_loop(loop)
 
         poll_count = 0
+        consecutive_errors = 0
         try:
-            while self._running:
+            while not self._stop_event.is_set():
                 try:
                     poll_count += 1
                     _LOGGER.debug("SQS poll #%d starting...", poll_count)
                     messages = loop.run_until_complete(self._poll_messages())
+                    consecutive_errors = 0  # Reset on success
                     _LOGGER.debug("SQS poll #%d returned %d messages", poll_count, len(messages))
                     for msg in messages:
                         loop.run_until_complete(self._handle_message(msg))
@@ -145,8 +146,12 @@ class AjaxSQSClient:
                         continue  # Skip any wait, poll immediately
 
                 except Exception as err:
-                    _LOGGER.error("SQS poll error: %s", err)
-                    time.sleep(5)
+                    _LOGGER.error("SQS poll error: %s", err, exc_info=True)
+                    # Exponential backoff: 5s → 10s → 20s → 30s max
+                    backoff = min(5 * (2**consecutive_errors), 30)
+                    consecutive_errors += 1
+                    # Wait with stop_event so we can exit quickly on shutdown
+                    self._stop_event.wait(timeout=backoff)
         finally:
             loop.close()
             _LOGGER.info("SQS thread ended after %d polls", poll_count)

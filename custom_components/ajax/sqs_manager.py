@@ -188,6 +188,8 @@ class SQSManager:
     STATE_PROTECTION_SECONDS = 15.0
     # Maximum events to keep in history
     MAX_EVENTS_HISTORY = 10
+    # Deduplication window in seconds (ignore duplicate events within this window)
+    DEDUP_WINDOW_SECONDS = 5.0
 
     def __init__(
         self,
@@ -199,6 +201,7 @@ class SQSManager:
         self._enabled = False
         self._last_event_time: float = 0.0
         self._last_state_update: dict[str, float] = {}  # hub_id -> timestamp
+        self._recent_event_ids: dict[str, float] = {}  # event_key -> timestamp
         self._language: str = DEFAULT_LANGUAGE
 
     def set_language(self, language: str) -> None:
@@ -231,6 +234,18 @@ class SQSManager:
             _LOGGER.info("SQS Manager stopped")
         except Exception as err:
             _LOGGER.error("Error stopping SQS Manager: %s", err)
+
+    def _is_duplicate_event(self, event_key: str) -> bool:
+        """Check if event was already processed within dedup window."""
+        now = time.time()
+        # Cleanup old entries
+        self._recent_event_ids = {
+            k: v for k, v in self._recent_event_ids.items() if now - v < self.DEDUP_WINDOW_SECONDS
+        }
+        if event_key in self._recent_event_ids:
+            return True
+        self._recent_event_ids[event_key] = now
+        return False
 
     async def _handle_event(self, event_data: dict[str, Any]) -> None:
         """Handle SQS event by directly updating state (instant response)."""
@@ -271,6 +286,12 @@ class SQSManager:
 
             if not hub_id or not event_tag:
                 _LOGGER.debug("SQS event missing hubId or eventTag")
+                return
+
+            # Deduplicate: SQS may redeliver messages
+            event_key = f"{event_tag}_{source_id}_{timestamp}"
+            if self._is_duplicate_event(event_key):
+                _LOGGER.debug("Duplicate SQS event ignored: %s", event_key)
                 return
 
             # Find the space for this hub
@@ -341,8 +362,10 @@ class SQSManager:
             if self.coordinator.account is not None:
                 self.coordinator.async_set_updated_data(self.coordinator.account)
 
+        except asyncio.CancelledError:
+            raise
         except Exception as err:
-            _LOGGER.error("Error handling SQS event: %s", err)
+            _LOGGER.error("Error handling SQS event: %s", err, exc_info=True)
 
     def _find_space(self, hub_id: str):
         """Find space by hub ID."""

@@ -210,8 +210,10 @@ class SSEManager:
                 return
             self._recent_events[event_key] = now
 
-            # Cleanup old entries (keep dict from growing indefinitely)
-            self._recent_events = {k: v for k, v in self._recent_events.items() if now - v < 60}
+            # Cleanup old entries in-place (avoid dict reassignment)
+            expired = [k for k, v in self._recent_events.items() if now - v >= 60]
+            for k in expired:
+                del self._recent_events[k]
 
             # Get space by hub_id
             space = None

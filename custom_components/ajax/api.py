@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import hashlib
+import json
 import logging
 import time
 from typing import Any
@@ -304,7 +305,7 @@ class AjaxRestApi:
                             )
                     except AjaxRestAuthError:
                         raise
-                    except Exception:
+                    except (json.JSONDecodeError, KeyError, ValueError, aiohttp.ContentTypeError):
                         raise AjaxRestAuthError("Invalid email or password", error_type="invalid_password") from None
                 elif response.status == 500:
                     # 500 often means invalid API key
@@ -533,11 +534,13 @@ class AjaxRestApi:
         if self.user_id and self.proxy_mode == AUTH_MODE_PROXY_SECURE:
             headers["X-User-Id"] = self.user_id
         # Bypass proxy cache if requested (after SSE events or user actions)
-        # Check both explicit parameter and one-time flag
-        should_bypass = bypass_cache or self._bypass_cache_once
-        if should_bypass and self.proxy_mode == AUTH_MODE_PROXY_SECURE:
+        # Atomically read and reset the one-time flag to avoid race conditions
+        # between concurrent requests
+        bypass_once = self._bypass_cache_once
+        if bypass_once:
+            self._bypass_cache_once = False
+        if (bypass_cache or bypass_once) and self.proxy_mode == AUTH_MODE_PROXY_SECURE:
             headers["X-Cache-Control"] = "no-cache"
-            self._bypass_cache_once = False  # Reset one-time flag
 
         try:
             async with session.request(

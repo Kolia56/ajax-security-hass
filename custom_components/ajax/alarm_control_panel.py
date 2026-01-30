@@ -81,20 +81,19 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
         self._space_id = space_id
         self._attr_unique_id = f"{entry.entry_id}_alarm_{space_id}"
 
-    @property
-    def device_info(self) -> DeviceInfo | None:
-        """Return device information."""
+    def _build_hub_info(self) -> tuple[str, str | None, str | None] | None:
+        """Extract model name, sw_version, hw_version from hub details.
+
+        Returns (model_name, sw_version, hw_version) or None if no space.
+        """
         space = self.coordinator.get_space(self._space_id)
         if not space:
             return None
 
-        # Get hub subtype and color for model name
         hub_subtype = space.hub_details.get("hubSubtype", "Security Hub") if space.hub_details else "Security Hub"
-        # Format hub subtype: HUB_2_PLUS -> Hub 2 Plus
         hub_subtype_formatted = hub_subtype.replace("_", " ").title()
 
         hub_color = space.hub_details.get("color", "") if space.hub_details else ""
-        # Keep color as-is from API (WHITE/BLACK are product colors)
         color_name = str(hub_color).title() if hub_color else ""
 
         model_name = f"{hub_subtype_formatted} ({color_name})" if color_name else hub_subtype_formatted
@@ -102,18 +101,27 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
         sw_version: str | None = None
         hw_version: str | None = None
 
-        # Add firmware version if available
         if space.hub_details and space.hub_details.get("firmware"):
             firmware = space.hub_details["firmware"]
             if firmware.get("version"):
                 sw_version = firmware["version"]
 
-        # Add hardware version - just PCB version for simplicity
         if space.hub_details and space.hub_details.get("hardwareVersions"):
-            hw_versions = space.hub_details["hardwareVersions"]
-            pcb_version = hw_versions.get("pcb")
+            pcb_version = space.hub_details["hardwareVersions"].get("pcb")
             if pcb_version:
                 hw_version = f"PCB rev.{pcb_version}"
+
+        return model_name, sw_version, hw_version
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Return device information."""
+        space = self.coordinator.get_space(self._space_id)
+        if not space:
+            return None
+
+        hub_info = self._build_hub_info()
+        model_name, sw_version, hw_version = hub_info if hub_info else ("Security Hub", None, None)
 
         return DeviceInfo(
             identifiers={(DOMAIN, self._space_id)},
@@ -202,38 +210,7 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass, update device info in registry."""
         await super().async_added_to_hass()
-
-        # Update hub device info in registry
-        space = self.coordinator.get_space(self._space_id)
-        if space and space.hub_details:
-            device_registry = dr.async_get(self.hass)
-            device_entry = device_registry.async_get_device(identifiers={(DOMAIN, self._space_id)})
-            if device_entry:
-                # Get firmware version
-                firmware_version = None
-                if space.hub_details.get("firmware"):
-                    firmware_version = space.hub_details["firmware"].get("version")
-
-                # Get hardware version (PCB)
-                hw_version = None
-                if space.hub_details.get("hardwareVersions"):
-                    pcb = space.hub_details["hardwareVersions"].get("pcb")
-                    if pcb:
-                        hw_version = f"PCB rev.{pcb}"
-
-                # Get model name with color
-                hub_subtype = space.hub_details.get("hubSubtype", "Security Hub")
-                hub_subtype_formatted = hub_subtype.replace("_", " ").title()
-                hub_color = space.hub_details.get("color", "")
-                color_name = str(hub_color).title() if hub_color else ""
-                model_name = f"{hub_subtype_formatted} ({color_name})" if color_name else hub_subtype_formatted
-
-                device_registry.async_update_device(
-                    device_entry.id,
-                    model=model_name,
-                    sw_version=firmware_version,
-                    hw_version=hw_version,
-                )
+        self._update_device_registry()
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -246,8 +223,8 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
 
     def _update_device_registry(self) -> None:
         """Update hub device info in registry."""
-        space = self.coordinator.get_space(self._space_id)
-        if not space or not space.hub_details:
+        hub_info = self._build_hub_info()
+        if not hub_info:
             _LOGGER.debug("No space or hub_details for %s", self._space_id)
             return
 
@@ -257,36 +234,19 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
             _LOGGER.debug("No device entry found for %s", self._space_id)
             return
 
-        # Get firmware version
-        firmware_version = None
-        if space.hub_details.get("firmware"):
-            firmware_version = space.hub_details["firmware"].get("version")
-
-        # Get hardware version (PCB)
-        hw_version = None
-        if space.hub_details.get("hardwareVersions"):
-            pcb = space.hub_details["hardwareVersions"].get("pcb")
-            if pcb:
-                hw_version = f"PCB rev.{pcb}"
-
-        # Get model name with color
-        hub_subtype = space.hub_details.get("hubSubtype", "Security Hub")
-        hub_subtype_formatted = hub_subtype.replace("_", " ").title()
-        hub_color = space.hub_details.get("color", "")
-        color_name = str(hub_color).title() if hub_color else ""
-        model_name = f"{hub_subtype_formatted} ({color_name})" if color_name else hub_subtype_formatted
+        model_name, sw_version, hw_version = hub_info
 
         _LOGGER.info(
-            "Updating hub device: model=%s, hw=%s, color=%s",
+            "Updating hub device: model=%s, sw=%s, hw=%s",
             model_name,
+            sw_version,
             hw_version,
-            hub_color,
         )
 
         device_registry.async_update_device(
             device_entry.id,
             model=model_name,
-            sw_version=firmware_version,
+            sw_version=sw_version,
             hw_version=hw_version,
         )
 
