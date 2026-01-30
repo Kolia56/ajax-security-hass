@@ -52,12 +52,14 @@
         "data": {
           "email": "Epostadress",
           "password": "Lösenord",
-          "proxy_url": "Proxy URL"
+          "proxy_url": "Proxy URL",
+          "verify_ssl": "Verifiera SSL-certifikat"
         },
         "data_description": {
           "email": "Din epostadress för Ajax-kontot",
           "password": "Ditt lösenord för Ajax-kontot",
-          "proxy_url": "Ajax proxy server URL"
+          "proxy_url": "URL till Ajax proxyserver",
+          "verify_ssl": "Inaktivera vid självsignerat certifikat (HTTPS)"
         },
         "description": "Anslut via en Ajax proxy server.\n\n⚠️ **Endats konto för användare** (Ej PRO/Enterprise-konto).\n\nHändelser tas emot i realtid via SSE.",
         "title": "Proxy-anslutning"
@@ -71,13 +73,13 @@
       },
       "reconfigure": {
         "data": {
-          "api_key": "API Key",
-          "email": "Email",
-          "password": "Password",
-          "proxy_url": "Proxy URL"
+          "api_key": "API-nyckel",
+          "email": "E-post",
+          "password": "Lösenord",
+          "proxy_url": "Proxy-URL"
         },
-        "description": "Update your Ajax credentials.",
-        "title": "Reconfigure Ajax"
+        "description": "Uppdatera dina Ajax-inloggningsuppgifter.",
+        "title": "Omkonfigurera Ajax"
       },
       "select_spaces": {
         "data": {
@@ -154,10 +156,10 @@
         "name": "Pip vid fördröjning"
       },
       "co2_problem": {
-        "name": "CO₂ level",
+        "name": "CO₂-nivå",
         "state": {
           "off": "Normal",
-          "on": "High CO₂"
+          "on": "Hög CO₂"
         }
       },
       "connection": {
@@ -165,6 +167,20 @@
         "state": {
           "off": "Ej ansluten",
           "on": "Ansluten"
+        }
+      },
+      "current_limit": {
+        "name": "Strömskydd",
+        "state": {
+          "off": "Normal",
+          "on": "Strömgräns nådd"
+        }
+      },
+      "data_channel_ok": {
+        "name": "Datakanal",
+        "state": {
+          "off": "Problem",
+          "on": "OK"
         }
       },
       "doorbell_ring": {
@@ -177,7 +193,7 @@
         "name": "Extern strömförsörjning"
       },
       "externally_powered": {
-        "name": "External power"
+        "name": "Extern strömförsörjning"
       },
       "glass_break": {
         "name": "Glaskrossdetektor"
@@ -186,21 +202,28 @@
         "name": "GSM antenn"
       },
       "high_temperature": {
-        "name": "High temperature",
+        "name": "Hög temperatur",
         "state": {
           "off": "Normal",
-          "on": "Temperature threshold exceeded"
+          "on": "Temperaturgräns överskriden"
         }
       },
       "humidity_problem": {
-        "name": "Humidity",
+        "name": "Fuktighet",
         "state": {
           "off": "Normal",
-          "on": "Out of range"
+          "on": "Utanför intervall"
         }
       },
       "jeweller_radio": {
-        "name": "Jeweller radio"
+        "name": "Jeweller-radio"
+      },
+      "mcp_fire_alarm": {
+        "name": "Brandlarm",
+        "state": {
+          "off": "Normal",
+          "on": "Larm utlöst"
+        }
       },
       "problem": {
         "name": "Problem detekterat",
@@ -217,20 +240,20 @@
         }
       },
       "rapid_temperature_rise": {
-        "name": "Rapid temperature rise",
+        "name": "Snabb temperaturökning",
         "state": {
           "off": "Normal",
-          "on": "Rapid temperature increase detected"
+          "on": "Snabb temperaturökning upptäckt"
         }
       },
       "shock": {
         "name": "Stöt"
       },
       "steam": {
-        "name": "Steam detected",
+        "name": "Ånga upptäckt",
         "state": {
-          "off": "Clear",
-          "on": "Steam detected"
+          "off": "Klart",
+          "on": "Ånga upptäckt"
         }
       },
       "system_problems": {
@@ -251,67 +274,81 @@
           }
         }
       },
-      "temperature_problem": {
-        "name": "Temperature",
+      "temperature_limit": {
+        "name": "Temperaturskydd",
         "state": {
           "off": "Normal",
-          "on": "Out of range"
+          "on": "Temperaturgräns nådd"
+        }
+      },
+      "temperature_problem": {
+        "name": "Temperatur",
+        "state": {
+          "off": "Normal",
+          "on": "Utanför intervall"
         }
       },
       "tilt": {
         "name": "Lutning"
       },
       "video_edge_lid_closed": {
-        "name": "Lid",
+        "name": "Lock",
         "state": {
-          "off": "Closed",
-          "on": "Open"
+          "off": "Stängt",
+          "on": "Öppet"
         }
       },
       "video_edge_onvif_enabled": {
-        "name": "ONVIF integration",
+        "name": "ONVIF-integration",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
         }
       },
       "video_human": {
         "name": "Människa upptäckt",
         "state": {
-          "off": "None",
-          "on": "Human detected"
+          "off": "Ingen",
+          "on": "Människa upptäckt"
+        }
+      },
+      "video_line_crossing": {
+        "name": "Linjeöverskridande",
+        "state": {
+          "off": "Ingen",
+          "on": "Upptäckt"
         }
       },
       "video_motion": {
         "name": "Rörelse upptäckt",
         "state": {
-          "off": "None",
-          "on": "Motion detected"
+          "off": "Ingen",
+          "on": "Rörelse upptäckt"
         }
       },
       "video_pet": {
         "name": "Husdjur upptäckt",
         "state": {
-          "off": "None",
-          "on": "Pet detected"
+          "off": "Ingen",
+          "on": "Husdjur upptäckt"
         }
       },
       "video_vehicle": {
         "name": "Fordon upptäckt",
         "state": {
-          "off": "None",
-          "on": "Vehicle detected"
+          "off": "Ingen",
+          "on": "Fordon upptäckt"
         }
       },
       "waterstop_temp_protect": {
-        "name": "Frost protection",
+        "name": "Frostskydd",
         "state": {
-          "off": "Inactive",
-          "on": "Active"
+          "off": "Inaktivt",
+          "on": "Aktivt"
         }
       },
       "wings_radio": {
-        "name": "Wings radio"
+        "name": "Wings-radio"
       }
     },
     "button": {
@@ -324,50 +361,89 @@
         "name": "Position"
       }
     },
+    "light": {
+      "dimmer_light": {
+        "name": "Dimmer"
+      }
+    },
     "number": {
+      "arm_brightness": {
+        "name": "Ljusstyrka vid tillkoppling"
+      },
+      "brightness_change_speed": {
+        "name": "Hastighet för ljusstyrkeändring"
+      },
       "current_threshold": {
-        "name": "Current limit"
+        "name": "Strömgräns"
+      },
+      "disarm_brightness": {
+        "name": "Ljusstyrka vid frånkoppling"
       },
       "led_brightness_level": {
-        "name": "LED brightness"
+        "name": "LED-ljusstyrka"
+      },
+      "max_brightness": {
+        "name": "Maximal ljusstyrka"
+      },
+      "min_brightness": {
+        "name": "Minimal ljusstyrka"
       },
       "tilt_degrees": {
         "name": "Lutningströskel"
+      },
+      "touch_sensitivity": {
+        "name": "Tryckkänslighet"
       }
     },
     "select": {
       "alarm_duration_select": {
-        "name": "Alarm duration",
+        "name": "Larmlängd",
         "state": {
-          "1": "1 minute",
-          "10": "10 minutes",
-          "15": "15 minutes",
-          "2": "2 minutes",
-          "3": "3 minutes",
-          "5": "5 minutes"
+          "1": "1 minut",
+          "10": "10 minuter",
+          "15": "15 minuter",
+          "2": "2 minuter",
+          "3": "3 minuter",
+          "5": "5 minuter"
         }
       },
       "beep_volume": {
-        "name": "Beep volume",
+        "name": "Pipvolym",
         "state": {
-          "loud": "Loud",
-          "quiet": "Quiet",
-          "very_loud": "Very loud"
+          "loud": "Hög",
+          "quiet": "Tyst",
+          "very_loud": "Mycket hög"
+        }
+      },
+      "dimmer_curve": {
+        "name": "Dimmerkurva",
+        "state": {
+          "curve_type_auto": "Auto",
+          "curve_type_linear": "Linjär",
+          "curve_type_logarithmic": "Logaritmisk"
         }
       },
       "indication_mode": {
-        "name": "Backlight mode",
+        "name": "Bakgrundsbelysning",
         "state": {
-          "always": "Always on",
-          "if_on": "When active",
-          "off": "Off"
+          "always": "Alltid på",
+          "if_on": "Vid aktivitet",
+          "off": "Av"
         }
       },
       "led_brightness": {
-        "name": "LED brightness",
+        "name": "LED-ljusstyrka",
         "state": {
-          "max": "High",
-          "min": "Low"
+          "max": "Hög",
+          "min": "Låg"
+        }
+      },
+      "light_source": {
+        "name": "Ljuskälltyp",
+        "state": {
+          "light_source_auto": "Auto",
+          "light_source_leading_edge": "Framkant",
+          "light_source_trailing_edge": "Bakkant"
         }
       },
       "shock_sensitivity": {
@@ -379,18 +455,29 @@
         }
       },
       "siren_volume": {
-        "name": "Siren volume",
+        "name": "Sirenvolym",
         "state": {
-          "disabled": "Disabled",
-          "loud": "Loud",
-          "quiet": "Quiet",
-          "very_loud": "Very loud"
+          "disabled": "Inaktiverad",
+          "loud": "Hög",
+          "quiet": "Tyst",
+          "very_loud": "Mycket hög"
+        }
+      },
+      "touch_mode": {
+        "name": "Tryckläge",
+        "state": {
+          "touch_mode_blocked": "Blockerad",
+          "touch_mode_toggle": "Enbart växling",
+          "touch_mode_toggle_and_slider": "Växling och reglage"
         }
       }
     },
     "sensor": {
       "active_connection": {
         "name": "Aktiv anslutning"
+      },
+      "alarm_delay": {
+        "name": "Larmfördröjning"
       },
       "alarm_duration": {
         "name": "Larmduration",
@@ -404,6 +491,12 @@
           "continuous": "Kontinuerligt"
         }
       },
+      "alarm_mode": {
+        "name": "Larmläge"
+      },
+      "alarm_type": {
+        "name": "Larmtyp"
+      },
       "alarm_volume_level": {
         "name": "Larmvolym",
         "state": {
@@ -415,6 +508,9 @@
           "quiet": "Tyst",
           "very_loud": "Mycket hög"
         }
+      },
+      "arm_delay": {
+        "name": "Tillkopplingsfördröjning"
       },
       "battery_state": {
         "name": "Batteristatus"
@@ -429,29 +525,52 @@
           "very_loud": "Mycket hög"
         }
       },
+      "brightness": {
+        "name": "Ljusstyrka"
+      },
       "button_brightness": {
-        "name": "Button LED brightness",
+        "name": "Knapp-LED ljusstyrka",
         "state": {
-          "high": "High",
-          "low": "Low",
-          "off": "Off"
+          "high": "Hög",
+          "low": "Låg",
+          "off": "Av"
         }
       },
       "button_mode": {
-        "name": "Button mode",
+        "name": "Knappläge",
         "state": {
-          "interconnect_delay": "Interconnect delay",
-          "panic_button": "Panic button",
-          "smart_button": "Smart button"
+          "interconnect_delay": "Sammankopplingsfördröjning",
+          "panic_button": "Panikknapp",
+          "smart_button": "Smart-knapp"
         }
       },
       "bypassed_devices": {
         "name": "Förbikopplade enheter"
       },
+      "calibration_state": {
+        "name": "Kalibreringsstatus"
+      },
+      "connection_type": {
+        "name": "Anslutningstyp"
+      },
+      "contact_mode": {
+        "name": "Kontaktläge"
+      },
+      "current": {
+        "name": "Ström"
+      },
+      "current_brightness": {
+        "name": "Aktuell ljusstyrka"
+      },
+      "data_channel_quality": {
+        "name": "Datakanalskvalitet"
+      },
       "device_color": {
         "name": "Enhetens färg",
         "state": {
           "black": "Svart",
+          "blue": "Blå",
+          "red": "Röd",
           "white": "Vit"
         }
       },
@@ -459,7 +578,7 @@
         "name": "Enhetsetikett"
       },
       "device_marketing_id": {
-        "name": "Device marketing ID"
+        "name": "Enhetens marknadsförings-ID"
       },
       "device_state": {
         "name": "Enhetens läge"
@@ -467,12 +586,15 @@
       "devices_with_malfunctions": {
         "name": "Enheter med felfuntion"
       },
+      "energy": {
+        "name": "Energi"
+      },
       "false_press_filter": {
-        "name": "False press filter",
+        "name": "Filter för felaktiga tryck",
         "state": {
-          "disabled": "Disabled",
-          "double_click": "Double click",
-          "long_push": "Long push"
+          "disabled": "Inaktiverat",
+          "double_click": "Dubbelklick",
+          "long_push": "Långt tryck"
         }
       },
       "firmware_version": {
@@ -749,7 +871,7 @@
         }
       },
       "last_alert": {
-        "name": "Last alert",
+        "name": "Senaste larm",
         "state_attributes": {
           "device_name": {
             "name": "Enhet"
@@ -777,6 +899,13 @@
       "malfunctions": {
         "name": "Felfuntioner"
       },
+      "mcp_switch_state": {
+        "name": "Knappstatus",
+        "state": {
+          "button_pressed": "Intryckt",
+          "button_unpressed": "Normal"
+        }
+      },
       "network_status": {
         "name": "Mobilnät"
       },
@@ -801,13 +930,19 @@
         }
       },
       "nvr_cameras": {
-        "name": "Cameras"
+        "name": "Kameror"
       },
       "online_devices": {
         "name": "Enheter online"
       },
       "photos_per_alarm": {
         "name": "Foton per larm"
+      },
+      "power": {
+        "name": "Effekt"
+      },
+      "power_supply_mode": {
+        "name": "Strömförsörjningsläge"
       },
       "recent_events": {
         "name": "Aktuella händelser",
@@ -861,102 +996,112 @@
         "name": "Olästa notiser"
       },
       "video_edge_archive_depth": {
-        "name": "Archive duration"
+        "name": "Arkivlängd"
       },
       "video_edge_connection": {
-        "name": "Connection",
+        "name": "Anslutning",
         "state": {
           "offline": "Offline",
           "online": "Online",
-          "unknown": "Unknown"
+          "unknown": "Okänt"
         }
       },
       "video_edge_cpu_usage": {
-        "name": "CPU usage"
+        "name": "CPU-användning"
       },
       "video_edge_led_brightness": {
-        "name": "LED brightness"
+        "name": "LED-ljusstyrka"
       },
       "video_edge_max_preview_duration": {
-        "name": "Max preview duration"
+        "name": "Max förhandsvisningslängd"
       },
       "video_edge_ram_usage": {
-        "name": "RAM usage"
+        "name": "RAM-användning"
       },
       "video_edge_record_mode": {
-        "name": "Local recording",
+        "name": "Lokal inspelning",
         "state": {
-          "disabled": "Disabled",
-          "on_detection": "On detection",
+          "disabled": "Inaktiverad",
+          "on_detection": "Vid detektion",
           "permanent": "Permanent",
-          "unknown": "Unknown"
+          "unknown": "Okänt"
         }
       },
       "video_edge_record_policy": {
-        "name": "NVR recording",
+        "name": "NVR-inspelning",
         "state": {
-          "always": "Always",
-          "unknown": "Unknown",
-          "when_requested": "When requested"
+          "always": "Alltid",
+          "unknown": "Okänt",
+          "when_requested": "På begäran"
         }
       },
       "video_edge_storage_status": {
-        "name": "Storage status",
+        "name": "Lagringsstatus",
         "state": {
-          "formatting": "Formatting",
-          "idle": "Idle",
-          "need_format": "Format required",
-          "none": "None",
-          "ready": "Ready"
+          "formatting": "Formaterar",
+          "idle": "Inaktiv",
+          "need_format": "Formatering krävs",
+          "none": "Ingen",
+          "ready": "Redo"
         }
       },
       "video_edge_storage_temperature": {
-        "name": "Storage temperature"
+        "name": "Lagringstemperatur"
       },
       "video_edge_storage_total": {
-        "name": "Total storage"
+        "name": "Totalt lagringsutrymme"
       },
       "video_edge_uptime": {
-        "name": "Uptime"
+        "name": "Drifttid"
       },
       "video_edge_wifi_signal": {
-        "name": "Camera WiFi signal"
+        "name": "Kamera WiFi-signal"
+      },
+      "voltage": {
+        "name": "Spänning"
       },
       "waterstop_external_power": {
-        "name": "Power source",
+        "name": "Strömkälla",
         "state": {
-          "battery": "Battery",
-          "supply": "External power",
-          "unknown": "Unknown"
+          "battery": "Batteri",
+          "supply": "Extern strömförsörjning",
+          "unknown": "Okänt"
         }
       },
       "waterstop_motor_state": {
-        "name": "Motor state",
+        "name": "Motorstatus",
         "state": {
-          "off": "Stopped",
-          "on": "Running"
+          "off": "Stoppad",
+          "on": "Igång"
         }
       },
       "waterstop_prevention_period": {
-        "name": "Prevention period"
+        "name": "Förebyggande period"
       },
       "waterstop_prevention_status": {
-        "name": "Prevention",
+        "name": "Förebyggande",
         "state": {
-          "disabled": "Disabled",
-          "enabled": "Enabled"
+          "disabled": "Inaktiverat",
+          "enabled": "Aktiverat"
         }
       },
       "wifi_signal_level": {
-        "name": "Wi-Fi signal"
+        "name": "Wi-Fi-signal"
       }
     },
     "switch": {
-      "alert_if_moved": {
-        "name": "Alert if moved",
+      "accelerometer": {
+        "name": "Accelerometer",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
+        }
+      },
+      "alert_if_moved": {
+        "name": "Larma vid förflyttning",
+        "state": {
+          "off": "Från",
+          "on": "Till"
         }
       },
       "alerts_by_sirens": {
@@ -988,17 +1133,24 @@
         }
       },
       "beep_on_delay": {
-        "name": "Beep on entry/exit delay",
+        "name": "Pip vid in-/utgångsfördröjning",
         "state": {
           "off": "Från",
           "on": "Till"
         }
       },
       "blink_while_armed": {
-        "name": "Blink while armed",
+        "name": "Blinka vid tillkoppling",
         "state": {
           "off": "Från",
           "on": "Till"
+        }
+      },
+      "child_lock": {
+        "name": "Barnlås",
+        "state": {
+          "off": "Inaktiverat",
+          "on": "Aktiverat"
         }
       },
       "chimes": {
@@ -1016,17 +1168,31 @@
         }
       },
       "co_alarm_enabled": {
-        "name": "CO alarm",
+        "name": "CO-larm",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Inaktiverat",
+          "on": "Aktiverat"
         }
       },
       "current_protection": {
-        "name": "Current protection",
+        "name": "Strömskydd",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Inaktiverat",
+          "on": "Aktiverat"
+        }
+      },
+      "current_threshold": {
+        "name": "Strömgränsskydd",
+        "state": {
+          "off": "Inaktiverat",
+          "on": "Aktiverat"
+        }
+      },
+      "dimmer_calibration": {
+        "name": "Dimmerkalibrering",
+        "state": {
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
         }
       },
       "external_contact_enabled": {
@@ -1044,10 +1210,10 @@
         }
       },
       "indication_enabled": {
-        "name": "LED indication",
+        "name": "LED-indikering",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
         }
       },
       "indicator_light": {
@@ -1055,6 +1221,13 @@
         "state": {
           "off": "Från",
           "on": "Till"
+        }
+      },
+      "led_indicator": {
+        "name": "LED-indikator",
+        "state": {
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
         }
       },
       "night_mode": {
@@ -1068,28 +1241,28 @@
         "name": "Säkerhetsgrupp",
         "state_attributes": {
           "bulk_arm_involved": {
-            "name": "Involved in bulk arm"
+            "name": "Ingår i samlad tillkoppling"
           },
           "bulk_disarm_involved": {
-            "name": "Involved in bulk disarm"
+            "name": "Ingår i samlad frånkoppling"
           },
           "device_count": {
-            "name": "Device count"
+            "name": "Antal enheter"
           },
           "group_id": {
-            "name": "Group ID"
+            "name": "Grupp-ID"
           },
           "group_name": {
-            "name": "Group name"
+            "name": "Gruppnamn"
           },
           "night_mode_enabled": {
-            "name": "Night mode enabled"
+            "name": "Nattläge aktiverat"
           },
           "space_id": {
-            "name": "Space ID"
+            "name": "Space-ID"
           },
           "space_name": {
-            "name": "Space name"
+            "name": "Space-namn"
           }
         }
       },
@@ -1107,11 +1280,39 @@
           "on": "Till"
         }
       },
+      "siren_trigger_acceleration": {
+        "name": "Siren vid acceleration",
+        "state": {
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
+        }
+      },
+      "siren_trigger_co": {
+        "name": "Siren vid CO",
+        "state": {
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
+        }
+      },
+      "siren_trigger_contact": {
+        "name": "Siren vid kontakt",
+        "state": {
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
+        }
+      },
       "siren_trigger_glass": {
         "name": "Siren vid glasskross",
         "state": {
           "off": "Från",
           "on": "Till"
+        }
+      },
+      "siren_trigger_motion": {
+        "name": "Siren vid rörelse",
+        "state": {
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
         }
       },
       "siren_trigger_reed": {
@@ -1126,6 +1327,27 @@
         "state": {
           "off": "Från",
           "on": "Till"
+        }
+      },
+      "siren_trigger_smoke": {
+        "name": "Siren vid rök",
+        "state": {
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
+        }
+      },
+      "siren_trigger_temp_diff": {
+        "name": "Siren vid snabb temperaturökning",
+        "state": {
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
+        }
+      },
+      "siren_trigger_temperature": {
+        "name": "Siren vid hög temperatur",
+        "state": {
+          "off": "Inaktiverad",
+          "on": "Aktiverad"
         }
       },
       "siren_trigger_tilt": {
@@ -1149,18 +1371,25 @@
           }
         }
       },
-      "temp_alarm_enabled": {
-        "name": "High temperature alarm",
+      "state_memory": {
+        "name": "Tillståndsminne",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Inaktiverat",
+          "on": "Aktiverat"
+        }
+      },
+      "temp_alarm_enabled": {
+        "name": "Larm vid hög temperatur",
+        "state": {
+          "off": "Inaktiverat",
+          "on": "Aktiverat"
         }
       },
       "temp_diff_alarm_enabled": {
-        "name": "Rapid temperature rise alarm",
+        "name": "Larm vid snabb temperaturökning",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Inaktiverat",
+          "on": "Aktiverat"
         }
       },
       "tilt_sensor": {
@@ -1171,10 +1400,10 @@
         }
       },
       "voltage_protection": {
-        "name": "Voltage protection",
+        "name": "Spänningsskydd",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Inaktiverat",
+          "on": "Aktiverat"
         }
       }
     },
@@ -1188,7 +1417,7 @@
     },
     "valve": {
       "waterstop_valve": {
-        "name": "Water valve"
+        "name": "Vattenventil"
       }
     }
   },
@@ -1217,33 +1446,33 @@
   },
   "issues": {
     "critical_firmware_update": {
-      "description": "A **critical security update** is available for **{device_name}**.\n\n- Current version: {current_version}\n- New version: {new_version}\n\nPlease update immediately via the Ajax app.",
-      "title": "Critical firmware update for {device_name}"
+      "description": "En **kritisk säkerhetsuppdatering** finns tillgänglig för **{device_name}**.\n\n- Nuvarande version: {current_version}\n- Ny version: {new_version}\n\nUppdatera omedelbart via Ajax-appen.",
+      "title": "Kritisk firmware-uppdatering för {device_name}"
     },
     "device_offline": {
-      "description": "The device **{device_name}** is currently offline and not responding. Please check the device and its connection.",
-      "title": "{device_name} is offline"
+      "description": "Enheten **{device_name}** är för närvarande offline och svarar inte. Kontrollera enheten och dess anslutning.",
+      "title": "{device_name} är offline"
     },
     "firmware_update": {
-      "description": "A firmware update is available for **{device_name}**.\n\n- Current version: {current_version}\n- New version: {new_version}\n\nPlease update via the Ajax app.",
-      "title": "Firmware update available for {device_name}"
+      "description": "En firmware-uppdatering finns tillgänglig för **{device_name}**.\n\n- Nuvarande version: {current_version}\n- Ny version: {new_version}\n\nUppdatera via Ajax-appen.",
+      "title": "Firmware-uppdatering tillgänglig för {device_name}"
     }
   },
   "options": {
     "step": {
       "aws_credentials": {
         "data": {
-          "aws_access_key_id": "AWS Access Key ID",
-          "aws_secret_access_key": "AWS Secret Access Key",
-          "queue_name": "SQS Queue Name"
+          "aws_access_key_id": "AWS-åtkomstnyckel-ID",
+          "aws_secret_access_key": "AWS hemlig nyckel",
+          "queue_name": "SQS-könamn"
         },
         "data_description": {
           "aws_access_key_id": "Exempel: AKIA3SFSAKBHLDDOCGFG",
-          "aws_secret_access_key": "Secret key provided by Ajax (40 characters)",
+          "aws_secret_access_key": "Hemlig nyckel tillhandahållen av Ajax (40 tecken)",
           "queue_name": "Exempel: ajax-events-V6WHbk3e-prod.fifo"
         },
-        "description": "Configure AWS credentials for real-time event notifications.\n\n**Current configuration:**\n- Access Key: {current_access_key}\n- Secret Key: {current_secret_key}\n- SQS Queue: {current_queue}\n\nLeave a field empty to keep current value.",
-        "title": "AWS SQS Credentials"
+        "description": "Konfigurera AWS-uppgifter för realtidsnotiser.\n\n**Nuvarande konfiguration:**\n- Access Key: {current_access_key}\n- Secret Key: {current_secret_key}\n- SQS Queue: {current_queue}\n\nLämna fältet tomt för att behålla nuvarande värde.",
+        "title": "AWS SQS-uppgifter"
       },
       "enabled_spaces": {
         "data": {
@@ -1260,7 +1489,7 @@
           "notifications": "Notiser",
           "polling_settings": "Polling",
           "proxy_settings": "Proxy",
-          "rtsp_credentials": "RTSP/ONVIF Credentials"
+          "rtsp_credentials": "RTSP/ONVIF-uppgifter"
         },
         "title": "Ajax inställningar"
       },
@@ -1285,33 +1514,35 @@
       },
       "proxy_settings": {
         "data": {
-          "proxy_url": "Proxy URL"
+          "proxy_url": "Proxy-URL",
+          "verify_ssl": "Verifiera SSL-certifikat"
         },
         "data_description": {
-          "proxy_url": "Exempel: https://my-proxy.example.com"
+          "proxy_url": "Fullständig URL till din Ajax-proxyserver",
+          "verify_ssl": "Inaktivera vid självsignerade certifikat"
         },
-        "description": "Ändra URL till Ajax proxyserver.",
+        "description": "Ändra URL och SSL-inställningar för din Ajax-proxyserver.",
         "title": "Proxyinställningar"
       },
       "rtsp_credentials": {
         "data": {
-          "rtsp_password": "ONVIF Password",
-          "rtsp_username": "ONVIF Username"
+          "rtsp_password": "ONVIF-lösenord",
+          "rtsp_username": "ONVIF-användarnamn"
         },
         "data_description": {
-          "rtsp_password": "Password associated with the ONVIF user",
-          "rtsp_username": "Username created in Ajax app for ONVIF"
+          "rtsp_password": "Lösenord kopplat till ONVIF-användaren",
+          "rtsp_username": "Användarnamn skapat i Ajax-appen för ONVIF"
         },
-        "description": "Configure ONVIF/RTSP credentials to access Video Edge camera streams.\n\n**Current configuration:**\n- Username: {current_username}\n- Password: {current_password}\n\n⚠️ These credentials must be created in the Ajax app (Camera → Settings → ONVIF).",
-        "title": "RTSP/ONVIF Credentials"
+        "description": "Konfigurera ONVIF/RTSP-uppgifter för att komma åt Video Edge-kameraströmmar.\n\n**Nuvarande konfiguration:**\n- Användarnamn: {current_username}\n- Lösenord: {current_password}\n\n⚠️ Dessa uppgifter måste skapas i Ajax-appen (Kamera → Inställningar → ONVIF).",
+        "title": "RTSP/ONVIF-uppgifter"
       }
     }
   },
   "selector": {
     "auth_mode": {
       "options": {
-        "direct": "Direct (Enterprise API key only)",
-        "proxy_secure": "Ajax Proxy"
+        "direct": "Direkt (Enbart Enterprise API-nyckel)",
+        "proxy_secure": "Ajax-proxy"
       }
     },
     "notification_filter": {
@@ -1333,8 +1564,8 @@
       "name": "Forcera tillkoppling till nattläge"
     },
     "get_nvr_recordings": {
-      "description": "Get NVR recordings data from the API (last 24 hours). Saves the response to ajax_nvr_recordings.json for diagnostic purposes.",
-      "name": "Get NVR recordings"
+      "description": "Hämta NVR-inspelningsdata från API:t (senaste 24 timmarna). Sparar svaret till ajax_nvr_recordings.json för diagnostik.",
+      "name": "Hämta NVR-inspelningar"
     },
     "get_raw_devices": {
       "description": "Hämta rådata för ella enheter i JSON-format. Resultatet sparas i  ajax_raw_devices.json.",

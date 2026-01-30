@@ -52,12 +52,14 @@
         "data": {
           "email": "E-mailadres",
           "password": "Wachtwoord",
-          "proxy_url": "Proxy-URL"
+          "proxy_url": "Proxy-URL",
+          "verify_ssl": "SSL-certificaat verifiëren"
         },
         "data_description": {
           "email": "Je Ajax-account e-mailadres",
           "password": "Je Ajax-accountwachtwoord",
-          "proxy_url": "Ajax-proxyserver URL"
+          "proxy_url": "Ajax-proxyserver URL",
+          "verify_ssl": "Schakel uit bij gebruik van zelfondertekend certificaat (HTTPS)"
         },
         "description": "Verbind via een Ajax-proxyserver.\n\n⚠️ **Alleen gebruikersaccount** (geen PRO/Enterprise-accounts).\n\nGebeurtenissen worden in real-time ontvangen via SSE.",
         "title": "Proxyverbinding"
@@ -71,13 +73,13 @@
       },
       "reconfigure": {
         "data": {
-          "api_key": "API Key",
-          "email": "Email",
-          "password": "Password",
-          "proxy_url": "Proxy URL"
+          "api_key": "API-sleutel",
+          "email": "E-mailadres",
+          "password": "Wachtwoord",
+          "proxy_url": "Proxy-URL"
         },
-        "description": "Update your Ajax credentials.",
-        "title": "Reconfigure Ajax"
+        "description": "Werk je Ajax-referenties bij.",
+        "title": "Ajax herconfigureren"
       },
       "select_spaces": {
         "data": {
@@ -154,10 +156,10 @@
         "name": "Piep bij in-/uitloopvertraging"
       },
       "co2_problem": {
-        "name": "CO₂ level",
+        "name": "CO₂-niveau",
         "state": {
-          "off": "Normal",
-          "on": "High CO₂"
+          "off": "Normaal",
+          "on": "Hoog CO₂"
         }
       },
       "connection": {
@@ -165,6 +167,20 @@
         "state": {
           "off": "Verbroken",
           "on": "Verbonden"
+        }
+      },
+      "current_limit": {
+        "name": "Stroombeveiliging",
+        "state": {
+          "off": "Normaal",
+          "on": "Stroomlimiet bereikt"
+        }
+      },
+      "data_channel_ok": {
+        "name": "Datakanaal",
+        "state": {
+          "off": "Probleem",
+          "on": "OK"
         }
       },
       "doorbell_ring": {
@@ -177,7 +193,7 @@
         "name": "Externe voeding"
       },
       "externally_powered": {
-        "name": "External power"
+        "name": "Externe voeding"
       },
       "glass_break": {
         "name": "Glasbreukdetector"
@@ -186,21 +202,28 @@
         "name": "GSM-antenne"
       },
       "high_temperature": {
-        "name": "High temperature",
+        "name": "Hoge temperatuur",
         "state": {
-          "off": "Normal",
-          "on": "Temperature threshold exceeded"
+          "off": "Normaal",
+          "on": "Temperatuurdrempel overschreden"
         }
       },
       "humidity_problem": {
-        "name": "Humidity",
+        "name": "Luchtvochtigheid",
         "state": {
-          "off": "Normal",
-          "on": "Out of range"
+          "off": "Normaal",
+          "on": "Buiten bereik"
         }
       },
       "jeweller_radio": {
         "name": "Jeweller-radio"
+      },
+      "mcp_fire_alarm": {
+        "name": "Brandalarm",
+        "state": {
+          "off": "Normaal",
+          "on": "Alarm geactiveerd"
+        }
       },
       "problem": {
         "name": "Probleem gedetecteerd",
@@ -217,20 +240,20 @@
         }
       },
       "rapid_temperature_rise": {
-        "name": "Rapid temperature rise",
+        "name": "Snelle temperatuurstijging",
         "state": {
-          "off": "Normal",
-          "on": "Rapid temperature increase detected"
+          "off": "Normaal",
+          "on": "Snelle temperatuurstijging gedetecteerd"
         }
       },
       "shock": {
         "name": "Schok"
       },
       "steam": {
-        "name": "Steam detected",
+        "name": "Stoom gedetecteerd",
         "state": {
-          "off": "Clear",
-          "on": "Steam detected"
+          "off": "Vrij",
+          "on": "Stoom gedetecteerd"
         }
       },
       "system_problems": {
@@ -251,63 +274,77 @@
           }
         }
       },
-      "temperature_problem": {
-        "name": "Temperature",
+      "temperature_limit": {
+        "name": "Temperatuurbeveiliging",
         "state": {
-          "off": "Normal",
-          "on": "Out of range"
+          "off": "Normaal",
+          "on": "Temperatuurlimiet bereikt"
+        }
+      },
+      "temperature_problem": {
+        "name": "Temperatuur",
+        "state": {
+          "off": "Normaal",
+          "on": "Buiten bereik"
         }
       },
       "tilt": {
         "name": "Kanteling"
       },
       "video_edge_lid_closed": {
-        "name": "Lid",
+        "name": "Deksel",
         "state": {
-          "off": "Closed",
+          "off": "Gesloten",
           "on": "Open"
         }
       },
       "video_edge_onvif_enabled": {
-        "name": "ONVIF integration",
+        "name": "ONVIF-integratie",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
         }
       },
       "video_human": {
         "name": "Persoon gedetecteerd",
         "state": {
-          "off": "None",
-          "on": "Human detected"
+          "off": "Geen",
+          "on": "Persoon gedetecteerd"
+        }
+      },
+      "video_line_crossing": {
+        "name": "Lijnkruising",
+        "state": {
+          "off": "Geen",
+          "on": "Gedetecteerd"
         }
       },
       "video_motion": {
-        "name": "Beweging gedetecteerd",
+        "name": "Bewegingsdetectie",
         "state": {
-          "off": "None",
-          "on": "Motion detected"
+          "off": "Geen",
+          "on": "Beweging gedetecteerd"
         }
       },
       "video_pet": {
-        "name": "Huisdier gedetecteerd",
+        "name": "Huisdierdetectie",
         "state": {
-          "off": "None",
-          "on": "Pet detected"
+          "off": "Geen",
+          "on": "Huisdier gedetecteerd"
         }
       },
       "video_vehicle": {
-        "name": "Voertuig gedetecteerd",
+        "name": "Voertuigdetectie",
         "state": {
-          "off": "None",
-          "on": "Vehicle detected"
+          "off": "Geen",
+          "on": "Voertuig gedetecteerd"
         }
       },
       "waterstop_temp_protect": {
-        "name": "Frost protection",
+        "name": "Vorstbeveiliging",
         "state": {
-          "off": "Inactive",
-          "on": "Active"
+          "off": "Inactief",
+          "on": "Actief"
         }
       },
       "wings_radio": {
@@ -324,50 +361,89 @@
         "name": "Positie"
       }
     },
+    "light": {
+      "dimmer_light": {
+        "name": "Dimmer"
+      }
+    },
     "number": {
+      "arm_brightness": {
+        "name": "Helderheid bij inschakelen"
+      },
+      "brightness_change_speed": {
+        "name": "Snelheid helderheidswijziging"
+      },
       "current_threshold": {
-        "name": "Current limit"
+        "name": "Stroomlimiet"
+      },
+      "disarm_brightness": {
+        "name": "Helderheid bij uitschakelen"
       },
       "led_brightness_level": {
-        "name": "LED brightness"
+        "name": "LED-helderheid"
+      },
+      "max_brightness": {
+        "name": "Maximale helderheid"
+      },
+      "min_brightness": {
+        "name": "Minimale helderheid"
       },
       "tilt_degrees": {
         "name": "Kanteldrempel"
+      },
+      "touch_sensitivity": {
+        "name": "Aanraakgevoeligheid"
       }
     },
     "select": {
       "alarm_duration_select": {
-        "name": "Alarm duration",
+        "name": "Alarmduur",
         "state": {
-          "1": "1 minute",
-          "10": "10 minutes",
-          "15": "15 minutes",
-          "2": "2 minutes",
-          "3": "3 minutes",
-          "5": "5 minutes"
+          "1": "1 minuut",
+          "10": "10 minuten",
+          "15": "15 minuten",
+          "2": "2 minuten",
+          "3": "3 minuten",
+          "5": "5 minuten"
         }
       },
       "beep_volume": {
-        "name": "Beep volume",
+        "name": "Piepvolume",
         "state": {
-          "loud": "Loud",
-          "quiet": "Quiet",
-          "very_loud": "Very loud"
+          "loud": "Luid",
+          "quiet": "Zacht",
+          "very_loud": "Zeer luid"
+        }
+      },
+      "dimmer_curve": {
+        "name": "Dimmercurve",
+        "state": {
+          "curve_type_auto": "Automatisch",
+          "curve_type_linear": "Lineair",
+          "curve_type_logarithmic": "Logaritmisch"
         }
       },
       "indication_mode": {
-        "name": "Backlight mode",
+        "name": "Achtergrondverlichtingsmodus",
         "state": {
-          "always": "Always on",
-          "if_on": "When active",
-          "off": "Off"
+          "always": "Altijd aan",
+          "if_on": "Wanneer actief",
+          "off": "Uit"
         }
       },
       "led_brightness": {
-        "name": "LED brightness",
+        "name": "LED-helderheid",
         "state": {
-          "max": "High",
-          "min": "Low"
+          "max": "Hoog",
+          "min": "Laag"
+        }
+      },
+      "light_source": {
+        "name": "Lichtbrontype",
+        "state": {
+          "light_source_auto": "Automatisch",
+          "light_source_leading_edge": "Voorflanksturing",
+          "light_source_trailing_edge": "Achterflanksturing"
         }
       },
       "shock_sensitivity": {
@@ -379,18 +455,29 @@
         }
       },
       "siren_volume": {
-        "name": "Siren volume",
+        "name": "Sirenevolume",
         "state": {
-          "disabled": "Disabled",
-          "loud": "Loud",
-          "quiet": "Quiet",
-          "very_loud": "Very loud"
+          "disabled": "Uitgeschakeld",
+          "loud": "Luid",
+          "quiet": "Zacht",
+          "very_loud": "Zeer luid"
+        }
+      },
+      "touch_mode": {
+        "name": "Aanraakmodus",
+        "state": {
+          "touch_mode_blocked": "Geblokkeerd",
+          "touch_mode_toggle": "Alleen schakelen",
+          "touch_mode_toggle_and_slider": "Schakelen en schuifregelaar"
         }
       }
     },
     "sensor": {
       "active_connection": {
         "name": "Actieve verbinding"
+      },
+      "alarm_delay": {
+        "name": "Alarmvertraging"
       },
       "alarm_duration": {
         "name": "Alarmduur",
@@ -404,6 +491,12 @@
           "continuous": "Continu"
         }
       },
+      "alarm_mode": {
+        "name": "Alarmmodus"
+      },
+      "alarm_type": {
+        "name": "Alarmtype"
+      },
       "alarm_volume_level": {
         "name": "Alarmvolume",
         "state": {
@@ -415,6 +508,9 @@
           "quiet": "Zacht",
           "very_loud": "Zeer luid"
         }
+      },
+      "arm_delay": {
+        "name": "Inschakelvertraging"
       },
       "battery_state": {
         "name": "Batterijstatus"
@@ -429,29 +525,52 @@
           "very_loud": "Zeer luid"
         }
       },
+      "brightness": {
+        "name": "Helderheid"
+      },
       "button_brightness": {
-        "name": "Button LED brightness",
+        "name": "Knop LED-helderheid",
         "state": {
-          "high": "High",
-          "low": "Low",
-          "off": "Off"
+          "high": "Hoog",
+          "low": "Laag",
+          "off": "Uit"
         }
       },
       "button_mode": {
-        "name": "Button mode",
+        "name": "Knopmodus",
         "state": {
-          "interconnect_delay": "Interconnect delay",
-          "panic_button": "Panic button",
-          "smart_button": "Smart button"
+          "interconnect_delay": "Koppelingsvertraging",
+          "panic_button": "Panieknop",
+          "smart_button": "Slimme knop"
         }
       },
       "bypassed_devices": {
         "name": "Omzeilde apparaten"
       },
+      "calibration_state": {
+        "name": "Kalibratiestatus"
+      },
+      "connection_type": {
+        "name": "Verbindingstype"
+      },
+      "contact_mode": {
+        "name": "Contactmodus"
+      },
+      "current": {
+        "name": "Stroom"
+      },
+      "current_brightness": {
+        "name": "Huidige helderheid"
+      },
+      "data_channel_quality": {
+        "name": "Datakanaalkwaliteit"
+      },
       "device_color": {
         "name": "Apparaatkleur",
         "state": {
           "black": "Zwart",
+          "blue": "Blauw",
+          "red": "Rood",
           "white": "Wit"
         }
       },
@@ -467,12 +586,15 @@
       "devices_with_malfunctions": {
         "name": "Apparaten met storingen"
       },
+      "energy": {
+        "name": "Energie"
+      },
       "false_press_filter": {
-        "name": "False press filter",
+        "name": "Filter voor onbedoelde druk",
         "state": {
-          "disabled": "Disabled",
-          "double_click": "Double click",
-          "long_push": "Long push"
+          "disabled": "Uitgeschakeld",
+          "double_click": "Dubbelklik",
+          "long_push": "Lang indrukken"
         }
       },
       "firmware_version": {
@@ -777,6 +899,13 @@
       "malfunctions": {
         "name": "Storingen"
       },
+      "mcp_switch_state": {
+        "name": "Knopstatus",
+        "state": {
+          "button_pressed": "Ingedrukt",
+          "button_unpressed": "Normaal"
+        }
+      },
       "network_status": {
         "name": "Mobiel netwerk"
       },
@@ -801,13 +930,19 @@
         }
       },
       "nvr_cameras": {
-        "name": "Cameras"
+        "name": "Camera's"
       },
       "online_devices": {
         "name": "Online apparaten"
       },
       "photos_per_alarm": {
         "name": "Foto's per alarm"
+      },
+      "power": {
+        "name": "Vermogen"
+      },
+      "power_supply_mode": {
+        "name": "Voedingsmodus"
       },
       "recent_events": {
         "name": "Recente gebeurtenissen",
@@ -861,90 +996,93 @@
         "name": "Ongelezen meldingen"
       },
       "video_edge_archive_depth": {
-        "name": "Archive duration"
+        "name": "Archiefduur"
       },
       "video_edge_connection": {
-        "name": "Connection",
+        "name": "Verbinding",
         "state": {
           "offline": "Offline",
           "online": "Online",
-          "unknown": "Unknown"
+          "unknown": "Onbekend"
         }
       },
       "video_edge_cpu_usage": {
-        "name": "CPU usage"
+        "name": "CPU-gebruik"
       },
       "video_edge_led_brightness": {
-        "name": "LED brightness"
+        "name": "LED-helderheid"
       },
       "video_edge_max_preview_duration": {
-        "name": "Max preview duration"
+        "name": "Maximale voorbeeldduur"
       },
       "video_edge_ram_usage": {
-        "name": "RAM usage"
+        "name": "RAM-gebruik"
       },
       "video_edge_record_mode": {
-        "name": "Local recording",
+        "name": "Lokale opname",
         "state": {
-          "disabled": "Disabled",
-          "on_detection": "On detection",
+          "disabled": "Uitgeschakeld",
+          "on_detection": "Bij detectie",
           "permanent": "Permanent",
-          "unknown": "Unknown"
+          "unknown": "Onbekend"
         }
       },
       "video_edge_record_policy": {
-        "name": "NVR recording",
+        "name": "NVR-opname",
         "state": {
-          "always": "Always",
-          "unknown": "Unknown",
-          "when_requested": "When requested"
+          "always": "Altijd",
+          "unknown": "Onbekend",
+          "when_requested": "Op verzoek"
         }
       },
       "video_edge_storage_status": {
-        "name": "Storage status",
+        "name": "Opslagstatus",
         "state": {
-          "formatting": "Formatting",
-          "idle": "Idle",
-          "need_format": "Format required",
-          "none": "None",
-          "ready": "Ready"
+          "formatting": "Formatteren",
+          "idle": "Inactief",
+          "need_format": "Formatteren vereist",
+          "none": "Geen",
+          "ready": "Gereed"
         }
       },
       "video_edge_storage_temperature": {
-        "name": "Storage temperature"
+        "name": "Opslagtemperatuur"
       },
       "video_edge_storage_total": {
-        "name": "Total storage"
+        "name": "Totale opslag"
       },
       "video_edge_uptime": {
-        "name": "Uptime"
+        "name": "Bedrijfstijd"
       },
       "video_edge_wifi_signal": {
-        "name": "Camera WiFi signal"
+        "name": "Camera Wi-Fi-signaal"
+      },
+      "voltage": {
+        "name": "Spanning"
       },
       "waterstop_external_power": {
-        "name": "Power source",
+        "name": "Stroombron",
         "state": {
-          "battery": "Battery",
-          "supply": "External power",
-          "unknown": "Unknown"
+          "battery": "Batterij",
+          "supply": "Externe voeding",
+          "unknown": "Onbekend"
         }
       },
       "waterstop_motor_state": {
-        "name": "Motor state",
+        "name": "Motorstatus",
         "state": {
-          "off": "Stopped",
-          "on": "Running"
+          "off": "Gestopt",
+          "on": "Draaiend"
         }
       },
       "waterstop_prevention_period": {
-        "name": "Prevention period"
+        "name": "Preventieperiode"
       },
       "waterstop_prevention_status": {
-        "name": "Prevention",
+        "name": "Preventie",
         "state": {
-          "disabled": "Disabled",
-          "enabled": "Enabled"
+          "disabled": "Uitgeschakeld",
+          "enabled": "Ingeschakeld"
         }
       },
       "wifi_signal_level": {
@@ -952,11 +1090,18 @@
       }
     },
     "switch": {
-      "alert_if_moved": {
-        "name": "Alert if moved",
+      "accelerometer": {
+        "name": "Versnellingsmeter",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "alert_if_moved": {
+        "name": "Waarschuwing bij verplaatsing",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
         }
       },
       "alerts_by_sirens": {
@@ -1001,6 +1146,13 @@
           "on": "Ingeschakeld"
         }
       },
+      "child_lock": {
+        "name": "Kinderslot",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
       "chimes": {
         "name": "Gong",
         "state": {
@@ -1016,17 +1168,31 @@
         }
       },
       "co_alarm_enabled": {
-        "name": "CO alarm",
+        "name": "CO-alarm",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
         }
       },
       "current_protection": {
-        "name": "Current protection",
+        "name": "Stroombeveiliging",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "current_threshold": {
+        "name": "Stroomdrempelbeveiliging",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "dimmer_calibration": {
+        "name": "Dimmerkalibratie",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
         }
       },
       "external_contact_enabled": {
@@ -1044,14 +1210,21 @@
         }
       },
       "indication_enabled": {
-        "name": "LED indication",
+        "name": "LED-indicatie",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
         }
       },
       "indicator_light": {
         "name": "Indicatielampje",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "led_indicator": {
+        "name": "LED-indicator",
         "state": {
           "off": "Uitgeschakeld",
           "on": "Ingeschakeld"
@@ -1107,8 +1280,36 @@
           "on": "Ingeschakeld"
         }
       },
+      "siren_trigger_acceleration": {
+        "name": "Sirene bij versnelling",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "siren_trigger_co": {
+        "name": "Sirene bij CO",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "siren_trigger_contact": {
+        "name": "Sirene bij contact",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
       "siren_trigger_glass": {
         "name": "Sirene bij glasbreuk",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "siren_trigger_motion": {
+        "name": "Sirene bij beweging",
         "state": {
           "off": "Uitgeschakeld",
           "on": "Ingeschakeld"
@@ -1123,6 +1324,27 @@
       },
       "siren_trigger_shock": {
         "name": "Sirene bij schok",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "siren_trigger_smoke": {
+        "name": "Sirene bij rook",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "siren_trigger_temp_diff": {
+        "name": "Sirene bij snelle temperatuurstijging",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "siren_trigger_temperature": {
+        "name": "Sirene bij hoge temperatuur",
         "state": {
           "off": "Uitgeschakeld",
           "on": "Ingeschakeld"
@@ -1149,18 +1371,25 @@
           }
         }
       },
-      "temp_alarm_enabled": {
-        "name": "High temperature alarm",
+      "state_memory": {
+        "name": "Statusgeheugen",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
+        }
+      },
+      "temp_alarm_enabled": {
+        "name": "Alarm bij hoge temperatuur",
+        "state": {
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
         }
       },
       "temp_diff_alarm_enabled": {
-        "name": "Rapid temperature rise alarm",
+        "name": "Alarm bij snelle temperatuurstijging",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
         }
       },
       "tilt_sensor": {
@@ -1171,10 +1400,10 @@
         }
       },
       "voltage_protection": {
-        "name": "Voltage protection",
+        "name": "Spanningsbeveiliging",
         "state": {
-          "off": "Disabled",
-          "on": "Enabled"
+          "off": "Uitgeschakeld",
+          "on": "Ingeschakeld"
         }
       }
     },
@@ -1188,7 +1417,7 @@
     },
     "valve": {
       "waterstop_valve": {
-        "name": "Water valve"
+        "name": "Waterklep"
       }
     }
   },
@@ -1217,24 +1446,24 @@
   },
   "issues": {
     "critical_firmware_update": {
-      "description": "A **critical security update** is available for **{device_name}**.\n\n- Current version: {current_version}\n- New version: {new_version}\n\nPlease update immediately via the Ajax app.",
-      "title": "Critical firmware update for {device_name}"
+      "description": "Een **kritieke beveiligingsupdate** is beschikbaar voor **{device_name}**.\n\n- Huidige versie: {current_version}\n- Nieuwe versie: {new_version}\n\nWerk onmiddellijk bij via de Ajax-app.",
+      "title": "Kritieke firmware-update voor {device_name}"
     },
     "device_offline": {
-      "description": "The device **{device_name}** is currently offline and not responding. Please check the device and its connection.",
-      "title": "{device_name} is offline"
+      "description": "Het apparaat **{device_name}** is momenteel offline en reageert niet. Controleer het apparaat en de verbinding.",
+      "title": "{device_name} is niet bereikbaar"
     },
     "firmware_update": {
-      "description": "A firmware update is available for **{device_name}**.\n\n- Current version: {current_version}\n- New version: {new_version}\n\nPlease update via the Ajax app.",
-      "title": "Firmware update available for {device_name}"
+      "description": "Een firmware-update is beschikbaar voor **{device_name}**.\n\n- Huidige versie: {current_version}\n- Nieuwe versie: {new_version}\n\nWerk bij via de Ajax-app.",
+      "title": "Firmware-update beschikbaar voor {device_name}"
     }
   },
   "options": {
     "step": {
       "aws_credentials": {
         "data": {
-          "aws_access_key_id": "AWS Access Key ID",
-          "aws_secret_access_key": "AWS Secret Access Key",
+          "aws_access_key_id": "AWS-toegangssleutel-ID",
+          "aws_secret_access_key": "AWS-geheime sleutel",
           "queue_name": "SQS-wachtrijnaam"
         },
         "data_description": {
@@ -1260,7 +1489,7 @@
           "notifications": "Meldingen",
           "polling_settings": "Polling-instellingen",
           "proxy_settings": "Proxy-instellingen",
-          "rtsp_credentials": "RTSP/ONVIF Credentials"
+          "rtsp_credentials": "RTSP/ONVIF-referenties"
         },
         "title": "Ajax-opties"
       },
@@ -1285,25 +1514,27 @@
       },
       "proxy_settings": {
         "data": {
-          "proxy_url": "Proxy-URL"
+          "proxy_url": "Proxy-URL",
+          "verify_ssl": "SSL-certificaat verifiëren"
         },
         "data_description": {
-          "proxy_url": "Voorbeeld: https://my-proxy.example.com"
+          "proxy_url": "Volledige URL van je Ajax-proxyserver",
+          "verify_ssl": "Schakel uit bij zelfondertekende certificaten"
         },
-        "description": "Wijzig je Ajax-proxyserver-URL.",
+        "description": "Wijzig je Ajax-proxyserver-URL en SSL-instellingen.",
         "title": "Proxy-instellingen"
       },
       "rtsp_credentials": {
         "data": {
-          "rtsp_password": "ONVIF Password",
-          "rtsp_username": "ONVIF Username"
+          "rtsp_password": "ONVIF-wachtwoord",
+          "rtsp_username": "ONVIF-gebruikersnaam"
         },
         "data_description": {
-          "rtsp_password": "Password associated with the ONVIF user",
-          "rtsp_username": "Username created in Ajax app for ONVIF"
+          "rtsp_password": "Wachtwoord gekoppeld aan de ONVIF-gebruiker",
+          "rtsp_username": "Gebruikersnaam aangemaakt in de Ajax-app voor ONVIF"
         },
-        "description": "Configure ONVIF/RTSP credentials to access Video Edge camera streams.\n\n**Current configuration:**\n- Username: {current_username}\n- Password: {current_password}\n\n⚠️ These credentials must be created in the Ajax app (Camera → Settings → ONVIF).",
-        "title": "RTSP/ONVIF Credentials"
+        "description": "Configureer ONVIF/RTSP-referenties voor toegang tot Video Edge-camerastreams.\n\n**Huidige configuratie:**\n- Gebruikersnaam: {current_username}\n- Wachtwoord: {current_password}\n\n⚠️ Deze referenties moeten worden aangemaakt in de Ajax-app (Camera → Instellingen → ONVIF).",
+        "title": "RTSP/ONVIF-referenties"
       }
     }
   },
@@ -1311,7 +1542,7 @@
     "auth_mode": {
       "options": {
         "direct": "Direct (alleen enterprise API-sleutel)",
-        "proxy_secure": "Ajax Proxy"
+        "proxy_secure": "Ajax-proxy"
       }
     },
     "notification_filter": {
@@ -1333,8 +1564,8 @@
       "name": "Forceer nachtmodus inschakelen"
     },
     "get_nvr_recordings": {
-      "description": "Get NVR recordings data from the API (last 24 hours). Saves the response to ajax_nvr_recordings.json for diagnostic purposes.",
-      "name": "Get NVR recordings"
+      "description": "Haal NVR-opnamegegevens op van de API (laatste 24 uur). Slaat het antwoord op in ajax_nvr_recordings.json voor diagnostische doeleinden.",
+      "name": "NVR-opnames ophalen"
     },
     "get_raw_devices": {
       "description": "Haal ruwe API JSON-data op voor alle apparaten. Slaat de volledige API-respons op in ajax_raw_devices.json.",
