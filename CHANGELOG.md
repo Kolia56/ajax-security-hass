@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.4] - 2026-01-30
+
+### Fixed
+- Fix crash when other integrations register devices with non-standard identifier tuples (#89)
+
 ## [0.13.3] - 2026-01-30
 
 ### Changed
