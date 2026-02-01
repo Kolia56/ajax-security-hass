@@ -30,7 +30,7 @@ from .event_codes import (
     get_event_type_description,
     parse_event_code,
 )
-from .models import SecurityState
+from .models import AjaxSmartLock, SecurityState
 
 if TYPE_CHECKING:
     from .coordinator import AjaxDataCoordinator
@@ -167,6 +167,32 @@ VIDEO_EVENT_TYPES = {
     "VIDEO_HUMAN": "VIDEO_HUMAN",
     "VIDEO_VEHICLE": "VIDEO_VEHICLE",
     "VIDEO_PET": "VIDEO_PET",
+}
+
+# Smart lock events (LockBridge Jeweller)
+# Mapping event codes -> is_locked (more reliable than transition field)
+LOCK_EVENT_CODE_STATES: dict[str, bool] = {
+    "M_7E_21": False,  # Unlocked by code
+    "M_7E_23": False,  # Unlocked by user (app)
+    "M_7E_29": True,  # Locked automatically
+    "M_7E_2A": True,  # Locked by user (app)
+}
+
+# Mapping event codes -> is_door_open
+LOCK_DOOR_EVENT_CODE_STATES: dict[str, bool] = {
+    "M_7E_2E": True,  # Door open
+    "M_7E_2F": False,  # Door closed
+}
+
+# Event tags for routing (lowercased by _handle_event)
+LOCK_EVENTS: set[str] = {
+    "smartlockunlockedbyuser",
+    "smartlockunlockedbycode",
+    "smartlockmodulelockedautomatically",
+}
+
+LOCK_DOOR_EVENTS: set[str] = {
+    "smartlockdooropen",
 }
 
 # Map event tags to action keys for security events
@@ -344,6 +370,8 @@ class SQSManager:
                 await self._handle_device_status_event(space, event_tag, source_name, source_id)
             elif event_tag in VIDEO_EVENTS or event_type in VIDEO_EVENT_TYPES:
                 await self._handle_video_event(space, event_tag, event_type, source_name, source_id)
+            elif event_tag in LOCK_EVENTS or event_tag in LOCK_DOOR_EVENTS:
+                await self._handle_lock_event(space, event_tag, source_name, source_id, event_code, event)
             else:
                 _LOGGER.warning(
                     "SQS event not handled: tag=%s, type=%s, source=%s (id=%s). Raw: %s",
@@ -996,6 +1024,87 @@ class SQSManager:
             30.0,
             lambda: self._reset_video_detection(space.id, video_edge.id, channel_id, detection_type),
         )
+
+        return True
+
+    async def _handle_lock_event(
+        self,
+        space,
+        event_tag: str,
+        source_name: str,
+        source_id: str,
+        event_code: str,
+        event: dict[str, Any],
+    ) -> bool:
+        """Handle smart lock events (lock/unlock, door open/close).
+
+        Smart locks are space devices stored in space.smart_locks.
+        Uses event_code mapping for reliable state (transition field is
+        unreliable for smart lock codes in SSE mode).
+        """
+        # Find the smart lock by source_id or source_name
+        smart_lock = None
+        if source_id:
+            smart_lock = space.smart_locks.get(source_id)
+        if not smart_lock and source_name:
+            for sl in space.smart_locks.values():
+                if sl.name == source_name:
+                    smart_lock = sl
+                    break
+
+        if not smart_lock:
+            # Auto-create from event data (API may not list the device)
+            if source_id:
+                smart_lock = AjaxSmartLock(
+                    id=source_id,
+                    name=source_name or f"Smart Lock {source_id[:6]}",
+                    space_id=space.id,
+                )
+                space.smart_locks[source_id] = smart_lock
+                _LOGGER.info(
+                    "SQS: Auto-discovered smart lock from event: %s (%s)",
+                    smart_lock.name,
+                    source_id,
+                )
+            else:
+                _LOGGER.warning(
+                    "SQS: Smart lock event without source_id: tag=%s, name=%s",
+                    event_tag,
+                    source_name,
+                )
+                return False
+
+        # Extract user who triggered the event
+        additional_data = event.get("additionalData", {})
+        if isinstance(additional_data, dict):
+            user_name = additional_data.get("sourceUserName")
+            if user_name:
+                smart_lock.last_changed_by = user_name
+
+        event_code_upper = event_code.upper() if event_code else ""
+
+        if event_tag in LOCK_DOOR_EVENTS:
+            # Door open/close — use event code mapping
+            if event_code_upper in LOCK_DOOR_EVENT_CODE_STATES:
+                smart_lock.is_door_open = LOCK_DOOR_EVENT_CODE_STATES[event_code_upper]
+            _LOGGER.info(
+                "SQS instant: Smart lock %s door -> %s",
+                smart_lock.name,
+                "open" if smart_lock.is_door_open else "closed",
+            )
+        elif event_tag in LOCK_EVENTS:
+            # Lock/unlock — use event code mapping
+            if event_code_upper in LOCK_EVENT_CODE_STATES:
+                smart_lock.is_locked = LOCK_EVENT_CODE_STATES[event_code_upper]
+            _LOGGER.info(
+                "SQS instant: Smart lock %s -> %s (by %s)",
+                smart_lock.name,
+                "locked" if smart_lock.is_locked else "unlocked",
+                smart_lock.last_changed_by or "unknown",
+            )
+
+        smart_lock.last_event_tag = event_tag
+        smart_lock.last_event_time = datetime.now(UTC)
 
         return True
 

@@ -249,6 +249,13 @@
       "shock": {
         "name": "Schok"
       },
+      "smart_lock_door": {
+        "name": "Deur",
+        "state": {
+          "off": "Gesloten",
+          "on": "Open"
+        }
+      },
       "steam": {
         "name": "Stoom gedetecteerd",
         "state": {
@@ -364,6 +371,11 @@
     "light": {
       "dimmer_light": {
         "name": "Dimmer"
+      }
+    },
+    "lock": {
+      "smart_lock": {
+        "name": "Slot"
       }
     },
     "number": {

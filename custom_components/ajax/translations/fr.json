@@ -249,6 +249,13 @@
       "shock": {
         "name": "Capteur de choc"
       },
+      "smart_lock_door": {
+        "name": "Porte",
+        "state": {
+          "off": "Fermée",
+          "on": "Ouverte"
+        }
+      },
       "steam": {
         "name": "Vapeur détectée",
         "state": {
@@ -364,6 +371,11 @@
     "light": {
       "dimmer_light": {
         "name": "Variateur"
+      }
+    },
+    "lock": {
+      "smart_lock": {
+        "name": "Serrure"
       }
     },
     "number": {

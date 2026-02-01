@@ -62,6 +62,7 @@ class DeviceType(Enum):
     THERMOSTAT = "thermostat"
     LIFE_QUALITY = "life_quality"  # LifeQuality air quality sensor (CO2, temperature, humidity)
     WATERSTOP = "waterstop"  # WaterStop smart water valve
+    SMART_LOCK = "smart_lock"  # LockBridge Jeweller (Yale lock module)
 
     # Cameras
     CAMERA = "camera"
@@ -294,6 +295,34 @@ VIDEO_EDGE_MODEL_NAMES: dict[VideoEdgeType, str] = {
 
 
 @dataclass
+class AjaxSmartLock:
+    """Represents a smart lock device (LockBridge Jeweller)."""
+
+    id: str
+    name: str
+    space_id: str
+
+    # Lock state (from SSE/SQS events)
+    # None = unknown (no event received yet), True = locked, False = unlocked
+    is_locked: bool | None = None
+
+    # Door state (from SSE/SQS events)
+    # None = unknown, True = open, False = closed
+    is_door_open: bool | None = None
+
+    # Last event info
+    last_event_tag: str | None = None
+    last_event_time: datetime | None = None
+    last_changed_by: str | None = None  # Who locked/unlocked (from additionalData)
+
+    # Raw data from API
+    raw_data: dict[str, Any] = field(default_factory=dict)
+
+    def __str__(self) -> str:
+        return f"SmartLock({self.name}, locked={self.is_locked})"
+
+
+@dataclass
 class AjaxNotification:
     """Represents a notification from Ajax."""
 
@@ -346,6 +375,7 @@ class AjaxSpace:
     groups: dict[str, AjaxGroup] = field(default_factory=dict)
     devices: dict[str, AjaxDevice] = field(default_factory=dict)
     video_edges: dict[str, AjaxVideoEdge] = field(default_factory=dict)
+    smart_locks: dict[str, AjaxSmartLock] = field(default_factory=dict)
     notifications: list[AjaxNotification] = field(default_factory=list)
 
     # Metadata

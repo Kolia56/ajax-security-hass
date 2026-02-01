@@ -48,6 +48,7 @@ from .models import (
     AjaxGroup,
     AjaxNotification,
     AjaxRoom,
+    AjaxSmartLock,
     AjaxSpace,
     AjaxVideoEdge,
     DeviceType,
@@ -481,12 +482,14 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     for space_id in self.account.spaces:
                         await self._async_update_devices(space_id)
                         await self._async_update_video_edges(space_id)
+                        await self._async_update_smart_locks(space_id)
                         await self._async_update_notifications(space_id, limit=20)
                 else:
                     tasks = []
                     for space_id in self.account.spaces:
                         tasks.append(self._async_update_devices(space_id))
                         tasks.append(self._async_update_video_edges(space_id))
+                        tasks.append(self._async_update_smart_locks(space_id))
                         tasks.append(self._async_update_notifications(space_id, limit=20))
                     await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -543,6 +546,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                         # Refresh video edges to get AI detection states
                         if space_obj.video_edges:
                             await self._async_update_video_edges(space_id)
+                        # Refresh smart locks (API data is minimal, state is event-driven)
+                        if space_obj.smart_locks:
+                            await self._async_update_smart_locks(space_id)
 
             return self.account
 
@@ -2235,6 +2241,82 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         except Exception as err:
             _LOGGER.warning("Error updating video edges for space %s: %s", space_id, err)
+
+    async def _async_update_smart_locks(self, space_id: str) -> None:
+        """Update smart lock devices for a specific space."""
+        if self.account is None:
+            return
+        space = self.account.spaces.get(space_id)
+        if not space:
+            return
+
+        # Need real_space_id to fetch smart locks
+        if not space.real_space_id:
+            _LOGGER.debug("No real_space_id for space %s, skipping smart locks", space_id)
+            return
+
+        try:
+            smart_locks_data = await self.api.async_get_smart_locks(space.real_space_id)
+            _LOGGER.debug(
+                "Found %d smart lock(s) for space %s",
+                len(smart_locks_data),
+                space_id,
+            )
+
+            processed_ids: set[str] = set()
+
+            for sl_data in smart_locks_data:
+                sl_id = sl_data.get("id")
+                if not sl_id:
+                    continue
+
+                processed_ids.add(sl_id)
+
+                if sl_id not in space.smart_locks:
+                    smart_lock = AjaxSmartLock(
+                        id=sl_id,
+                        name=sl_data.get("name", f"Smart Lock {sl_id[:6]}"),
+                        space_id=space_id,
+                        raw_data=sl_data,
+                    )
+                    space.smart_locks[sl_id] = smart_lock
+                    _LOGGER.info("Discovered smart lock: %s (%s)", smart_lock.name, sl_id)
+                else:
+                    # Update existing — preserve event-driven state
+                    existing = space.smart_locks[sl_id]
+                    existing.raw_data = sl_data
+                    if sl_data.get("name"):
+                        existing.name = sl_data["name"]
+
+            # Clean up removed smart locks
+            if processed_ids and space.smart_locks:
+                existing_ids = set(space.smart_locks.keys())
+                removed_ids = existing_ids - processed_ids
+
+                if removed_ids:
+                    device_registry = dr.async_get(self.hass)
+                    for sl_id in removed_ids:
+                        smart_lock = space.smart_locks.get(sl_id)
+                        sl_name = smart_lock.name if smart_lock else sl_id
+
+                        ha_device = device_registry.async_get_device(identifiers={(DOMAIN, sl_id)})
+                        if ha_device:
+                            device_registry.async_remove_device(ha_device.id)
+                            _LOGGER.info(
+                                "Auto-removed smart lock '%s' (ID: %s) from Home Assistant",
+                                sl_name,
+                                sl_id,
+                            )
+
+                        del space.smart_locks[sl_id]
+
+        except Exception as err:
+            _LOGGER.warning("Error updating smart locks for space %s: %s", space_id, err)
+
+    def get_smart_lock(self, space_id: str, smart_lock_id: str) -> AjaxSmartLock | None:
+        """Get a smart lock by space and smart lock ID."""
+        space = self.get_space(space_id)
+        return space.smart_locks.get(smart_lock_id) if space else None
 
     def _parse_notification_type(self, event_type: str | None) -> NotificationType:
         """Parse notification type from event type string."""

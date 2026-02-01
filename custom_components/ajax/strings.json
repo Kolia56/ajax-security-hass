@@ -349,6 +349,13 @@
           "off": "None",
           "on": "Detected"
         }
+      },
+      "smart_lock_door": {
+        "name": "Door",
+        "state": {
+          "off": "Closed",
+          "on": "Open"
+        }
       }
     },
     "button": {
@@ -1087,6 +1094,11 @@
       },
       "data_channel_quality": {
         "name": "Data channel quality"
+      }
+    },
+    "lock": {
+      "smart_lock": {
+        "name": "Lock"
       }
     },
     "valve": {

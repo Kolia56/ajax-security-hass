@@ -1084,6 +1084,58 @@ class AjaxRestApi:
             f"user/{self.user_id}/spaces/{space_id}/devices/video-edges/{video_edge_id}/rtsp",
         )
 
+    # Smart lock methods
+    async def async_get_smart_locks(self, space_id: str) -> list[dict[str, Any]]:
+        """Get all smart lock devices for a space.
+
+        Smart locks are discovered from the space's devices array
+        with type "SMART_LOCK", then fetched individually.
+
+        Args:
+            space_id: Space ID (real_space_id from spaceBinding)
+
+        Returns:
+            List of smart lock dictionaries
+        """
+        space_data = await self.async_get_space(space_id)
+        devices = space_data.get("devices", [])
+        _LOGGER.debug(
+            "Space %s devices for smart lock discovery: %s",
+            space_id,
+            [(d.get("id", "?")[:8], d.get("type")) for d in devices],
+        )
+        smart_locks = []
+        for device in devices:
+            if device.get("type") == "SMART_LOCK":
+                smart_lock_id = device.get("id")
+                if smart_lock_id:
+                    try:
+                        smart_lock = await self.async_get_smart_lock(space_id, smart_lock_id)
+                        # Merge name from space device listing if detail endpoint lacks it
+                        if not smart_lock.get("name") and device.get("name"):
+                            smart_lock["name"] = device["name"]
+                        smart_locks.append(smart_lock)
+                    except Exception as err:
+                        _LOGGER.warning("Failed to get smart lock %s: %s", smart_lock_id, err)
+                        # Fallback: use the space device entry directly
+                        smart_locks.append(device)
+        return smart_locks
+
+    async def async_get_smart_lock(self, space_id: str, smart_lock_id: str) -> dict[str, Any]:
+        """Get smart lock device details.
+
+        Args:
+            space_id: Space ID
+            smart_lock_id: Smart lock device ID
+
+        Returns:
+            Smart lock details dictionary
+        """
+        return await self._request(
+            "GET",
+            f"user/{self.user_id}/spaces/{space_id}/devices/smart-locks/{smart_lock_id}",
+        )
+
     # Light/Button methods
     async def async_set_light_state(
         self,

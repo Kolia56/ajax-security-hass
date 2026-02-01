@@ -46,6 +46,7 @@ from .devices import (
 from .models import (
     VIDEO_EDGE_MODEL_NAMES,
     AjaxDevice,
+    AjaxSmartLock,
     AjaxVideoEdge,
     DeviceType,
 )
@@ -191,6 +192,23 @@ async def async_setup_entry(
                         sensor_desc["key"],
                         video_edge.name,
                     )
+
+        # Create binary sensors for smart locks (door open/close)
+        for sl_id, smart_lock in space.smart_locks.items():
+            unique_id = f"{sl_id}_door"
+            if unique_id not in seen_unique_ids:
+                seen_unique_ids.add(unique_id)
+                entities.append(
+                    AjaxSmartLockBinarySensor(
+                        coordinator=coordinator,
+                        space_id=space_id,
+                        smart_lock_id=sl_id,
+                    )
+                )
+                _LOGGER.debug(
+                    "Created smart lock door sensor for: %s",
+                    smart_lock.name,
+                )
 
         # Create hub-level binary sensors from hub_details
         if space.hub_details:
@@ -606,3 +624,63 @@ class AjaxHubBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEn
         return DeviceInfo(
             identifiers={(DOMAIN, self._space_id)},
         )
+
+
+class AjaxSmartLockBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEntity):
+    """Binary sensor for Ajax smart lock door open/close state."""
+
+    _attr_has_entity_name = True
+    _attr_device_class = BinarySensorDeviceClass.DOOR
+
+    def __init__(
+        self,
+        coordinator: AjaxDataCoordinator,
+        space_id: str,
+        smart_lock_id: str,
+    ) -> None:
+        """Initialize the smart lock door sensor."""
+        super().__init__(coordinator)
+        self._space_id = space_id
+        self._smart_lock_id = smart_lock_id
+        self._attr_unique_id = f"{smart_lock_id}_door"
+        self._attr_translation_key = "smart_lock_door"
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the door is open."""
+        smart_lock = self._get_smart_lock()
+        if not smart_lock:
+            return None
+        return smart_lock.is_door_open
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._get_smart_lock() is not None
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Return device information (same device as the lock entity)."""
+        smart_lock = self._get_smart_lock()
+        if not smart_lock:
+            return None
+
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._smart_lock_id)},
+            name=smart_lock.name,
+            manufacturer=MANUFACTURER,
+            model="LockBridge Jeweller",
+            via_device=(DOMAIN, self._space_id),
+        )
+
+    def _get_smart_lock(self) -> AjaxSmartLock | None:
+        """Get the smart lock from coordinator data."""
+        space = self.coordinator.get_space(self._space_id)
+        if not space:
+            return None
+        return space.smart_locks.get(self._smart_lock_id)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self.async_write_ha_state()

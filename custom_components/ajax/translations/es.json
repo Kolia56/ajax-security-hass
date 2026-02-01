@@ -249,6 +249,13 @@
       "shock": {
         "name": "Sensor de golpe"
       },
+      "smart_lock_door": {
+        "name": "Puerta",
+        "state": {
+          "off": "Cerrada",
+          "on": "Abierta"
+        }
+      },
       "steam": {
         "name": "Vapor detectado",
         "state": {
@@ -364,6 +371,11 @@
     "light": {
       "dimmer_light": {
         "name": "Regulador"
+      }
+    },
+    "lock": {
+      "smart_lock": {
+        "name": "Cerradura"
       }
     },
     "number": {

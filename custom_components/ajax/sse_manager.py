@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .event_codes import DEFAULT_LANGUAGE, parse_event_code
+from .models import AjaxSmartLock
 from .sqs_manager import (  # Import event mappings from SQS manager to avoid duplication
     DEVICE_STATUS_EVENTS,
     DOOR_EVENTS,
@@ -26,6 +27,10 @@ from .sqs_manager import (  # Import event mappings from SQS manager to avoid du
     EVENT_TAG_TO_STATE,
     FLOOD_EVENTS,
     GLASS_EVENTS,
+    LOCK_DOOR_EVENT_CODE_STATES,
+    LOCK_DOOR_EVENTS,
+    LOCK_EVENT_CODE_STATES,
+    LOCK_EVENTS,
     MOTION_EVENTS,
     RELAY_EVENTS,
     SCENARIO_EVENTS,
@@ -254,6 +259,8 @@ class SSEManager:
                 self._handle_video_event(space, event_tag, event_type_v2, source_name, source_id)
             elif event_tag in DOORBELL_EVENTS:
                 self._handle_doorbell_event(space, source_name, source_id)
+            elif event_tag in LOCK_EVENTS or event_tag in LOCK_DOOR_EVENTS:
+                self._handle_lock_event(space, event_tag, source_name, source_id, event_code, event)
             else:
                 _LOGGER.warning(
                     "SSE event not handled: tag=%s, type=%s, typeV2=%s, source=%s (id=%s). Raw: %s",
@@ -584,6 +591,82 @@ class SSEManager:
                 self.coordinator.async_set_updated_data(self.coordinator.account)
         except Exception as err:
             _LOGGER.debug("Error resetting doorbell ring: %s", err)
+
+    def _handle_lock_event(
+        self,
+        space,
+        event_tag: str,
+        source_name: str,
+        source_id: str,
+        event_code: str,
+        event: dict,
+    ) -> None:
+        """Handle smart lock events (lock/unlock, door open/close).
+
+        Uses event_code mapping for reliable state determination
+        (transition derived from event code parity is unreliable for smart locks).
+        """
+        # Find the smart lock by source_id or source_name
+        smart_lock = None
+        if source_id:
+            smart_lock = space.smart_locks.get(source_id)
+        if not smart_lock and source_name:
+            for sl in space.smart_locks.values():
+                if sl.name == source_name:
+                    smart_lock = sl
+                    break
+
+        if not smart_lock:
+            # Auto-create from event data (API may not list the device)
+            if source_id:
+                smart_lock = AjaxSmartLock(
+                    id=source_id,
+                    name=source_name or f"Smart Lock {source_id[:6]}",
+                    space_id=space.id,
+                )
+                space.smart_locks[source_id] = smart_lock
+                _LOGGER.info(
+                    "SSE: Auto-discovered smart lock from event: %s (%s)",
+                    smart_lock.name,
+                    source_id,
+                )
+            else:
+                _LOGGER.warning(
+                    "SSE: Smart lock event without source_id: tag=%s, name=%s",
+                    event_tag,
+                    source_name,
+                )
+                return
+
+        # Extract user who triggered the event
+        additional_data = event.get("additionalData", {})
+        if isinstance(additional_data, dict):
+            user_name = additional_data.get("sourceUserName")
+            if user_name:
+                smart_lock.last_changed_by = user_name
+
+        event_code_upper = event_code.upper() if event_code else ""
+
+        if event_tag in LOCK_DOOR_EVENTS:
+            if event_code_upper in LOCK_DOOR_EVENT_CODE_STATES:
+                smart_lock.is_door_open = LOCK_DOOR_EVENT_CODE_STATES[event_code_upper]
+            _LOGGER.info(
+                "SSE instant: Smart lock %s door -> %s",
+                smart_lock.name,
+                "open" if smart_lock.is_door_open else "closed",
+            )
+        elif event_tag in LOCK_EVENTS:
+            if event_code_upper in LOCK_EVENT_CODE_STATES:
+                smart_lock.is_locked = LOCK_EVENT_CODE_STATES[event_code_upper]
+            _LOGGER.info(
+                "SSE instant: Smart lock %s -> %s (by %s)",
+                smart_lock.name,
+                "locked" if smart_lock.is_locked else "unlocked",
+                smart_lock.last_changed_by or "unknown",
+            )
+
+        smart_lock.last_event_tag = event_tag
+        smart_lock.last_event_time = datetime.now(UTC)
 
     def _handle_scenario_event(self, space, event: dict, event_tag: str) -> None:
         """Handle scenario events that might be triggered by a Button.
