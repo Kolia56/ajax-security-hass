@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.1] - 2026-02-03
+
+### Fixed
+- Smart locks discovered from SSE/SQS events now get entities created dynamically
+- Polling cleanup no longer removes SSE/SQS-discovered smart locks missing from API
+- Entity deduplication uses HA entity registry instead of fragile in-memory sets
+
 ## [0.14.0] - 2026-02-01
 
 ### Added
