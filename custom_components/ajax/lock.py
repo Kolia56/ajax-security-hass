@@ -10,8 +10,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.lock import LockEntity
+from homeassistant.components.lock import DOMAIN as LOCK_DOMAIN, LockEntity
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -58,17 +59,14 @@ async def async_setup_entry(
         async_add_entities(entities)
         _LOGGER.info("Added %d Ajax lock(s)", len(entities))
 
-    # Track which smart locks already have entities
-    known_smart_lock_ids: set[str] = {
-        sl_id for space in coordinator.account.spaces.values() for sl_id in space.smart_locks
-    }
-
     @callback
     def _async_add_new_smart_lock(space_id: str, smart_lock_id: str) -> None:
         """Add new lock entity when a smart lock is discovered from SSE/SQS."""
-        if smart_lock_id in known_smart_lock_ids:
+        # Check entity registry to avoid duplicates (more robust than manual set tracking)
+        ent_reg = er.async_get(hass)
+        unique_id = f"{smart_lock_id}_lock"
+        if ent_reg.async_get_entity_id(LOCK_DOMAIN, DOMAIN, unique_id):
             return
-        known_smart_lock_ids.add(smart_lock_id)
         async_add_entities([AjaxLock(coordinator=coordinator, space_id=space_id, smart_lock_id=smart_lock_id)])
         _LOGGER.info("Dynamically added lock entity for smart lock: %s", smart_lock_id)
 

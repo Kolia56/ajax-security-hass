@@ -11,11 +11,12 @@ import logging
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
+    DOMAIN as BINARY_SENSOR_DOMAIN,
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -237,18 +238,14 @@ async def async_setup_entry(
     if entities:
         _LOGGER.info("Added %d Ajax binary sensor(s)", len(entities))
 
-    # Track which smart lock door sensors already have entities
-    known_smart_lock_door_ids: set[str] = {
-        f"{sl_id}_door" for space in coordinator.account.spaces.values() for sl_id in space.smart_locks
-    }
-
     @callback
     def _async_add_new_smart_lock_door(space_id: str, smart_lock_id: str) -> None:
         """Add new door binary sensor when a smart lock is discovered from SSE/SQS."""
+        # Check entity registry to avoid duplicates (more robust than manual set tracking)
+        ent_reg = er.async_get(hass)
         unique_id = f"{smart_lock_id}_door"
-        if unique_id in known_smart_lock_door_ids:
+        if ent_reg.async_get_entity_id(BINARY_SENSOR_DOMAIN, DOMAIN, unique_id):
             return
-        known_smart_lock_door_ids.add(unique_id)
         async_add_entities(
             [AjaxSmartLockBinarySensor(coordinator=coordinator, space_id=space_id, smart_lock_id=smart_lock_id)]
         )

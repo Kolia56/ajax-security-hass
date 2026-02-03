@@ -2288,7 +2288,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     if sl_data.get("name"):
                         existing.name = sl_data["name"]
 
-            # Clean up removed smart locks
+            # Clean up removed smart locks (only API-discovered ones)
+            # SSE/SQS-discovered locks have no raw_data and must be preserved
             if processed_ids and space.smart_locks:
                 existing_ids = set(space.smart_locks.keys())
                 removed_ids = existing_ids - processed_ids
@@ -2297,6 +2298,16 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     device_registry = dr.async_get(self.hass)
                     for sl_id in removed_ids:
                         smart_lock = space.smart_locks.get(sl_id)
+
+                        # Preserve SSE/SQS-discovered locks (no raw_data from API)
+                        if smart_lock and not smart_lock.raw_data:
+                            _LOGGER.debug(
+                                "Preserving SSE/SQS-discovered smart lock '%s' (ID: %s)",
+                                smart_lock.name,
+                                sl_id,
+                            )
+                            continue
+
                         sl_name = smart_lock.name if smart_lock else sl_id
 
                         ha_device = device_registry.async_get_device(identifiers={(DOMAIN, sl_id)})
