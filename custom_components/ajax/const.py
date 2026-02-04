@@ -69,6 +69,9 @@ CONF_DOOR_SENSOR_FAST_POLL = "door_sensor_fast_poll"  # Enable fast door sensor 
 CONF_RTSP_USERNAME = "rtsp_username"
 CONF_RTSP_PASSWORD = "rtsp_password"
 
+# Discovered hub MAC addresses (for DHCP discovery deduplication)
+CONF_DISCOVERED_MACS = "discovered_macs"
+
 # Notification filter options
 NOTIFICATION_FILTER_NONE = "none"
 NOTIFICATION_FILTER_ALARMS_ONLY = "alarms_only"

@@ -34,6 +34,7 @@ from .const import (
     CONF_AUTH_MODE,
     CONF_AWS_ACCESS_KEY_ID,
     CONF_AWS_SECRET_ACCESS_KEY,
+    CONF_DISCOVERED_MACS,
     CONF_DOOR_SENSOR_FAST_POLL,
     CONF_EMAIL,
     CONF_ENABLED_SPACES,
@@ -78,6 +79,14 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
         self._auth_mode: str = AUTH_MODE_DIRECT
         self._spaces: list[dict[str, str]] = []  # List of {id, name} for discovered spaces
         self._entry_data: dict[str, Any] = {}  # Prepared entry data
+
+    def _add_discovered_mac_to_entry_data(self) -> None:
+        """Add discovered MAC address to entry data if available."""
+        discovered_mac = self.context.get("discovered_mac")
+        if discovered_mac:
+            existing_macs = self._entry_data.get(CONF_DISCOVERED_MACS, [])
+            if discovered_mac not in existing_macs:
+                self._entry_data[CONF_DISCOVERED_MACS] = existing_macs + [discovered_mac]
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the initial step - choose authentication mode."""
@@ -178,6 +187,9 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
 
                 # Single space or no spaces - enable all by default
                 self._entry_data[CONF_ENABLED_SPACES] = [s["id"] for s in self._spaces]
+
+                # Add discovered MAC if from DHCP discovery
+                self._add_discovered_mac_to_entry_data()
 
                 # Create entry
                 return self.async_create_entry(
@@ -301,6 +313,9 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Single space or no spaces - enable all by default
                 if self._spaces:
                     self._entry_data[CONF_ENABLED_SPACES] = [s["id"] for s in self._spaces]
+
+                # Add discovered MAC if from DHCP discovery
+                self._add_discovered_mac_to_entry_data()
 
                 # Create entry
                 return self.async_create_entry(
@@ -427,6 +442,9 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Single space or no spaces - enable all by default
                 self._entry_data[CONF_ENABLED_SPACES] = [s["id"] for s in self._spaces]
 
+                # Add discovered MAC if from DHCP discovery
+                self._add_discovered_mac_to_entry_data()
+
                 # Create entry
                 return self.async_create_entry(
                     title=f"Ajax - {self._user_input[CONF_EMAIL]}",
@@ -476,6 +494,9 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Store selected spaces and create entry
                 self._entry_data[CONF_ENABLED_SPACES] = selected_spaces
 
+                # Add discovered MAC if from DHCP discovery
+                self._add_discovered_mac_to_entry_data()
+
                 return self.async_create_entry(
                     title=f"Ajax - {self._entry_data.get(CONF_EMAIL, 'Unknown')}",
                     data=self._entry_data,
@@ -513,8 +534,16 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_dhcp(self, discovery_info: DhcpServiceInfo) -> ConfigFlowResult:
         """Handle DHCP discovery of Ajax hubs."""
-        await self.async_set_unique_id(discovery_info.macaddress)
-        self._abort_if_unique_id_configured()
+        # Check if this MAC is already associated with an existing config entry
+        discovered_mac = discovery_info.macaddress.upper()
+        for entry in self._async_current_entries():
+            entry_macs = entry.data.get(CONF_DISCOVERED_MACS, [])
+            if discovered_mac in entry_macs:
+                # This hub is already configured, abort discovery
+                return self.async_abort(reason="already_configured")
+
+        # Store discovered MAC to add to entry data when created
+        self.context["discovered_mac"] = discovered_mac
         self.context["title_placeholders"] = {"name": discovery_info.hostname or "Ajax Hub"}
         return await self.async_step_user()
 
