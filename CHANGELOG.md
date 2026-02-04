@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.4] - 2026-02-04
+
+### Added
+- DHCP discovery now shows dialog to associate discovered hub with existing configuration
+- Option to add MAC address to existing config entry without reconfiguring
+
+### Fixed
+- Translations properly formatted for all languages
+
 ## [0.14.3] - 2026-02-04
 
 ### Fixed
