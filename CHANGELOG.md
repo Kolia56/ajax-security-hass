@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.5] - 2026-02-05
+
+### Added
+- New `ajax.get_smart_locks` diagnostic service to fetch smart lock data from API and SSE/SQS-discovered locks
+
 ## [0.14.4] - 2026-02-04
 
 ### Added
