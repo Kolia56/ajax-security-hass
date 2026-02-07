@@ -346,11 +346,19 @@ class SSEManager:
                 _LOGGER.info("SSE: Group refresh completed at t=%dms", elapsed)
             except Exception as err:
                 _LOGGER.error("SSE: Metadata refresh failed after security event: %s", err)
+                # Fallback: apply SSE state directly since refresh failed
+                if state_changed:
+                    space.security_state = new_state
+                    self._last_state_update[space.hub_id] = time.time()
+                    _LOGGER.info("SSE: Fallback state update applied after refresh failure")
             finally:
                 # Always reset the flag
                 self.coordinator._skip_state_change_event = False
 
-        if state_changed and not is_group_event:
+        # Update state immediately only for events that don't trigger a refresh
+        # For group and full arm/disarm events, the metadata refresh will update the state
+        # This prevents race conditions where SSE updates state before refresh completes
+        if state_changed and not is_group_event and not is_full_arm_disarm:
             space.security_state = new_state
             self._last_state_update[space.hub_id] = time.time()
 
