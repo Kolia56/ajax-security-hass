@@ -350,7 +350,10 @@ class SSEManager:
                 # Always reset the flag
                 self.coordinator._skip_state_change_event = False
 
-        if state_changed and not is_group_event:
+        # Update state immediately only for events that don't trigger a refresh
+        # For group and full arm/disarm events, the metadata refresh will update the state
+        # This prevents race conditions where SSE updates state before refresh completes
+        if state_changed and not is_group_event and not is_full_arm_disarm:
             space.security_state = new_state
             self._last_state_update[space.hub_id] = time.time()
 
