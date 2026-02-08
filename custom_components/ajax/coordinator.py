@@ -25,6 +25,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.debounce import Debouncer
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import AjaxRestApi, AjaxRestApiError, AjaxRestAuthError
@@ -186,6 +187,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         # Flag to bypass proxy cache on next refresh (after SSE event or user action)
         self._bypass_cache_next_refresh: bool = False
+
+        # Persistent storage for SSE/SQS-discovered smart locks (survives reboots)
+        self._smart_lock_store: Store = Store(hass, 1, f"{DOMAIN}_smart_locks")
 
         super().__init__(
             hass,
@@ -494,6 +498,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                         tasks.append(self._async_update_notifications(space_id, limit=20))
                     await asyncio.gather(*tasks, return_exceptions=True)
 
+                # Restore SSE/SQS-discovered smart locks from storage
+                await self._async_restore_smart_locks()
+
                 # Mark initial load as complete
                 self._initial_load_done = True
                 _LOGGER.info("Initial data load complete")
@@ -630,6 +637,59 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             self.account.name,
             self.account.user_id,
         )
+
+    async def _async_save_smart_locks(self) -> None:
+        """Persist SSE/SQS-discovered smart locks to storage."""
+        if not self.account:
+            return
+        data: dict[str, list[dict]] = {}
+        for space_id, space in self.account.spaces.items():
+            locks = []
+            for sl in space.smart_locks.values():
+                # Only persist SSE/SQS-discovered locks (no raw_data from API)
+                if not sl.raw_data:
+                    locks.append(
+                        {
+                            "id": sl.id,
+                            "name": sl.name,
+                            "is_locked": sl.is_locked,
+                            "is_door_open": sl.is_door_open,
+                            "last_changed_by": sl.last_changed_by,
+                        }
+                    )
+            if locks:
+                data[space_id] = locks
+        if data:
+            await self._smart_lock_store.async_save(data)
+
+    async def _async_restore_smart_locks(self) -> None:
+        """Restore SSE/SQS-discovered smart locks from storage."""
+        if not self.account:
+            return
+        data = await self._smart_lock_store.async_load()
+        if not data or not isinstance(data, dict):
+            return
+        count = 0
+        for space_id, locks in data.items():
+            space = self.account.spaces.get(space_id)
+            if not space:
+                continue
+            for lock_data in locks:
+                sl_id = lock_data.get("id")
+                if not sl_id or sl_id in space.smart_locks:
+                    continue
+                smart_lock = AjaxSmartLock(
+                    id=sl_id,
+                    name=lock_data.get("name", f"Smart Lock {sl_id[:6]}"),
+                    space_id=space_id,
+                )
+                smart_lock.is_locked = lock_data.get("is_locked")
+                smart_lock.is_door_open = lock_data.get("is_door_open")
+                smart_lock.last_changed_by = lock_data.get("last_changed_by")
+                space.smart_locks[sl_id] = smart_lock
+                count += 1
+        if count:
+            _LOGGER.info("Restored %d SSE-discovered smart lock(s) from storage", count)
 
     async def _async_init_sqs(self) -> None:
         """Initialize AWS SQS for real-time events (optional).
@@ -1330,6 +1390,14 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             # Parse device type - API uses camelCase (deviceType, deviceName)
             raw_device_type = device_data.get("deviceType", device_data.get("type", "unknown"))
             device_type = self._parse_device_type(raw_device_type)
+
+            # Skip smart locks in normal device flow (handled via smart-locks endpoint)
+            if device_type == DeviceType.SMART_LOCK:
+                _LOGGER.debug(
+                    "Skipping smart lock %s in device flow (handled separately)",
+                    device_id,
+                )
+                continue
 
             # Get room_id and room_name
             room_id = device_data.get("roomId", device_data.get("room_id"))
@@ -2283,7 +2351,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
                     # Detect Yale cloud locks (minimal API data: only 'id', no 'name'/'type')
                     if smart_lock.is_yale_cloud_device:
-                        _LOGGER.info(
+                        _LOGGER.debug(
                             "Skipping Yale cloud lock %s (no name/type in API, use native Yale integration)",
                             sl_id,
                         )
@@ -2767,6 +2835,11 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             "lifequality": DeviceType.LIFE_QUALITY,
             "waterstop": DeviceType.WATERSTOP,
             "water_stop": DeviceType.WATERSTOP,
+            # Smart Locks (Yale cloud - handled separately, skip as normal device)
+            "smartlockyale": DeviceType.SMART_LOCK,
+            "smart_lock_yale": DeviceType.SMART_LOCK,
+            "smartlock": DeviceType.SMART_LOCK,
+            "smart_lock": DeviceType.SMART_LOCK,
             # Cameras
             "camera": DeviceType.CAMERA,
             "cam": DeviceType.CAMERA,

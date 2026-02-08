@@ -661,6 +661,8 @@ class SSEManager:
                 )
                 # Signal platforms to create entities for the new smart lock
                 async_dispatcher_send(self.coordinator.hass, SIGNAL_NEW_SMART_LOCK, space.id, source_id)
+                # Persist to storage so it survives reboots
+                self.coordinator.hass.async_create_task(self.coordinator._async_save_smart_locks())
             else:
                 _LOGGER.warning(
                     "SSE: Smart lock event without source_id: tag=%s, name=%s",
