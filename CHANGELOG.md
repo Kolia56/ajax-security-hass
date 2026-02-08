@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.9] - 2026-02-08
+
+### Fixed
+- SmartLockYale no longer triggers unknown device type warnings every polling cycle (#88)
+- Yale cloud lock skip log reduced from INFO to DEBUG to prevent log spam
+- SSE/SQS-discovered smart locks now persist across reboots using HA storage (#88)
+
 ## [0.14.8] - 2026-02-07
 
 ### Fixed
