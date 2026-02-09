@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.0] - 2026-02-09
+
+### Added
+- Smart lock thumbturn (knob) lock/unlock event codes: M_7E_20, M_7E_27 (#88)
+
+### Changed
+- Camera snapshot JPEG quality set to maximum (-q:v 2) for sharper still images
+
 ## [0.15.0] - 2026-02-09
 
 ### Added
