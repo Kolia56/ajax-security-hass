@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.0] - 2026-02-09
+
+### Added
+- SpaceControl (remote control) entity support: battery, signal strength, tamper (#93)
+
 ## [0.14.9] - 2026-02-08
 
 ### Fixed
