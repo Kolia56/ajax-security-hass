@@ -175,8 +175,10 @@ VIDEO_EVENT_TYPES = {
 # Smart lock events (LockBridge Jeweller)
 # Mapping event codes -> is_locked (more reliable than transition field)
 LOCK_EVENT_CODE_STATES: dict[str, bool] = {
+    "M_7E_20": False,  # Unlocked by knob (thumbturn)
     "M_7E_21": False,  # Unlocked by code
     "M_7E_23": False,  # Unlocked by user (app)
+    "M_7E_27": True,  # Locked by knob (thumbturn)
     "M_7E_29": True,  # Locked automatically
     "M_7E_2A": True,  # Locked by user (app)
 }
@@ -191,6 +193,7 @@ LOCK_DOOR_EVENT_CODE_STATES: dict[str, bool] = {
 LOCK_EVENTS: set[str] = {
     "smartlockunlockedbyuser",
     "smartlockunlockedbycode",
+    "smartlockunlockedbyknob",
     "smartlockmodulelockedautomatically",
 }
 
