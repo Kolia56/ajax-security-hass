@@ -1010,6 +1010,9 @@
           }
         }
       },
+      "smart_lock_last_changed_by": {
+        "name": "Last changed by"
+      },
       "total_devices": {
         "name": "Total devices"
       },

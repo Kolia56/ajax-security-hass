@@ -1094,6 +1094,9 @@
       },
       "data_channel_quality": {
         "name": "Data channel quality"
+      },
+      "smart_lock_last_changed_by": {
+        "name": "Last changed by"
       }
     },
     "lock": {
