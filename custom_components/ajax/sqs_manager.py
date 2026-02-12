@@ -157,6 +157,7 @@ HUB_EVENTS: set[str] = {
     "hubonline",
     "powersupplyloss",
     "powersupplyrestored",
+    "armattempt",
 }
 
 # Scenario events that might be triggered by a Button
