@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.3] - 2026-02-13
+
+### Fixed
+- Stop continuous x265 transcoding when nobody is watching: `is_streaming` now returns `False` instead of `available`, preventing HA from maintaining active stream pipelines for idle cameras
+
 ## [0.18.2] - 2026-02-13
 
 ### Changed
