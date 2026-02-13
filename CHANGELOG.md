@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.1] - 2026-02-13
+
+### Fixed
+- Proactive token refresh: refresh session token before expiry (2 min before 15-min TTL) to prevent 401 cascades with proxies (#97)
+- Transient auth error tolerance: tolerate up to 3 consecutive auth failures before triggering reauth flow in HA (#97)
+
 ## [0.18.0] - 2026-02-12
 
 ### Added
