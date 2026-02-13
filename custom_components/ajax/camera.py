@@ -30,7 +30,7 @@ PARALLEL_UPDATES = 1
 DEFAULT_RTSP_PORT = 8554
 
 # Snapshot cache duration in seconds (reduces FFmpeg calls)
-SNAPSHOT_CACHE_DURATION = 30
+SNAPSHOT_CACHE_DURATION = 60
 
 
 async def async_setup_entry(
@@ -126,7 +126,7 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
 
     _attr_has_entity_name = True
     _attr_supported_features = CameraEntityFeature.STREAM
-    _attr_use_stream_for_stills = True  # Use RTSP stream for snapshot images
+    _attr_use_stream_for_stills = False  # Use async_camera_image() (1 FFmpeg frame) instead of full stream pipeline
 
     def __init__(
         self,
@@ -297,8 +297,11 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
         """
         return False
 
-    async def stream_source(self) -> str | None:
-        """Return the RTSP stream source URL.
+    def _build_rtsp_url(self, stream_type: str | None = None) -> str | None:
+        """Build an RTSP URL for the given stream type.
+
+        Args:
+            stream_type: "main" or "sub". Defaults to self._stream_type.
 
         Ajax cameras use a specific RTSP URL format:
         Format: rtsp://[user:pass@]IP:8554/{path}_{stream}
@@ -309,14 +312,16 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
         Stream suffix:
         - 'm' for main stream, 's' for sub stream
         """
+        if stream_type is None:
+            stream_type = self._stream_type
+
         video_edge = self._video_edge
         if not video_edge or not video_edge.ip_address:
             return None
 
-        # Build RTSP URL
         ip = video_edge.ip_address
         port = DEFAULT_RTSP_PORT
-        stream_suffix = "m" if self._stream_type == "main" else "s"
+        stream_suffix = "m" if stream_type == "main" else "s"
 
         # Build stream path
         if self._channel_id:
@@ -341,7 +346,6 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
 
         # Build URL with or without credentials
         if username and password:
-            # URL-encode credentials to handle special characters
             encoded_user = quote(username, safe="")
             encoded_pass = quote(password, safe="")
             rtsp_url = f"rtsp://{encoded_user}:{encoded_pass}@{ip}:{port}/{stream_path}"
@@ -351,6 +355,10 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
             _LOGGER.debug("Stream source for %s: %s (no credentials configured)", video_edge.name, rtsp_url)
 
         return rtsp_url
+
+    async def stream_source(self) -> str | None:
+        """Return the RTSP stream source URL."""
+        return self._build_rtsp_url()
 
     async def async_camera_image(self, width: int | None = None, height: int | None = None) -> bytes | None:
         """Return a still image from the camera via FFmpeg.
@@ -364,7 +372,8 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
         if self._snapshot_cache and (now - self._snapshot_cache_time) < SNAPSHOT_CACHE_DURATION:
             return self._snapshot_cache
 
-        rtsp_url = await self.stream_source()
+        # Prefer sub stream for snapshots (640x480 vs 2560x1440 → ~4x faster decode)
+        rtsp_url = self._build_rtsp_url("sub") or self._build_rtsp_url("main")
         if not rtsp_url:
             return self._snapshot_cache  # Return old cache if available
 
