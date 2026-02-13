@@ -34,6 +34,10 @@ RATE_LIMIT_WINDOW = 60  # Window in seconds
 # Login cooldown to avoid 429 on rapid re-authentication
 MIN_LOGIN_INTERVAL = 120  # Minimum seconds between full logins
 
+# Proactive token refresh: refresh before expiry to avoid 401 cascades
+SESSION_TOKEN_TTL = 900  # 15 minutes (Ajax API default)
+TOKEN_REFRESH_MARGIN = 120  # Refresh 2 minutes before expiry
+
 
 class AjaxRestApiError(Exception):
     """Base exception for Ajax REST API errors."""
@@ -143,6 +147,8 @@ class AjaxRestApi:
         self._last_login_time: float = 0.0
         # Token version to detect if another coroutine already refreshed
         self._token_version: int = 0
+        # Timestamp when session token was obtained (for proactive refresh)
+        self._token_obtained_at: float = 0.0
 
         # Base headers with API key (may be empty for proxy modes initially)
         self._base_headers = {
@@ -363,6 +369,7 @@ class AjaxRestApi:
 
                 self._token_version += 1
                 self._last_login_time = time.monotonic()
+                self._token_obtained_at = time.monotonic()
                 _LOGGER.info(
                     "Login successful, session token obtained (userId: %s)",
                     self.user_id,
@@ -500,6 +507,7 @@ class AjaxRestApi:
                     raise AjaxRestApiError("No sessionToken in refresh response")
 
                 self._token_version += 1
+                self._token_obtained_at = time.monotonic()
                 _LOGGER.info("Session token refreshed successfully (userId: %s)", self.user_id)
                 return self.session_token
 
@@ -509,6 +517,38 @@ class AjaxRestApi:
         except TimeoutError as err:
             _LOGGER.error("Token refresh request timeout")
             raise AjaxRestApiError("Token refresh timeout") from err
+
+    async def _proactive_token_refresh(self) -> None:
+        """Refresh token proactively before it expires.
+
+        Prevents 401 cascades by refreshing the session token when it's about
+        to expire, rather than waiting for a 401 error. This is especially
+        important for proxies that reject refresh requests with expired sessions.
+        """
+        if not self._token_obtained_at:
+            return
+
+        token_age = time.monotonic() - self._token_obtained_at
+        token_remaining = SESSION_TOKEN_TTL - token_age
+
+        if token_remaining > TOKEN_REFRESH_MARGIN:
+            return  # Token still fresh enough
+
+        _LOGGER.debug(
+            "Token expiring soon (%.0fs remaining), proactive refresh",
+            token_remaining,
+        )
+
+        async with self._auth_lock:
+            # Re-check after acquiring lock (another coroutine may have refreshed)
+            if time.monotonic() - self._token_obtained_at < SESSION_TOKEN_TTL - TOKEN_REFRESH_MARGIN:
+                return
+
+            try:
+                await self.async_refresh_token()
+                _LOGGER.info("Proactive token refresh successful")
+            except (AjaxRestAuthError, AjaxRestApiError) as err:
+                _LOGGER.debug("Proactive refresh failed (%s), will retry on 401", err)
 
     async def _request(
         self,
@@ -541,6 +581,10 @@ class AjaxRestApi:
         """
         if not self.session_token:
             raise AjaxRestApiError("Not logged in. Call async_login() first.")
+
+        # Proactive token refresh before it expires (avoids 401 cascades)
+        if _retry_on_auth_error:
+            await self._proactive_token_refresh()
 
         # Apply rate limiting
         await self._check_rate_limit()

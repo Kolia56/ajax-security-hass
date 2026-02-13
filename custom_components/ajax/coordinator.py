@@ -188,6 +188,10 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         # Flag to bypass proxy cache on next refresh (after SSE event or user action)
         self._bypass_cache_next_refresh: bool = False
 
+        # Auth error resilience: tolerate transient auth failures before triggering reauth
+        self._consecutive_auth_errors: int = 0
+        self._max_auth_errors: int = 3  # Trigger reauth after 3 consecutive auth failures
+
         # Persistent storage for SSE/SQS-discovered smart locks (survives reboots)
         self._smart_lock_store: Store = Store(hass, 1, f"{DOMAIN}_smart_locks")
 
@@ -558,10 +562,26 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                         if space_obj.smart_locks:
                             await self._async_update_smart_locks(space_id)
 
+            # Reset auth error counter on success
+            self._consecutive_auth_errors = 0
             return self.account
 
         except AjaxRestAuthError as err:
-            raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
+            self._consecutive_auth_errors += 1
+            if self._consecutive_auth_errors >= self._max_auth_errors:
+                _LOGGER.error(
+                    "Authentication failed %d times consecutively, triggering reauth: %s",
+                    self._consecutive_auth_errors,
+                    err,
+                )
+                raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
+            _LOGGER.warning(
+                "Authentication error (%d/%d), will retry next poll: %s",
+                self._consecutive_auth_errors,
+                self._max_auth_errors,
+                err,
+            )
+            raise UpdateFailed(f"Transient auth error: {err}") from err
         except AjaxRestApiError as err:
             if self.last_update_success:
                 _LOGGER.warning("Connection to Ajax API lost: %s", err)
