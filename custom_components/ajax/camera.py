@@ -267,8 +267,8 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
 
     @property
     def is_streaming(self) -> bool:
-        """Return True if the camera is streaming."""
-        return self.available
+        """Return True if the camera is actively streaming to a client."""
+        return False
 
     @property
     def extra_state_attributes(self) -> dict[str, str] | None:
