@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.4] - 2026-02-16
+
+### Fixed
+- SSE client stale token causing repeated 401 auth failures in proxy mode: SSE now fetches the latest session token on each reconnect instead of reusing the token captured at init time (#97)
+- Auth recovery in proxy mode (no refresh token): skip refresh and go straight to full login instead of raising an unhandled exception
+- Double token refresh race condition in `_request_no_response` by adding token version check
+
 ## [0.18.3] - 2026-02-13
 
 ### Fixed
