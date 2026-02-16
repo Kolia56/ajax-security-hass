@@ -821,6 +821,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 hass_loop=self.hass.loop,
                 user_id=self.api.user_id,
                 verify_ssl=self.api.verify_ssl,
+                token_provider=lambda: self.api.session_token,
             )
 
             # Create SSE manager
