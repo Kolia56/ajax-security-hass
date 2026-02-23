@@ -151,6 +151,7 @@ class AjaxSSEClient:
             timeout=aiohttp.ClientTimeout(
                 total=None,  # No total timeout for SSE
                 connect=self.CONNECTION_TIMEOUT,
+                sock_read=300,  # Detect dead proxy after 5 min of silence
             ),
         ) as response:
             if response.status != 200:

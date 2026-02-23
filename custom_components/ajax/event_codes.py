@@ -1030,7 +1030,6 @@ ACTION_CATEGORIES = {
 
 # Default language fallback order
 DEFAULT_LANGUAGE = "en"
-SUPPORTED_LANGUAGES = ("fr", "en", "es")
 
 
 def get_event_message(action_key: str, language: str = DEFAULT_LANGUAGE) -> str:

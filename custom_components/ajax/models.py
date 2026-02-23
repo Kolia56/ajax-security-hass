@@ -10,7 +10,7 @@ This module defines the data models that mirror the Ajax app structure:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -196,8 +196,6 @@ class AjaxDevice:
         # Check notification type and timing
         # Motion/door sensors auto-reset after a short time
         if self.last_trigger_time:
-            from datetime import timedelta
-
             # Make sure both timestamps are timezone-aware
             now = datetime.now(UTC)
             trigger_time = self.last_trigger_time

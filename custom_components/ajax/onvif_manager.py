@@ -40,7 +40,6 @@ class AjaxOnvifManager:
         self._password = password
         self._event_callback = event_callback
         self._clients: dict[str, AjaxOnvifClient] = {}
-        self._running = False
 
     @property
     def connected_count(self) -> int:
@@ -69,9 +68,11 @@ class AjaxOnvifManager:
 
         # Skip if already connected
         if video_edge.id in self._clients:
-            client = self._clients[video_edge.id]
-            if client.connected:
+            existing = self._clients[video_edge.id]
+            if existing.connected:
                 return True
+            # Stop disconnected client before replacing
+            await existing.async_stop()
 
         # Create new client
         client = AjaxOnvifClient(
@@ -87,13 +88,13 @@ class AjaxOnvifManager:
 
         # Subscribe to events
         if not await client.async_subscribe_events():
+            await client.async_stop()  # Cleanup on partial failure
             return False
 
         # Start polling
         await client.async_start_polling()
 
         self._clients[video_edge.id] = client
-        self._running = True
 
         _LOGGER.info(
             "ONVIF client started for %s (%s)",
@@ -165,8 +166,6 @@ class AjaxOnvifManager:
 
     async def async_stop(self) -> None:
         """Stop all ONVIF connections."""
-        self._running = False
-
         # Stop all clients concurrently
         tasks = [client.async_stop() for client in self._clients.values()]
         if tasks:

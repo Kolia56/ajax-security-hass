@@ -110,15 +110,21 @@ class MotionDetectorHandler(AjaxDeviceHandler):
                 {
                     "key": "sensitivity",
                     "translation_key": "sensitivity",
-                    "value_fn": lambda: {0: "low", 1: "normal", 2: "high"}.get(
-                        int(self.device.attributes.get("sensitivity", 0)),
-                        str(self.device.attributes.get("sensitivity")),
-                    ),
+                    "value_fn": lambda: self._get_sensitivity_label(),
                     "enabled_by_default": True,
                 }
             )
 
         return sensors
+
+    def _get_sensitivity_label(self) -> str:
+        """Get human-readable sensitivity label, safe for unknown values."""
+        _map = {0: "low", 1: "normal", 2: "high"}
+        raw = self.device.attributes.get("sensitivity", 0)
+        try:
+            return _map.get(int(raw), str(raw))
+        except (ValueError, TypeError):
+            return str(raw)
 
     def get_switches(self) -> list[dict]:
         """Return switch entities for motion detectors."""

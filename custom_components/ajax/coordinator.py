@@ -475,7 +475,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 await self._async_init_account()
 
             # After init, account must exist
-            assert self.account is not None, "Account should be initialized"
+            if self.account is None:
+                raise UpdateFailed("Account data not available after initialization")
 
             # Only do full data load on first run or manual reload
             if not self._initial_load_done:
@@ -623,8 +624,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                 door_opened = device.attributes.get("door_opened", False)
 
                                 if not door_opened:
-                                    assert self.account is not None
-                                    self.async_set_updated_data(self.account)
+                                    if self.account is not None:
+                                        self.async_set_updated_data(self.account)
                                     if device_id in self._fast_poll_tasks:
                                         del self._fast_poll_tasks[device_id]
                                     break

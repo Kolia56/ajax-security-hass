@@ -40,20 +40,21 @@ def _parse_iso_duration_to_timestamp(duration: str | None) -> datetime | None:
     if not duration:
         return None
 
-    # Match ISO 8601 duration format: PT[nH][nM][nS]
+    # Match ISO 8601 duration: P[days]T[hours][minutes][seconds]
     match = re.match(
-        r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?",
+        r"P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?",
         duration,
     )
     if not match:
         return None
 
-    hours = int(match.group(1)) if match.group(1) else 0
-    minutes = int(match.group(2)) if match.group(2) else 0
-    seconds = float(match.group(3)) if match.group(3) else 0
+    days = int(match.group(1)) if match.group(1) else 0
+    hours = int(match.group(2)) if match.group(2) else 0
+    minutes = int(match.group(3)) if match.group(3) else 0
+    seconds = float(match.group(4)) if match.group(4) else 0
 
     # Calculate the start time by subtracting the uptime from now
-    uptime_delta = timedelta(hours=hours, minutes=minutes, seconds=seconds)
+    uptime_delta = timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
     start_time = datetime.now(UTC) - uptime_delta
 
     return start_time

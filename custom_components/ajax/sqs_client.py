@@ -109,7 +109,7 @@ class AjaxSQSClient:
         """Stop the background receive thread."""
         self._stop_event.set()
         if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=25)  # Wait for current poll to finish
+            self._thread.join(timeout=5)  # Wait for current poll to finish
         self._thread = None
         _LOGGER.info("SQS receiver stopped")
 

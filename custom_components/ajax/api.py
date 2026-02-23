@@ -1068,16 +1068,42 @@ class AjaxRestApi:
         Returns:
             Snapshot image data as bytes
         """
+        if not self.session_token:
+            raise AjaxRestApiError("Not logged in. Call async_login() first.")
+
+        await self._proactive_token_refresh()
+
         url = f"{self._get_base_url()}/user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}/snapshot"
         session = await self._get_session()
 
         headers: dict[str, str] = {k: v for k, v in self._base_headers.items() if v is not None}
-        if self.session_token:
-            headers["X-Session-Token"] = self.session_token
+        headers["X-Session-Token"] = self.session_token
 
-        async with session.get(url, headers=headers) as response:
-            response.raise_for_status()
-            return await response.read()
+        try:
+            async with session.get(
+                url,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=AJAX_REST_API_TIMEOUT),
+            ) as response:
+                if response.status == 401:
+                    # Try to recover auth and retry once
+                    async with self._auth_lock:
+                        await self._recover_auth()
+                    headers["X-Session-Token"] = self.session_token
+                    async with session.get(
+                        url,
+                        headers=headers,
+                        timeout=aiohttp.ClientTimeout(total=AJAX_REST_API_TIMEOUT),
+                    ) as retry_response:
+                        retry_response.raise_for_status()
+                        return await retry_response.read()
+
+                response.raise_for_status()
+                return await response.read()
+        except aiohttp.ClientError as err:
+            raise AjaxRestConnectionError(f"Camera snapshot failed: {err}") from err
+        except TimeoutError as err:
+            raise AjaxRestConnectionError("Camera snapshot timeout") from err
 
     async def async_get_camera_stream_url(self, hub_id: str, camera_id: str) -> str:
         """Get camera stream URL.
@@ -1537,6 +1563,10 @@ class AjaxRestApi:
         if not self.session_token:
             raise AjaxRestApiError("Not logged in. Call async_login() first.")
 
+        # Proactive token refresh before it expires (avoids 401 cascades)
+        if _retry_on_auth_error:
+            await self._proactive_token_refresh()
+
         # Apply rate limiting
         await self._check_rate_limit()
 
@@ -1573,9 +1603,22 @@ class AjaxRestApi:
                         raise AjaxRestAuthError("Invalid or expired token")
 
                 if response.status == 429:
-                    # Rate limited by server
+                    # Rate limited by server - retry with backoff (same as _request)
                     retry_after = int(response.headers.get("Retry-After", "60"))
-                    _LOGGER.warning("Rate limited by server, waiting %ds", retry_after)
+                    if _retry_count < MAX_RETRIES:
+                        wait_time = min(retry_after, 5 + (_retry_count * 5))
+                        _LOGGER.warning(
+                            "Rate limited on %s, waiting %ds (attempt %d/%d)",
+                            endpoint,
+                            wait_time,
+                            _retry_count + 1,
+                            MAX_RETRIES,
+                        )
+                        await asyncio.sleep(wait_time)
+                        return await self._request_no_response(
+                            method, endpoint, data, _retry_on_auth_error, _retry_count + 1
+                        )
+                    _LOGGER.error("Rate limited on %s after %d retries", endpoint, MAX_RETRIES)
                     raise AjaxRestRateLimitError(f"Rate limited, retry after {retry_after}s")
 
                 # Handle server errors (5xx) as transient - retry with backoff

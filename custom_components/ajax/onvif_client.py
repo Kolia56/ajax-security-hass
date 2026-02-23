@@ -37,14 +37,8 @@ DEFAULT_ONVIF_PORT = 8080
 
 # PullPoint subscription settings
 SUBSCRIPTION_TIME = timedelta(minutes=10)
-PULLPOINT_POLL_TIMEOUT = timedelta(seconds=60)  # Long poll timeout
 PULLPOINT_POLL_INTERVAL = 0.5  # Short delay between polls (long poll handles waiting)
-
-# Ajax-specific ONVIF event topics
-AJAX_OBJECT_DETECTION_TOPIC = "tns1:RuleEngine/ObjectDetection/Object"
-AJAX_MOTION_DETECTION_TOPIC = "tns1:RuleEngine/tnsajax:MotionDetector/Detection"
-AJAX_LINE_CROSSING_TOPIC = "tns1:RuleEngine/tnsajax:LineDetector/Crossing"
-AJAX_RING_DETECTION_TOPIC = "tns1:RuleEngine/RingDetector/Detection"
+PULLPOINT_MAX_BACKOFF = 60  # Max backoff delay in seconds on errors
 
 
 @dataclass
@@ -227,6 +221,11 @@ class AjaxOnvifClient:
                 await self._pullpoint_manager.shutdown()
 
         self._pullpoint_manager = None
+
+        # Close ONVIFCamera to release HTTP transport sockets
+        if self._camera:
+            with contextlib.suppress(Exception):
+                await self._camera.close()
         self._camera = None
 
         _LOGGER.debug(
@@ -235,10 +234,21 @@ class AjaxOnvifClient:
         )
 
     async def _poll_loop(self) -> None:
-        """Poll for events continuously."""
+        """Poll for events continuously with auto-reconnect and backoff."""
+        backoff = PULLPOINT_POLL_INTERVAL
+
         while self._running:
             try:
+                # Auto-reconnect if subscription was lost
+                if self._pullpoint_manager and self._pullpoint_manager.closed:
+                    _LOGGER.info(
+                        "%s: ONVIF subscription lost, recreating...",
+                        self.video_edge.name,
+                    )
+                    await self.async_subscribe_events()
+
                 await self._pull_messages()
+                backoff = PULLPOINT_POLL_INTERVAL  # Reset on success
             except asyncio.CancelledError:
                 break
             except Exception as err:
@@ -247,8 +257,9 @@ class AjaxOnvifClient:
                     self.video_edge.name,
                     err,
                 )
+                backoff = min(backoff * 2, PULLPOINT_MAX_BACKOFF)
 
-            await asyncio.sleep(PULLPOINT_POLL_INTERVAL)
+            await asyncio.sleep(backoff)
 
     async def _pull_messages(self) -> None:
         """Pull messages from the PullPoint."""
@@ -358,8 +369,8 @@ class AjaxOnvifClient:
                             if "-" in value:
                                 channel_id = value.split("-")[-1]
                             break
-        except Exception:
-            pass
+        except Exception as err:
+            _LOGGER.debug("%s: Error extracting channel ID: %s", self.video_edge.name, err)
         return channel_id
 
     def _parse_event(self, topic: str, message_data: Any, channel_id: str) -> OnvifDetectionEvent | None:
@@ -407,25 +418,37 @@ class AjaxOnvifClient:
                     # Empty ClassTypes = end of detection
                     return None
 
-                # Return the highest priority detection
-                # Priority: Human > Vehicle > Pet
-                detection_type = None
+                # Emit events for all detected types (not just highest priority)
+                # This ensures automations on pet/vehicle work even when human is also detected
+                detection_types: list[str] = []
                 for ct in class_types:
                     if ct in ("human", "person"):
-                        detection_type = "VIDEO_HUMAN"
-                        break
+                        detection_types.append("VIDEO_HUMAN")
                     elif ct == "vehicle":
-                        if detection_type != "VIDEO_HUMAN":
-                            detection_type = "VIDEO_VEHICLE"
+                        detection_types.append("VIDEO_VEHICLE")
                     elif ct in ("animal", "dog", "cat", "pet"):
-                        if detection_type not in ("VIDEO_HUMAN", "VIDEO_VEHICLE"):
-                            detection_type = "VIDEO_PET"
+                        detection_types.append("VIDEO_PET")
 
-                if detection_type:
+                # Emit callback for each detection type
+                for det_type in detection_types[1:]:
+                    event = OnvifDetectionEvent(
+                        video_edge_id=self.video_edge.id,
+                        channel_id=channel_id,
+                        detection_type=det_type,
+                        active=True,
+                    )
+                    if self._event_callback:
+                        state_key = f"{event.channel_id}_{event.detection_type}"
+                        if self._last_states.get(state_key) != event.active:
+                            self._last_states[state_key] = event.active
+                            self._event_callback(event)
+
+                # Return the first detection type via normal flow
+                if detection_types:
                     return OnvifDetectionEvent(
                         video_edge_id=self.video_edge.id,
                         channel_id=channel_id,
-                        detection_type=detection_type,
+                        detection_type=detection_types[0],
                         active=True,
                     )
                 return None

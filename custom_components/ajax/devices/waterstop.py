@@ -108,7 +108,7 @@ class WaterStopHandler(AjaxDeviceHandler):
                 {
                     "key": "motor_state",
                     "translation_key": "waterstop_motor_state",
-                    "device_class": "enum",
+                    "device_class": SensorDeviceClass.ENUM,
                     "options": ["on", "off"],
                     "value_fn": lambda: self.device.attributes.get("motorState", "OFF").lower(),
                     "enabled_by_default": False,
@@ -122,7 +122,7 @@ class WaterStopHandler(AjaxDeviceHandler):
                 {
                     "key": "external_power",
                     "translation_key": "waterstop_external_power",
-                    "device_class": "enum",
+                    "device_class": SensorDeviceClass.ENUM,
                     "options": ["supply", "battery", "unknown"],
                     "value_fn": lambda: self.device.attributes.get("extPower", "UNKNOWN").lower(),
                     "enabled_by_default": True,
@@ -136,7 +136,7 @@ class WaterStopHandler(AjaxDeviceHandler):
                 {
                     "key": "prevention_status",
                     "translation_key": "waterstop_prevention_status",
-                    "device_class": "enum",
+                    "device_class": SensorDeviceClass.ENUM,
                     "options": ["enabled", "disabled"],
                     "value_fn": lambda: self.device.attributes.get("preventionEnable", "DISABLED").lower(),
                     "enabled_by_default": False,

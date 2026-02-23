@@ -7,6 +7,7 @@ Each device type has its own handler that defines which switches to create.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
@@ -20,52 +21,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import AjaxConfigEntry
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import AjaxDataCoordinator
-from .devices import (
-    ButtonHandler,
-    DoorbellHandler,
-    DoorContactHandler,
-    FloodDetectorHandler,
-    GlassBreakHandler,
-    LifeQualityHandler,
-    LightSwitchHandler,
-    ManualCallPointHandler,
-    MotionDetectorHandler,
-    RepeaterHandler,
-    SirenHandler,
-    SmokeDetectorHandler,
-    SocketHandler,
-    TransmitterHandler,
-    WireInputHandler,
-)
+from .devices import DEVICE_HANDLERS, LightSwitchHandler, is_dimmer_device
 from .models import AjaxDevice, DeviceType, SecurityState
 
 _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 1
-
-# Mapping of device types to handlers (excluding dimmer - handled separately)
-DEVICE_HANDLERS = {
-    DeviceType.MOTION_DETECTOR: MotionDetectorHandler,
-    DeviceType.COMBI_PROTECT: MotionDetectorHandler,
-    DeviceType.DOOR_CONTACT: DoorContactHandler,
-    DeviceType.WIRE_INPUT: WireInputHandler,
-    DeviceType.SMOKE_DETECTOR: SmokeDetectorHandler,
-    DeviceType.FLOOD_DETECTOR: FloodDetectorHandler,
-    DeviceType.MANUAL_CALL_POINT: ManualCallPointHandler,
-    DeviceType.GLASS_BREAK: GlassBreakHandler,
-    DeviceType.SIREN: SirenHandler,
-    DeviceType.SPEAKERPHONE: SirenHandler,
-    DeviceType.TRANSMITTER: TransmitterHandler,
-    DeviceType.MULTI_TRANSMITTER: SirenHandler,
-    DeviceType.KEYPAD: SirenHandler,
-    DeviceType.SOCKET: SocketHandler,
-    DeviceType.RELAY: SocketHandler,
-    DeviceType.WALLSWITCH: SocketHandler,
-    DeviceType.BUTTON: ButtonHandler,
-    DeviceType.REMOTE_CONTROL: ButtonHandler,
-    DeviceType.DOORBELL: DoorbellHandler,
-    DeviceType.REPEATER: RepeaterHandler,
-    DeviceType.LIFE_QUALITY: LifeQualityHandler,
-}
 
 # LightSwitchDimmer switch definitions (settingsSwitch-based)
 DIMMER_SETTINGS_SWITCHES = [
@@ -92,16 +52,9 @@ DIMMER_SETTINGS_SWITCHES = [
 ]
 
 
-def is_dimmer_device(device: AjaxDevice) -> bool:
-    """Check if device is a LightSwitchDimmer."""
-    raw_type = (device.raw_type or "").lower().replace("_", "").replace(" ", "")
-    return "lightswitchdimmer" in raw_type or raw_type == "dimmer"
-
-
 def is_lightswitch_device(device: AjaxDevice) -> bool:
     """Check if device is a LightSwitch (non-dimmer)."""
     raw_type = (device.raw_type or "").lower().replace("_", "").replace(" ", "")
-    # Match LightSwitchTwoWay, LightSwitchTwoGang, LightSwitchTwoChannelTwoWay, etc.
     return "lightswitch" in raw_type and "dimmer" not in raw_type
 
 
@@ -110,11 +63,8 @@ def get_device_handler(device: AjaxDevice):
 
     Dimmer devices are handled separately, not via handlers.
     """
-    # Dimmer devices are handled separately
     if is_dimmer_device(device):
         return None
-
-    # Standard mapping
     return DEVICE_HANDLERS.get(device.type)
 
 
@@ -522,8 +472,6 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
 
     async def _set_channel_value(self, space, device, channel: int, value: bool) -> None:
         """Set a channel value for multi-gang LightSwitch devices."""
-        import time
-
         # channel is 0-based (0, 1), but attribute keys are 1-based (channel_1_on, channel_2_on)
         attr_key = f"channel_{channel + 1}_on"
         old_value = device.attributes.get(attr_key)

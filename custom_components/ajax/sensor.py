@@ -29,33 +29,13 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import AjaxConfigEntry
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import AjaxDataCoordinator
-from .devices import (
-    ButtonHandler,
-    DimmerHandler,
-    DoorbellHandler,
-    DoorContactHandler,
-    FloodDetectorHandler,
-    GlassBreakHandler,
-    HubHandler,
-    LifeQualityHandler,
-    ManualCallPointHandler,
-    MotionDetectorHandler,
-    RepeaterHandler,
-    SirenHandler,
-    SmokeDetectorHandler,
-    SocketHandler,
-    TransmitterHandler,
-    VideoEdgeHandler,
-    WaterStopHandler,
-    WireInputHandler,
-)
+from .devices import VideoEdgeHandler, get_device_handler
 from .models import (
     VIDEO_EDGE_MODEL_NAMES,
     AjaxDevice,
     AjaxSmartLock,
     AjaxSpace,
     AjaxVideoEdge,
-    DeviceType,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -442,56 +422,6 @@ SPACE_SENSORS: tuple[AjaxSpaceSensorDescription, ...] = (
         should_create=lambda space: bool(space.hub_details and space.hub_details.get("limits")),
     ),
 )
-
-
-# ==============================================================================
-# Device Handler Mapping
-# ==============================================================================
-
-
-DEVICE_HANDLERS = {
-    DeviceType.MOTION_DETECTOR: MotionDetectorHandler,
-    DeviceType.COMBI_PROTECT: MotionDetectorHandler,
-    DeviceType.DOOR_CONTACT: DoorContactHandler,
-    DeviceType.WIRE_INPUT: WireInputHandler,
-    DeviceType.SMOKE_DETECTOR: SmokeDetectorHandler,
-    DeviceType.FLOOD_DETECTOR: FloodDetectorHandler,
-    DeviceType.MANUAL_CALL_POINT: ManualCallPointHandler,
-    DeviceType.GLASS_BREAK: GlassBreakHandler,
-    DeviceType.SOCKET: SocketHandler,
-    DeviceType.RELAY: SocketHandler,
-    DeviceType.WALLSWITCH: SocketHandler,
-    DeviceType.SIREN: SirenHandler,
-    DeviceType.SPEAKERPHONE: SirenHandler,
-    DeviceType.TRANSMITTER: TransmitterHandler,
-    DeviceType.MULTI_TRANSMITTER: SirenHandler,
-    DeviceType.KEYPAD: SirenHandler,
-    DeviceType.BUTTON: ButtonHandler,
-    DeviceType.REMOTE_CONTROL: ButtonHandler,
-    DeviceType.DOORBELL: DoorbellHandler,
-    DeviceType.REPEATER: RepeaterHandler,
-    DeviceType.HUB: HubHandler,
-    DeviceType.WATERSTOP: WaterStopHandler,
-    DeviceType.LIFE_QUALITY: LifeQualityHandler,
-}
-
-# Raw device types that should use DimmerHandler instead of SocketHandler
-DIMMER_RAW_TYPES = {"lightswitchdimmer", "light_switch_dimmer"}
-
-
-def get_device_handler(device: AjaxDevice):
-    """Get the appropriate handler for a device.
-
-    Checks raw_type for special cases like LightSwitchDimmer before
-    falling back to the standard DeviceType mapping.
-    """
-    # Check for dimmer first (raw_type based)
-    raw_type = (device.raw_type or "").lower().replace("_", "")
-    if raw_type in DIMMER_RAW_TYPES or "dimmer" in raw_type:
-        return DimmerHandler
-
-    # Standard mapping
-    return DEVICE_HANDLERS.get(device.type)
 
 
 # ==============================================================================

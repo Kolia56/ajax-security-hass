@@ -22,6 +22,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import AjaxConfigEntry
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import AjaxDataCoordinator
+from .devices import is_dimmer_device
 from .models import AjaxDevice, DeviceType
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,15 +30,6 @@ PARALLEL_UPDATES = 1
 
 # Device types that support dimming
 DIMMABLE_DEVICE_TYPES = {DeviceType.WALLSWITCH}
-
-# Raw device types that are dimmers
-DIMMER_RAW_TYPES = {"lightswitchdimmer", "light_switch_dimmer"}
-
-
-def is_dimmer_device(device: AjaxDevice) -> bool:
-    """Check if device is a LightSwitchDimmer."""
-    raw_type = (device.raw_type or "").lower().replace("_", "")
-    return raw_type in DIMMER_RAW_TYPES or "dimmer" in raw_type
 
 
 async def async_setup_entry(

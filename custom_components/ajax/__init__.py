@@ -499,7 +499,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
 
     async def handle_get_nvr_recordings(call: ServiceCall) -> None:
         """Handle get NVR recordings service call - diagnostic tool to test API."""
-        from datetime import datetime, timedelta
+        from datetime import UTC, datetime, timedelta
 
         _LOGGER.info("Getting NVR recordings data for diagnostic purposes")
 
@@ -523,7 +523,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
                     }
 
                     # Get recordings for the last 24 hours
-                    end_time = datetime.now()
+                    end_time = datetime.now(UTC)
                     start_time = end_time - timedelta(hours=24)
 
                     # Try to get recordings for each channel

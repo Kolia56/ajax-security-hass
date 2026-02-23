@@ -24,6 +24,14 @@ TO_REDACT = {
     "api_key",
     "rtsp_username",
     "rtsp_password",
+    "sessionToken",
+    "refreshToken",
+    "session_token",
+    "userId",
+    "user_id",
+    "sse_url",
+    "serial_number",
+    "serialNumber",
 }
 
 

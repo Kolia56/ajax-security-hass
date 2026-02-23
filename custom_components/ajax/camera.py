@@ -13,7 +13,7 @@ from urllib.parse import quote
 
 from homeassistant.components.camera import Camera, CameraEntityFeature
 from homeassistant.components.ffmpeg import get_ffmpeg_manager
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -266,11 +266,6 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
         return None
 
     @property
-    def is_streaming(self) -> bool:
-        """Return True if the camera is actively streaming to a client."""
-        return False
-
-    @property
     def extra_state_attributes(self) -> dict[str, str] | None:
         """Return extra state attributes."""
         attrs = {}
@@ -287,15 +282,6 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
             )
 
         return attrs if attrs else None
-
-    @property
-    def is_recording(self) -> bool:
-        """Return True if the camera is recording.
-
-        Note: Ajax cameras may record to NVR/cloud but we report False here
-        so HA shows 'Streaming' instead of 'Recording' for better UX.
-        """
-        return False
 
     def _build_rtsp_url(self, stream_type: str | None = None) -> str | None:
         """Build an RTSP URL for the given stream type.
@@ -378,6 +364,7 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
             return self._snapshot_cache  # Return old cache if available
 
         ffmpeg_manager = get_ffmpeg_manager(self.hass)
+        process = None
 
         try:
             # FFmpeg command to extract a single frame as JPEG
@@ -411,11 +398,11 @@ class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):
             _LOGGER.debug("Timeout getting snapshot from %s", self._video_edge.name if self._video_edge else "camera")
         except Exception as err:
             _LOGGER.debug("Error getting snapshot: %s", err)
+        finally:
+            # Kill orphaned FFmpeg process to prevent zombie/resource leak
+            if process is not None and process.returncode is None:
+                process.kill()
+                await process.wait()
 
         # Return old cache on error
         return self._snapshot_cache
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self.async_write_ha_state()
