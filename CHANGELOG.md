@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.1] - 2026-02-23
+
+### Fixed
+- Proxy auth failures: adaptive token TTL learns actual token lifetime from 401 responses instead of assuming 15-minute Ajax API default (#97)
+- Reduce login cooldown from 120s to 30s to minimize downtime when proxy invalidates tokens early (#97)
+- Skip refresh endpoint after 3 consecutive failures and go straight to full login (#97)
+- Proactive refresh now falls back to login immediately instead of silently ignoring failure (#97)
+
 ## [0.19.0] - 2026-02-23
 
 ### Changed
