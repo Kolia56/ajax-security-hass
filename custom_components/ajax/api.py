@@ -32,11 +32,13 @@ RATE_LIMIT_REQUESTS = 60  # Max requests per window
 RATE_LIMIT_WINDOW = 60  # Window in seconds
 
 # Login cooldown to avoid 429 on rapid re-authentication
-MIN_LOGIN_INTERVAL = 120  # Minimum seconds between full logins
+MIN_LOGIN_INTERVAL = 30  # Minimum seconds between full logins
 
 # Proactive token refresh: refresh before expiry to avoid 401 cascades
 SESSION_TOKEN_TTL = 900  # 15 minutes (Ajax API default)
 TOKEN_REFRESH_MARGIN = 120  # Refresh 2 minutes before expiry
+# Adaptive TTL: if a 401 occurs before this fraction of TTL, reduce effective TTL
+ADAPTIVE_TTL_MIN = 45  # Minimum effective TTL in seconds
 
 
 class AjaxRestApiError(Exception):
@@ -149,6 +151,10 @@ class AjaxRestApi:
         self._token_version: int = 0
         # Timestamp when session token was obtained (for proactive refresh)
         self._token_obtained_at: float = 0.0
+        # Adaptive TTL: reduced when proxy invalidates tokens early
+        self._effective_ttl: float = SESSION_TOKEN_TTL
+        # Track consecutive refresh failures to skip refresh in proxy mode
+        self._refresh_failures: int = 0
 
         # Base headers with API key (may be empty for proxy modes initially)
         self._base_headers = {
@@ -370,9 +376,11 @@ class AjaxRestApi:
                 self._token_version += 1
                 self._last_login_time = time.monotonic()
                 self._token_obtained_at = time.monotonic()
+                self._refresh_failures = 0  # Reset on successful login
                 _LOGGER.info(
-                    "Login successful, session token obtained (userId: %s)",
+                    "Login successful, session token obtained (userId: %s, effective TTL: %.0fs)",
                     self.user_id,
+                    self._effective_ttl,
                 )
                 return self.session_token
 
@@ -521,49 +529,93 @@ class AjaxRestApi:
     async def _proactive_token_refresh(self) -> None:
         """Refresh token proactively before it expires.
 
-        Prevents 401 cascades by refreshing the session token when it's about
-        to expire, rather than waiting for a 401 error. This is especially
-        important for proxies that reject refresh requests with expired sessions.
+        Uses adaptive TTL that adjusts when proxies invalidate tokens earlier
+        than the standard 15-minute Ajax API TTL. Falls back to full login
+        when refresh consistently fails (common in proxy mode).
         """
         if not self._token_obtained_at:
             return
 
         token_age = time.monotonic() - self._token_obtained_at
-        token_remaining = SESSION_TOKEN_TTL - token_age
+        # Use adaptive TTL (may be reduced from 900s if proxy expires tokens early)
+        refresh_threshold = max(self._effective_ttl - TOKEN_REFRESH_MARGIN, ADAPTIVE_TTL_MIN * 0.7)
 
-        if token_remaining > TOKEN_REFRESH_MARGIN:
+        if token_age < refresh_threshold:
             return  # Token still fresh enough
 
         _LOGGER.debug(
-            "Token expiring soon (%.0fs remaining), proactive refresh",
-            token_remaining,
+            "Token age %.0fs (effective TTL %.0fs), proactive refresh",
+            token_age,
+            self._effective_ttl,
         )
 
         async with self._auth_lock:
             # Re-check after acquiring lock (another coroutine may have refreshed)
-            if time.monotonic() - self._token_obtained_at < SESSION_TOKEN_TTL - TOKEN_REFRESH_MARGIN:
+            if time.monotonic() - self._token_obtained_at < refresh_threshold:
                 return
 
-            try:
-                await self.async_refresh_token()
-                _LOGGER.info("Proactive token refresh successful")
-            except (AjaxRestAuthError, AjaxRestApiError) as err:
-                _LOGGER.debug("Proactive refresh failed (%s), will retry on 401", err)
+            # Skip refresh if it consistently fails (proxy mode)
+            if self._refresh_failures < 3 and self.refresh_token:
+                try:
+                    await self.async_refresh_token()
+                    self._refresh_failures = 0
+                    _LOGGER.info("Proactive token refresh successful")
+                    return
+                except (AjaxRestAuthError, AjaxRestApiError) as err:
+                    self._refresh_failures += 1
+                    _LOGGER.warning(
+                        "Proactive refresh failed (%s), attempt %d/3",
+                        err,
+                        self._refresh_failures,
+                    )
+
+            # Refresh failed or disabled — fall back to login immediately
+            elapsed = time.monotonic() - self._last_login_time
+            if elapsed >= MIN_LOGIN_INTERVAL:
+                try:
+                    await self.async_login()
+                    _LOGGER.info("Proactive login successful (refresh unavailable)")
+                except (AjaxRestAuthError, AjaxRestApiError) as err:
+                    _LOGGER.warning("Proactive login failed: %s", err)
 
     async def _recover_auth(self) -> None:
         """Recover from authentication failure.
 
-        Tries refresh token first (if available), then falls back to full login.
+        Tries refresh token first (if available and not consistently failing),
+        then falls back to full login. Adjusts effective TTL when tokens expire
+        earlier than expected (common with proxies).
         Must be called while holding _auth_lock.
         """
-        # Skip refresh if no refresh token (proxy mode) — go straight to login
-        if self.refresh_token:
+        # Adaptive TTL: if 401 occurs much earlier than expected, reduce TTL
+        if self._token_obtained_at:
+            token_age = time.monotonic() - self._token_obtained_at
+            if token_age < self._effective_ttl * 0.5:
+                # Token died at less than half the expected TTL
+                new_ttl = max(token_age * 0.8, ADAPTIVE_TTL_MIN)
+                if new_ttl < self._effective_ttl:
+                    _LOGGER.info(
+                        "Adaptive TTL: token expired after %.0fs, reducing effective TTL from %.0fs to %.0fs",
+                        token_age,
+                        self._effective_ttl,
+                        new_ttl,
+                    )
+                    self._effective_ttl = new_ttl
+
+        # Skip refresh if no refresh token or if refresh consistently fails
+        if self.refresh_token and self._refresh_failures < 3:
             try:
                 await self.async_refresh_token()
+                self._refresh_failures = 0
                 _LOGGER.info("Token refreshed successfully, retrying request")
                 return
             except (AjaxRestAuthError, AjaxRestApiError):
-                _LOGGER.warning("Refresh token failed, falling back to full login")
+                self._refresh_failures += 1
+                _LOGGER.warning(
+                    "Refresh token failed (attempt %d/3), falling back to full login",
+                    self._refresh_failures,
+                )
+        elif self._refresh_failures >= 3:
+            _LOGGER.debug("Skipping refresh (failed %d times), using login", self._refresh_failures)
 
         # Fallback to full login (with cooldown)
         elapsed = time.monotonic() - self._last_login_time
