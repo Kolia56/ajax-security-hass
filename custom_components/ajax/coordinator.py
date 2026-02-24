@@ -1610,6 +1610,10 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
                 device.attributes["door_opened"] = door_opened
 
+            # Transmitter external contact triggered (boolean, separate from externalContactState)
+            if "externalContactTriggered" in device_data:
+                device.attributes["externalContactTriggered"] = device_data.get("externalContactTriggered", False)
+
             # Sensitivity (GlassProtect, MotionProtect, etc.)
             if "sensitivity" in device_data:
                 device.attributes["sensitivity"] = device_data.get("sensitivity")
@@ -1804,6 +1808,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 device.attributes["false_press_filter"] = device_data.get("falsePressFilter")
             if "customAlarmType" in device_data:
                 device.attributes["custom_alarm_type"] = device_data.get("customAlarmType")
+                # Also store camelCase for TransmitterHandler compatibility
+                device.attributes["customAlarmType"] = device_data.get("customAlarmType")
             if "associatedUserId" in device_data:
                 device.attributes["associated_user_id"] = device_data.get("associatedUserId")
 
