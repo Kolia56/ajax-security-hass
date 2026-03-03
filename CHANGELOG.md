@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.4] - 2026-03-03
+
+### Fixed
+- MultiTransmitter NO_EOL/ONE_EOL wired sensors stuck closed: `wiringSchemeSpecificDetails.contactState` is a static config value that was overwriting the correct `externalContactState` (#103)
+- Auth race condition: `token_version` was captured after HTTP response instead of before, causing unnecessary token recovery when concurrent requests refreshed the token (#97)
+- Remove unused `repairs.py` that caused HA startup error (`Invalid repairs platform`)
+
+### Changed
+- Pre-commit hooks updated: ruff v0.15.4, bandit 1.9.4 (#106)
+
 ## [0.19.3] - 2026-02-25
 
 ### Fixed
