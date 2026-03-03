@@ -373,10 +373,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                             contact_state = contact_two.get("contactState")
                                             if contact_state:
                                                 new_door_state = contact_state != "OK"
-                                        elif wiring_type in ("NO_EOL", "ONE_EOL"):
-                                            contact_state = wiring_details.get("contactState")
-                                            if contact_state:
-                                                new_door_state = contact_state != "OK"
+                                        # NO_EOL/ONE_EOL: contactState in wiringSchemeSpecificDetails
+                                        # is a static config value (always "OK"), NOT dynamic state.
+                                        # Only externalContactState reflects the real door state.
                                     else:
                                         # Try attributes as fallback
                                         api_attrs = device_data.get("attributes", {})
@@ -1602,11 +1601,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     contact_state = contact_two.get("contactState")
                     if contact_state:
                         door_opened = contact_state != "OK"
-                elif wiring_type in ("NO_EOL", "ONE_EOL"):
-                    # NO_EOL/ONE_EOL: contactState is directly in wiringSchemeSpecificDetails
-                    contact_state = wiring_details.get("contactState")
-                    if contact_state:
-                        door_opened = contact_state != "OK"
+                # NO_EOL/ONE_EOL: contactState in wiringSchemeSpecificDetails
+                # is a static config value (always "OK"), NOT dynamic state.
+                # Only externalContactState reflects the real door state.
 
                 device.attributes["door_opened"] = door_opened
 
@@ -2005,11 +2002,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                     tamper_state = contact_one.get("contactState")
                     if tamper_state:
                         normalized["tampered"] = tamper_state != "OK"
-                elif wiring_type in ("NO_EOL", "ONE_EOL"):
-                    # NO_EOL/ONE_EOL: contactState is directly in wiringSchemeSpecificDetails
-                    contact_state = wiring_details.get("contactState")
-                    if contact_state:
-                        door_opened = contact_state != "OK"
+                # NO_EOL/ONE_EOL: contactState in wiringSchemeSpecificDetails
+                # is a static config value (always "OK"), NOT dynamic state.
+                # Only externalContactState reflects the real door state.
 
                 normalized["door_opened"] = door_opened
 
