@@ -432,9 +432,14 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
         self.async_write_ha_state()
 
         try:
-            await self.coordinator.api.async_update_device(
-                space.hub_id, self._device_id, {"sirenTriggers": current_triggers}
-            )
+            api_nested_key = self._switch_desc.get("api_nested_key")
+            if api_nested_key:
+                payload = {api_nested_key: {"sirenTriggers": current_triggers}}
+                await self.coordinator.api.async_update_device_nested(space.hub_id, self._device_id, payload)
+            else:
+                await self.coordinator.api.async_update_device(
+                    space.hub_id, self._device_id, {"sirenTriggers": current_triggers}
+                )
             _LOGGER.info(
                 "Set sirenTriggers=%s for device %s",
                 current_triggers,

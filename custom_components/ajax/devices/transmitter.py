@@ -197,6 +197,7 @@ class TransmitterHandler(AjaxDeviceHandler):
                     "external_contact_always_active", self.device.attributes.get("externalContactAlwaysActive", False)
                 ),
                 "api_key": "externalContactAlwaysActive",
+                "api_nested_key": "wiredDeviceSettings",
                 "enabled_by_default": True,
             }
         )
@@ -208,6 +209,7 @@ class TransmitterHandler(AjaxDeviceHandler):
                 "translation_key": "night_mode",
                 "value_fn": lambda: self.device.attributes.get("nightModeArm", False),
                 "api_key": "nightModeArm",
+                "api_nested_key": "wiredDeviceSettings",
                 "enabled_by_default": True,
             }
         )
@@ -231,6 +233,7 @@ class TransmitterHandler(AjaxDeviceHandler):
                 "translation_key": "siren_trigger_contact",
                 "value_fn": lambda: "EXTRA_CONTACT" in self.device.attributes.get("siren_triggers", []),
                 "api_key": "sirenTriggers",
+                "api_nested_key": "wiredDeviceSettings",
                 "trigger_key": "EXTRA_CONTACT",
                 "enabled_by_default": True,
             }
@@ -244,6 +247,7 @@ class TransmitterHandler(AjaxDeviceHandler):
                     "translation_key": "siren_trigger_acceleration",
                     "value_fn": lambda: "ACCELERATION" in self.device.attributes.get("siren_triggers", []),
                     "api_key": "sirenTriggers",
+                    "api_nested_key": "wiredDeviceSettings",
                     "trigger_key": "ACCELERATION",
                     "enabled_by_default": True,
                 }
