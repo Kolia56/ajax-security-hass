@@ -1495,8 +1495,8 @@ class AjaxRestApi:
         # Note: assignedExtender is required by API, do not exclude
         "cmsDeviceIndex",
         "bypassState",
-        "deviceTransmissionPowerMode",
-        "deviceTransmissionPowerModeValue",
+        # Note: deviceTransmissionPowerMode/Value must NOT be excluded -
+        # API requires at least one to be present in PUT requests
     }
 
     # Device settings methods
