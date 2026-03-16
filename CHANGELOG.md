@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.1] - 2026-03-16
+
+### Fixed
+- Exclude `externalContactState` and `externalContactTriggered` from device PUT payload to prevent transient door open state when toggling settings (#103)
+
 ## [0.20.0] - 2026-03-14
 
 ### Added
