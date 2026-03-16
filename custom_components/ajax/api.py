@@ -1471,6 +1471,8 @@ class AjaxRestApi:
         "tampered",
         "reedClosed",
         "extraContactClosed",
+        "externalContactState",
+        "externalContactTriggered",
         "estimatedArmingState",
         "issuesCount",
         "confirmsAlarm",
