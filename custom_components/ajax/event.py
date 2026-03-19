@@ -188,10 +188,10 @@ class AjaxEventEntity(CoordinatorEntity[AjaxDataCoordinator], EventEntity):
         return None
 
     @callback
-    def fire(self, event_type: str) -> None:
+    def fire(self, event_type: str, event_attributes: dict | None = None) -> None:
         """Fire an event."""
         if event_type in self._attr_event_types:
-            self._trigger_event(event_type)
+            self._trigger_event(event_type, event_attributes)
             self.async_write_ha_state()
             _LOGGER.debug(
                 "Event fired: %s -> %s",

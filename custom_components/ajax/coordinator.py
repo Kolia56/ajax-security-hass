@@ -1058,7 +1058,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 if event_type:
                     event_entity = self._event_entities.get(f"{target_ve.id}_detection")
                     if event_entity:
-                        event_entity.fire(event_type)
+                        attrs = {"rule": event.rule} if event.rule else None
+                        event_entity.fire(event_type, attrs)
 
             # Trigger coordinator update to refresh entities
             self.async_set_updated_data(self.account)

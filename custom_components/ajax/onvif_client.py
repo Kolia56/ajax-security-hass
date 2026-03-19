@@ -49,10 +49,11 @@ class OnvifDetectionEvent:
     channel_id: str
     detection_type: str  # VIDEO_HUMAN, VIDEO_VEHICLE, VIDEO_PET, VIDEO_MOTION
     active: bool
+    rule: str = ""  # Detection zone/rule name (e.g., "Zone Entrée")
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __str__(self) -> str:
-        return f"OnvifDetectionEvent({self.detection_type}, active={self.active})"
+        return f"OnvifDetectionEvent({self.detection_type}, active={self.active}, rule={self.rule})"
 
 
 class AjaxOnvifClient:
@@ -317,11 +318,13 @@ class AjaxOnvifClient:
             if not message_data:
                 return
 
-            # Extract source info (channel)
-            channel_id = self._extract_channel_id(message_data)
+            # Extract source info (channel + rule)
+            channel_id, rule = self._extract_source_info(message_data)
 
             # Parse based on topic
             event = self._parse_event(topic, message_data, channel_id)
+            if event and rule:
+                event.rule = rule
 
             if event and self._event_callback:
                 # Filter duplicate events using state cache
@@ -347,23 +350,29 @@ class AjaxOnvifClient:
                 err,
             )
 
-    def _extract_channel_id(self, message_data: Any) -> str:
-        """Extract channel ID from message source."""
+    def _extract_source_info(self, message_data: Any) -> tuple[str, str]:
+        """Extract channel ID and rule name from message source.
+
+        Returns:
+            Tuple of (channel_id, rule_name)
+        """
         channel_id = "0"
+        rule = ""
         try:
             if hasattr(message_data, "Source") and message_data.Source:
                 source = message_data.Source
                 if hasattr(source, "SimpleItem"):
                     for item in source.SimpleItem:
-                        if hasattr(item, "Name") and item.Name == "VideoSourceToken":
-                            # Format: 9c756e1c8456-0 -> extract channel number
-                            value = str(item.Value) if hasattr(item, "Value") else ""
+                        name = getattr(item, "Name", None)
+                        value = str(getattr(item, "Value", ""))
+                        if name == "VideoSourceToken":
                             if "-" in value:
                                 channel_id = value.split("-")[-1]
-                            break
+                        elif name == "Rule":
+                            rule = value
         except Exception as err:
-            _LOGGER.debug("%s: Error extracting channel ID: %s", self.video_edge.name, err)
-        return channel_id
+            _LOGGER.debug("%s: Error extracting source info: %s", self.video_edge.name, err)
+        return channel_id, rule
 
     def _parse_event(self, topic: str, message_data: Any, channel_id: str) -> OnvifDetectionEvent | None:
         """Parse ONVIF event into detection event.
