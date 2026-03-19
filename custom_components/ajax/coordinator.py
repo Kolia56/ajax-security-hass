@@ -1788,18 +1788,19 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             # Power monitoring values
             # powerConsumedWattsPerHour = energy consumed (for Socket without Outlet suffix)
             if "powerConsumedWattsPerHour" in device_data:
-                device.attributes["energy"] = device_data.get("powerConsumedWattsPerHour", 0) / 1000.0  # Wh -> kWh
+                wh = device_data.get("powerConsumedWattsPerHour")
+                device.attributes["energy"] = (wh / 1000.0) if wh is not None else 0  # Wh -> kWh
             # powerConsumptionWatts = instantaneous power (for SocketOutlet)
             if "powerConsumptionWatts" in device_data:
                 device.attributes["power"] = device_data.get("powerConsumptionWatts")
             # currentMilliAmpers (with 's') for Socket
             if "currentMilliAmpers" in device_data:
-                ma = device_data.get("currentMilliAmpers", 0)
-                device.attributes["current"] = ma / 1000.0 if ma else 0
+                ma = device_data.get("currentMilliAmpers")
+                device.attributes["current"] = (ma / 1000.0) if ma is not None else 0
             # currentMilliAmpere (without 's') for SocketOutlet
             if "currentMilliAmpere" in device_data:
-                ma = device_data.get("currentMilliAmpere", 0)
-                device.attributes["current"] = ma / 1000.0 if ma else 0
+                ma = device_data.get("currentMilliAmpere")
+                device.attributes["current"] = (ma / 1000.0) if ma is not None else 0
             if "voltageVolts" in device_data:
                 device.attributes["voltage"] = device_data.get("voltageVolts")
             # Current threshold (SocketOutlet)
