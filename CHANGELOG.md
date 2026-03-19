@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.21.1] - 2026-03-19
+
+### Fixed
+- Restore NO_EOL `wiringSchemeSpecificDetails.contactState` support for MultiTransmitter wired sensors (#103)
+
 ## [0.21.0] - 2026-03-18
 
 ### Added
