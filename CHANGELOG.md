@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.0] - 2026-03-19
+
+### Added
+- Camera detection event entities (motion, human, vehicle, pet, line_crossing) for all Video Edge cameras
+- Direct ONVIF connection to doorbell for reliable ring detection
+- Event platform translations for all 7 languages (en, fr, de, es, nl, sv, uk)
+
+### Changed
+- Route doorbell ring events directly to doorbell device instead of NVR channel lookup
+- Remove verbose ONVIF and SQS debug logging (only log state changes)
+
 ## [0.22.0] - 2026-03-19
 
 ### Added
