@@ -133,17 +133,14 @@ class AjaxSQSClient:
             while not self._stop_event.is_set():
                 try:
                     poll_count += 1
-                    _LOGGER.debug("SQS poll #%d starting...", poll_count)
                     messages = loop.run_until_complete(self._poll_messages())
                     consecutive_errors = 0  # Reset on success
-                    _LOGGER.debug("SQS poll #%d returned %d messages", poll_count, len(messages))
                     for msg in messages:
                         loop.run_until_complete(self._handle_message(msg))
 
                     # If we got messages, immediately poll again to catch rapid events
                     # (FIFO queues may have more messages in the same group)
                     if messages:
-                        _LOGGER.debug("Got messages, doing immediate follow-up poll")
                         continue  # Skip any wait, poll immediately
 
                 except Exception as err:

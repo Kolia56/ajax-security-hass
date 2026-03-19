@@ -280,7 +280,6 @@ class AjaxOnvifClient:
             if response and hasattr(response, "NotificationMessage"):
                 messages = response.NotificationMessage
                 if messages:
-                    _LOGGER.debug("ONVIF: Received %d message(s) from %s", len(messages), self.video_edge.name)
                     for msg in messages:
                         await self._process_message(msg)
 
@@ -309,13 +308,6 @@ class AjaxOnvifClient:
 
             if not topic:
                 return
-
-            # Log every topic for debugging (helps identify unknown events)
-            _LOGGER.debug(
-                "%s: ONVIF topic: %s",
-                self.video_edge.name,
-                topic,
-            )
 
             # Extract message data
             message_data = None
@@ -395,15 +387,6 @@ class AjaxOnvifClient:
                         value = getattr(item, "Value", None)
                         if name and value is not None:
                             data_items[str(name)] = str(value)
-
-            # Log data items for debugging
-            if data_items:
-                _LOGGER.debug(
-                    "%s: ONVIF data: %s (topic: %s)",
-                    self.video_edge.name,
-                    data_items,
-                    topic,
-                )
 
             # Parse Ajax Object Detection (Human, Vehicle, Pet)
             # Topic variants:
