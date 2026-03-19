@@ -1010,7 +1010,14 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
             # If source is NVR, find linked camera for this channel
             if source_ve.video_edge_type == VideoEdgeType.NVR:
-                target_ve = self._find_camera_for_nvr_channel(space, source_ve, event.channel_id)
+                # DOORBELL_RING always comes from the doorbell, regardless of channel ID
+                if event.detection_type == "DOORBELL_RING":
+                    for ve in space.video_edges.values():
+                        if ve.video_edge_type == VideoEdgeType.DOORBELL:
+                            target_ve = ve
+                            break
+                else:
+                    target_ve = self._find_camera_for_nvr_channel(space, source_ve, event.channel_id)
                 if target_ve and target_ve != source_ve:
                     _LOGGER.debug(
                         "Routing NVR event (channel %s) to camera: %s",
@@ -1021,6 +1028,37 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             # Update detection state on target video edge
             detection_key = event.detection_type.lower()  # e.g., "video_human"
             target_ve.detections[detection_key] = event.active
+
+            # Fire event entities for ONVIF detections
+            if event.active:
+                if detection_key == "doorbell_ring":
+                    event_entity = self._event_entities.get(f"{target_ve.id}_doorbell_press")
+                    if event_entity:
+                        event_entity.fire("ring")
+
+                    # Fire legacy bus event for automations
+                    self.hass.bus.async_fire(
+                        "ajax_doorbell_ring",
+                        {
+                            "device_id": target_ve.id,
+                            "device_name": target_ve.name,
+                            "source": "onvif",
+                        },
+                    )
+
+                # Map ONVIF detection types to event types
+                detection_event_map = {
+                    "video_motion": "motion",
+                    "video_human": "human",
+                    "video_vehicle": "vehicle",
+                    "video_pet": "pet",
+                    "video_line_crossing": "line_crossing",
+                }
+                event_type = detection_event_map.get(detection_key)
+                if event_type:
+                    event_entity = self._event_entities.get(f"{target_ve.id}_detection")
+                    if event_entity:
+                        event_entity.fire(event_type)
 
             # Trigger coordinator update to refresh entities
             self.async_set_updated_data(self.account)
@@ -1042,7 +1080,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             return nvr
 
         # Ajax camera types that can be linked to NVR
-        ajax_camera_types = {"TURRET", "TURRET_HL", "BULLET", "BULLET_HL", "MINIDOME", "MINIDOME_HL"}
+        ajax_camera_types = {"TURRET", "TURRET_HL", "BULLET", "BULLET_HL", "MINIDOME", "MINIDOME_HL", "DOORBELL"}
 
         def get_linked_camera_from_channel(channel: dict) -> AjaxVideoEdge | None:
             """Extract linked camera from channel's sourceAliases."""

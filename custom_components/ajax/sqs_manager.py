@@ -770,7 +770,7 @@ class SQSManager:
             )
 
             # Fire event entity (modern HA event platform)
-            event_entity = self.coordinator._event_entities.get(device.id)
+            event_entity = self.coordinator._event_entities.get(f"{device.id}_button_press")
             if event_entity:
                 event_entity.fire(action)
 
@@ -825,7 +825,7 @@ class SQSManager:
             )
 
             # Fire event entity (modern HA event platform)
-            event_entity = self.coordinator._event_entities.get(device_id)
+            event_entity = self.coordinator._event_entities.get(f"{device_id}_doorbell_press")
             if event_entity:
                 event_entity.fire("ring")
 

@@ -61,39 +61,67 @@ async def async_setup_entry(
                     )
                     entities.append(entity)
                     # Register in coordinator for SQS/SSE event firing
-                    coordinator._event_entities[device_id] = entity
+                    coordinator._event_entities[f"{device_id}_{event_desc['key']}"] = entity
                     _LOGGER.debug(
                         "Created event entity '%s' for device: %s",
                         event_desc["key"],
                         device.name,
                     )
 
-        # Create event entities for Video Edge doorbells
+        # Create event entities for Video Edge cameras
         for ve_id, video_edge in space.video_edges.items():
+            if video_edge.video_edge_type == VideoEdgeType.NVR:
+                continue
+
+            ve_events = []
+
+            # Doorbell ring event
             if video_edge.video_edge_type == VideoEdgeType.DOORBELL:
-                unique_id = f"{ve_id}_doorbell_press"
+                ve_events.append(
+                    {
+                        "key": "doorbell_press",
+                        "translation_key": "doorbell_press",
+                        "device_class": EventDeviceClass.DOORBELL,
+                        "event_types": ["ring"],
+                        "enabled_by_default": True,
+                    }
+                )
+
+            # AI detection event (all cameras including doorbell)
+            ve_events.append(
+                {
+                    "key": "detection",
+                    "translation_key": "camera_detection",
+                    "device_class": EventDeviceClass.MOTION,
+                    "event_types": [
+                        "motion",
+                        "human",
+                        "vehicle",
+                        "pet",
+                        "line_crossing",
+                    ],
+                    "enabled_by_default": True,
+                }
+            )
+
+            for event_desc in ve_events:
+                unique_id = f"{ve_id}_{event_desc['key']}"
                 if unique_id in seen_unique_ids:
                     continue
                 seen_unique_ids.add(unique_id)
 
-                event_desc = {
-                    "key": "doorbell_press",
-                    "translation_key": "doorbell_press",
-                    "device_class": EventDeviceClass.DOORBELL,
-                    "event_types": ["ring"],
-                    "enabled_by_default": True,
-                }
                 entity = AjaxEventEntity(
                     coordinator=coordinator,
                     space_id=space_id,
                     device_id=ve_id,
-                    event_key="doorbell_press",
+                    event_key=event_desc["key"],
                     event_desc=event_desc,
                 )
                 entities.append(entity)
-                coordinator._event_entities[ve_id] = entity
+                coordinator._event_entities[unique_id] = entity
                 _LOGGER.debug(
-                    "Created event entity 'doorbell_press' for video edge: %s",
+                    "Created event entity '%s' for video edge: %s",
+                    event_desc["key"],
                     video_edge.name,
                 )
 

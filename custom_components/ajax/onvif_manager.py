@@ -134,11 +134,16 @@ class AjaxOnvifManager:
         cameras = [ve for ve in video_edges if ve.video_edge_type != VideoEdgeType.NVR]
 
         if nvrs:
-            # NVR present - connect only to NVR(s), skip individual cameras
-            targets = nvrs
+            # NVR present - connect to NVR(s) + doorbells directly
+            # Doorbells need direct connection because NVR PullPoint
+            # may miss the short RingDetector/Detection events
+            doorbells = [ve for ve in cameras if ve.video_edge_type == VideoEdgeType.DOORBELL]
+            targets = nvrs + doorbells
+            skipped = len(cameras) - len(doorbells)
             _LOGGER.info(
-                "ONVIF: NVR detected - using NVR for events (skipping %d individual cameras)",
-                len(cameras),
+                "ONVIF: NVR detected - using NVR for events (skipping %d individual cameras, %d doorbell(s) direct)",
+                skipped,
+                len(doorbells),
             )
         else:
             # No NVR - connect to individual cameras
@@ -182,10 +187,14 @@ class AjaxOnvifManager:
         Args:
             video_edges: Current list of video edge devices
         """
-        # Apply same NVR priority logic
+        # Apply same NVR priority logic (NVR + doorbells direct)
         nvrs = [ve for ve in video_edges if ve.video_edge_type == VideoEdgeType.NVR]
         cameras = [ve for ve in video_edges if ve.video_edge_type != VideoEdgeType.NVR]
-        targets = nvrs if nvrs else cameras
+        if nvrs:
+            doorbells = [ve for ve in cameras if ve.video_edge_type == VideoEdgeType.DOORBELL]
+            targets = nvrs + doorbells
+        else:
+            targets = cameras
 
         current_ids = {ve.id for ve in targets}
         existing_ids = set(self._clients.keys())
