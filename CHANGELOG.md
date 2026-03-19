@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.21.2] - 2026-03-19
+
+### Fixed
+- Coordinator crash when `powerConsumedWattsPerHour` or `currentMilliAmpers` is `null` in API response (#112)
+
 ## [0.21.1] - 2026-03-19
 
 ### Fixed
