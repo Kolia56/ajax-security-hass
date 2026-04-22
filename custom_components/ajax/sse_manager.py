@@ -286,7 +286,7 @@ class SSEManager(EventHandlerMixin):
 
             # Process event by type
             if event_tag in EVENT_TAG_TO_STATE:
-                await self._handle_security_event(space, event_tag, source_name)
+                await self._handle_security_event(space, event_tag, source_name, source_type)
             elif event_tag in DOOR_EVENTS:
                 self._handle_door_event(space, event_tag, source_name, source_id, transition)
             elif event_tag in MOTION_EVENTS:
@@ -335,7 +335,13 @@ class SSEManager(EventHandlerMixin):
         except Exception as err:
             _LOGGER.error("SSE event processing error: %s", err, exc_info=True)
 
-    async def _handle_security_event(self, space, event_tag: str, source_name: str) -> None:
+    async def _handle_security_event(
+        self,
+        space,
+        event_tag: str,
+        source_name: str,
+        source_type: str | None = None,
+    ) -> None:
         """Handle arm/disarm/night mode events."""
         new_state = EVENT_TAG_TO_STATE.get(event_tag)
         if not new_state:
@@ -355,6 +361,7 @@ class SSEManager(EventHandlerMixin):
         # Check if this was triggered by Home Assistant
         if self.coordinator.get_pending_ha_action(space.hub_id):
             source_name = "Home Assistant"
+            source_type = "HA"
 
         # Group arm/disarm events need a FULL refresh to update group states
         # because the final state depends on how many groups are armed
@@ -421,6 +428,18 @@ class SSEManager(EventHandlerMixin):
             source_name=source_name,
             space_name=space.name,
         )
+
+        # Fire HA bus event so automations can react to who triggered the
+        # arm/disarm (user name, keypad, space control, HA...) — otherwise
+        # only the coordinator REST fallback fires it without source info.
+        if state_changed:
+            self.coordinator._fire_security_state_event(
+                space,
+                old_state,
+                new_state,
+                source_name=source_name,
+                source_type=source_type,
+            )
 
     def _find_device(self, space, source_name: str, source_id: str):
         """Find device by name or ID.

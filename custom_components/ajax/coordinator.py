@@ -2609,6 +2609,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         space: AjaxSpace,
         old_state: SecurityState,
         new_state: SecurityState,
+        source_name: str | None = None,
+        source_type: str | None = None,
     ) -> None:
         """Fire a Home Assistant event when security state changes.
 
@@ -2616,6 +2618,15 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             space: The AjaxSpace object
             old_state: Previous security state
             new_state: New security state
+            source_name: Who triggered the change (e.g. user name,
+                ``"Home Assistant"`` for a local automation, ``None``
+                when the info is not available — e.g. REST fallback).
+                Caller should pass this when it is known (SSE / SQS
+                handlers) so automations can tell which user / keypad /
+                space control triggered arm/disarm.
+            source_type: Kind of actor: ``USER``, ``KEYPAD``,
+                ``SPACE_CONTROL``, ``APP``, ``HA``… (Ajax terminology
+                from ``sourceObjectType``), or None when unknown.
         """
 
         # Determine event type based on new state
@@ -2638,6 +2649,10 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             "new_state": new_state.value,
             "timestamp": datetime.now(UTC).isoformat(),
         }
+        if source_name:
+            event_data["source_name"] = source_name
+        if source_type:
+            event_data["source_type"] = source_type
 
         # Add group information if in group mode
         if space.group_mode_enabled and space.groups:

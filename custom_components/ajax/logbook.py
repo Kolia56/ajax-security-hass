@@ -95,6 +95,15 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "sv": "upptäckte {what}",
         "uk": "виявлено {what}",
     },
+    "by": {
+        "en": "by {source}",
+        "fr": "par {source}",
+        "es": "por {source}",
+        "de": "von {source}",
+        "nl": "door {source}",
+        "sv": "av {source}",
+        "uk": "від {source}",
+    },
 }
 
 # Per-language label for each ONVIF/cloud video detection type, used by
@@ -187,12 +196,19 @@ def async_describe_events(
 ) -> None:
     """Describe logbook events."""
 
+    def _with_source(message: str, event: Event) -> str:
+        """Append ``by <source>`` to ``message`` when the event carries one."""
+        source = event.data.get("source_name")
+        if not source:
+            return message
+        return f"{message} {_tr(hass, 'by', source=source)}"
+
     @callback
     def async_describe_armed(event: Event) -> dict[str, str]:
         space = event.data.get("space_name", "Ajax")
         return {
             LOGBOOK_ENTRY_NAME: space,
-            LOGBOOK_ENTRY_MESSAGE: _tr(hass, "armed"),
+            LOGBOOK_ENTRY_MESSAGE: _with_source(_tr(hass, "armed"), event),
             LOGBOOK_ENTRY_ICON: "mdi:shield-lock",
         }
 
@@ -201,7 +217,7 @@ def async_describe_events(
         space = event.data.get("space_name", "Ajax")
         return {
             LOGBOOK_ENTRY_NAME: space,
-            LOGBOOK_ENTRY_MESSAGE: _tr(hass, "disarmed"),
+            LOGBOOK_ENTRY_MESSAGE: _with_source(_tr(hass, "disarmed"), event),
             LOGBOOK_ENTRY_ICON: "mdi:shield-off",
         }
 
@@ -210,7 +226,7 @@ def async_describe_events(
         space = event.data.get("space_name", "Ajax")
         return {
             LOGBOOK_ENTRY_NAME: space,
-            LOGBOOK_ENTRY_MESSAGE: _tr(hass, "armed_night"),
+            LOGBOOK_ENTRY_MESSAGE: _with_source(_tr(hass, "armed_night"), event),
             LOGBOOK_ENTRY_ICON: "mdi:shield-moon",
         }
 
@@ -219,7 +235,7 @@ def async_describe_events(
         space = event.data.get("space_name", "Ajax")
         return {
             LOGBOOK_ENTRY_NAME: space,
-            LOGBOOK_ENTRY_MESSAGE: _tr(hass, "armed_home"),
+            LOGBOOK_ENTRY_MESSAGE: _with_source(_tr(hass, "armed_home"), event),
             LOGBOOK_ENTRY_ICON: "mdi:shield-home",
         }
 
@@ -230,7 +246,7 @@ def async_describe_events(
         new = event.data.get("new_state", "unknown")
         return {
             LOGBOOK_ENTRY_NAME: space,
-            LOGBOOK_ENTRY_MESSAGE: _tr(hass, "state_changed", old=old, new=new),
+            LOGBOOK_ENTRY_MESSAGE: _with_source(_tr(hass, "state_changed", old=old, new=new), event),
             LOGBOOK_ENTRY_ICON: "mdi:shield-sync",
         }
 

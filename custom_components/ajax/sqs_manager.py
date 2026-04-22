@@ -402,7 +402,7 @@ class SQSManager(EventHandlerMixin):
 
             # Process based on event type
             if event_tag in EVENT_TAG_TO_STATE:
-                await self._handle_security_event(space, event_tag, source_name)
+                await self._handle_security_event(space, event_tag, source_name, source_type)
             elif event_tag in DOOR_EVENTS:
                 await self._handle_door_event(space, event_tag, source_name, source_id, transition)
             elif event_tag in MOTION_EVENTS:
@@ -549,7 +549,13 @@ class SQSManager(EventHandlerMixin):
         if len(space.recent_events) > self.MAX_EVENTS_HISTORY:
             space.recent_events = space.recent_events[: self.MAX_EVENTS_HISTORY]
 
-    async def _handle_security_event(self, space, event_tag: str, source_name: str) -> bool:
+    async def _handle_security_event(
+        self,
+        space,
+        event_tag: str,
+        source_name: str,
+        source_type: str | None = None,
+    ) -> bool:
         """Handle arm/disarm/night mode events."""
         new_state = EVENT_TAG_TO_STATE.get(event_tag)
         if not new_state:
@@ -563,6 +569,7 @@ class SQSManager(EventHandlerMixin):
         ha_action_pending = self.coordinator.has_pending_ha_action(space.hub_id)
         if ha_action_pending:
             source_name = "Home Assistant"
+            source_type = "HA"
 
         _LOGGER.info(
             "SQS security: tag=%s, old=%s, new=%s, changed=%s, ha_pending=%s",
@@ -633,6 +640,17 @@ class SQSManager(EventHandlerMixin):
             source_name=source_name,
             space_name=space.name,
         )
+
+        # Fire HA bus event so automations can branch on who triggered
+        # the arm/disarm (user name, keypad, space control, HA...).
+        if state_changed:
+            self.coordinator._fire_security_state_event(
+                space,
+                old_state,
+                new_state,
+                source_name=source_name,
+                source_type=source_type,
+            )
 
         return True
 
