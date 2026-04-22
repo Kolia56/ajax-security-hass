@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.27.0] - 2026-04-22
+
+### Added
+- **`ajax_armed` / `ajax_disarmed` / `ajax_armed_night` / `ajax_armed_home` / `ajax_security_state_changed` bus events now carry `source_name` and `source_type`** (resolves request from #93). The source_name is the Ajax user/keypad/space-control that triggered the arm/disarm (or `"Home Assistant"` for a local HA action); source_type mirrors the Ajax `sourceObjectType` (`USER`, `KEYPAD`, `SPACE_CONTROL`, `APP`, ...) or `"HA"`. Makes automations such as "disarm by user X → open gate" possible without needing SIA events. The fields are populated by both the SSE and SQS managers — the REST fallback omits them since Ajax REST doesn't expose the actor.
+- Logbook describers for the same events now append `par <source>` / `by <source>` (7 languages) when the info is present.
+
+### Changed
+- Dependency bumps (dependabot): `aiohttp>=3.13.5`, `pytest>=9.0.3`, `pytest-cov>=7.1.0`, `pytest-mock>=3.15.1`, `homeassistant>=2026.4.3`.
+- Pre-commit hooks autoupdate.
+
 ## [0.26.4] - 2026-04-18
 
 ### Fixed
