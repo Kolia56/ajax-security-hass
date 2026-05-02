@@ -11,16 +11,20 @@ from typing import Any
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
+    DOMAIN as LIGHT_DOMAIN,
     ColorMode,
     LightEntity,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import AjaxConfigEntry
-from .const import DOMAIN, MANUFACTURER
+from .const import DOMAIN, MANUFACTURER, SIGNAL_NEW_DEVICE
 from .coordinator import AjaxDataCoordinator
 from .devices import is_dimmer_device
 from .models import AjaxDevice, DeviceType
@@ -64,6 +68,24 @@ async def async_setup_entry(
     if entities:
         async_add_entities(entities)
         _LOGGER.info("Added %d Ajax light entit(ies)", len(entities))
+
+    @callback
+    def _async_add_new_device(space_id: str, device_id: str) -> None:
+        """Add light entity when a dimmer is discovered after setup."""
+        space = coordinator.get_space(space_id)
+        device = space.devices.get(device_id) if space else None
+        if not device or device.type not in DIMMABLE_DEVICE_TYPES or not is_dimmer_device(device):
+            return
+
+        unique_id = f"{device_id}_light"
+        ent_reg = er.async_get(hass)
+        if ent_reg.async_get_entity_id(LIGHT_DOMAIN, DOMAIN, unique_id):
+            return
+
+        async_add_entities([AjaxDimmerLight(coordinator=coordinator, space_id=space_id, device_id=device_id)])
+        _LOGGER.info("Dynamically added light entity for dimmer device %s", device_id)
+
+    entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_NEW_DEVICE, _async_add_new_device))
 
 
 class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
@@ -143,12 +165,10 @@ class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
         space = self.coordinator.get_space(self._space_id)
         device = self._get_device()
         if not space or not device:
-            _LOGGER.error("Space or device not found for light %s", self._device_id)
-            return
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="device_not_found")
 
         if not space.hub_id:
-            _LOGGER.error("Hub ID not found for space %s", self._space_id)
-            return
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="hub_not_found")
 
         brightness = kwargs.get(ATTR_BRIGHTNESS)
 
@@ -190,18 +210,22 @@ class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
             else:
                 device.attributes.pop("channelStatuses", None)
             self.async_write_ha_state()
+            await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="failed_to_change",
+                translation_placeholders={"entity": "dimmer_light", "error": str(err)},
+            ) from err
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the light."""
         space = self.coordinator.get_space(self._space_id)
         device = self._get_device()
         if not space or not device:
-            _LOGGER.error("Space or device not found for light %s", self._device_id)
-            return
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="device_not_found")
 
         if not space.hub_id:
-            _LOGGER.error("Hub ID not found for space %s", self._space_id)
-            return
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="hub_not_found")
 
         # Save old state for rollback (preserve None/unset distinction)
         had_brightness = "actualBrightnessCh1" in device.attributes
@@ -233,3 +257,9 @@ class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
             else:
                 device.attributes.pop("channelStatuses", None)
             self.async_write_ha_state()
+            await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="failed_to_change",
+                translation_placeholders={"entity": "dimmer_light", "error": str(err)},
+            ) from err

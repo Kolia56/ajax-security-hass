@@ -89,4 +89,6 @@ UPDATE_INTERVAL_DOOR_SENSORS = 5  # Fast poll interval for door sensors when dis
 METADATA_REFRESH_INTERVAL = 3600  # Full metadata refresh every hour (rooms, users, groups)
 
 # Dispatcher signals
+SIGNAL_NEW_DEVICE = f"{DOMAIN}_new_device"
+SIGNAL_NEW_VIDEO_EDGE = f"{DOMAIN}_new_video_edge"
 SIGNAL_NEW_SMART_LOCK = f"{DOMAIN}_new_smart_lock"

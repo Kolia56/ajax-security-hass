@@ -23,7 +23,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import AjaxConfigEntry
-from .const import DOMAIN, MANUFACTURER, SIGNAL_NEW_SMART_LOCK
+from .const import DOMAIN, MANUFACTURER, SIGNAL_NEW_DEVICE, SIGNAL_NEW_SMART_LOCK, SIGNAL_NEW_VIDEO_EDGE
 from .coordinator import AjaxDataCoordinator
 from .devices import VideoEdgeHandler, get_device_handler
 from .devices.base import resolve_entity_category
@@ -176,6 +176,74 @@ async def async_setup_entry(
         _LOGGER.info("Added %d Ajax binary sensor(s)", len(entities))
 
     @callback
+    def _async_add_new_device(space_id: str, device_id: str) -> None:
+        """Add binary sensors when a regular device is discovered after setup."""
+        space = coordinator.get_space(space_id)
+        device = space.devices.get(device_id) if space else None
+        if not device:
+            return
+
+        handler_class = get_device_handler(device)
+        if not handler_class:
+            return
+
+        ent_reg = er.async_get(hass)
+        new_entities: list[BinarySensorEntity] = []
+        handler = handler_class(device)  # type: ignore[abstract]
+        for sensor_desc in handler.get_binary_sensors():
+            unique_id = f"{device_id}_{sensor_desc['key']}"
+            if unique_id in seen_unique_ids or ent_reg.async_get_entity_id(BINARY_SENSOR_DOMAIN, DOMAIN, unique_id):
+                continue
+            seen_unique_ids.add(unique_id)
+            new_entities.append(
+                AjaxBinarySensor(
+                    coordinator=coordinator,
+                    space_id=space_id,
+                    device_id=device_id,
+                    sensor_key=sensor_desc["key"],
+                    sensor_desc=sensor_desc,
+                )
+            )
+
+        if new_entities:
+            async_add_entities(new_entities)
+            _LOGGER.info("Dynamically added %d binary sensor(s) for device %s", len(new_entities), device_id)
+
+    @callback
+    def _async_add_new_video_edge(space_id: str, video_edge_id: str) -> None:
+        """Add binary sensors when a Video Edge device is discovered after setup."""
+        space = coordinator.get_space(space_id)
+        if not space:
+            return
+        video_edge = space.video_edges.get(video_edge_id)
+        if not video_edge:
+            return
+
+        ent_reg = er.async_get(hass)
+        new_entities: list[BinarySensorEntity] = []
+        all_video_edges = space.video_edges
+        handler = VideoEdgeHandler(video_edge, all_video_edges)  # type: ignore[assignment]
+        for sensor_desc in handler.get_binary_sensors():
+            target_ve_id = sensor_desc.get("target_video_edge_id") or video_edge_id
+            unique_id = f"{target_ve_id}_{sensor_desc['key']}"
+            if unique_id in seen_unique_ids or ent_reg.async_get_entity_id(BINARY_SENSOR_DOMAIN, DOMAIN, unique_id):
+                continue
+            seen_unique_ids.add(unique_id)
+            new_entities.append(
+                AjaxVideoEdgeBinarySensor(
+                    coordinator=coordinator,
+                    space_id=space_id,
+                    video_edge_id=target_ve_id,
+                    sensor_key=sensor_desc["key"],
+                    sensor_desc=sensor_desc,
+                )
+            )
+
+        if new_entities:
+            async_add_entities(new_entities)
+            _LOGGER.info("Dynamically added %d Video Edge binary sensor(s)", len(new_entities))
+
+    @callback
     def _async_add_new_smart_lock_door(space_id: str, smart_lock_id: str) -> None:
         """Add new door binary sensor when a smart lock is discovered from SSE/SQS."""
         # Check entity registry to avoid duplicates (more robust than manual set tracking)
@@ -188,6 +256,8 @@ async def async_setup_entry(
         )
         _LOGGER.info("Dynamically added door sensor for smart lock: %s", smart_lock_id)
 
+    entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_NEW_DEVICE, _async_add_new_device))
+    entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_NEW_VIDEO_EDGE, _async_add_new_video_edge))
     entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_NEW_SMART_LOCK, _async_add_new_smart_lock_door))
 
 

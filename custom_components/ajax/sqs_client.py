@@ -209,6 +209,22 @@ class AjaxSQSClient:
         except Exception as del_err:  # noqa: BLE001
             _LOGGER.error("SQS: failed to delete message %s: %s", msg_id, del_err)
 
+    async def _requeue(self, client, receipt: str, msg_id: str) -> None:
+        """Make a message visible again so SQS can redeliver it."""
+        try:
+            await client.change_message_visibility(
+                QueueUrl=self._queue_url,
+                ReceiptHandle=receipt,
+                VisibilityTimeout=0,
+            )
+            _LOGGER.debug("SQS: message made visible again %s", msg_id)
+        except Exception as requeue_err:  # noqa: BLE001
+            _LOGGER.error(
+                "SQS: failed to make message visible again %s: %s",
+                msg_id,
+                requeue_err,
+            )
+
     async def _handle_message(self, client, message: dict) -> None:
         """Process a single SQS message using the shared client."""
         receipt = message.get("ReceiptHandle")
@@ -238,22 +254,12 @@ class AjaxSQSClient:
                 future = asyncio.run_coroutine_threadsafe(self._callback(body), self._hass_loop)
                 try:
                     if not future.result(timeout=self.CALLBACK_TIMEOUT):
-                        try:
-                            await client.change_message_visibility(
-                                QueueUrl=self._queue_url,
-                                ReceiptHandle=receipt,
-                                VisibilityTimeout=0,
-                            )
-                            _LOGGER.debug("SQS: message made visible again %s", msg_id)
-                        except Exception as requeue_err:
-                            _LOGGER.error(
-                                "SQS: failed to make message visible again %s: %s",
-                                msg_id,
-                                requeue_err,
-                            )
+                        await self._requeue(client, receipt, msg_id)
                         return
                 except Exception as err:
                     _LOGGER.error("Callback error: %s", err)
+                    await self._requeue(client, receipt, msg_id)
+                    return
 
             await self._delete(client, receipt, msg_id)
 

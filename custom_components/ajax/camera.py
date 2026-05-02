@@ -11,15 +11,17 @@ import logging
 import time
 from urllib.parse import quote
 
-from homeassistant.components.camera import Camera, CameraEntityFeature
+from homeassistant.components.camera import DOMAIN as CAMERA_DOMAIN, Camera, CameraEntityFeature
 from homeassistant.components.ffmpeg import get_ffmpeg_manager
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import AjaxConfigEntry
-from .const import CONF_RTSP_PASSWORD, CONF_RTSP_USERNAME, DOMAIN, MANUFACTURER
+from .const import CONF_RTSP_PASSWORD, CONF_RTSP_USERNAME, DOMAIN, MANUFACTURER, SIGNAL_NEW_VIDEO_EDGE
 from .coordinator import AjaxDataCoordinator
 from .models import VIDEO_EDGE_MODEL_NAMES, AjaxVideoEdge, VideoEdgeType
 
@@ -106,6 +108,60 @@ async def async_setup_entry(
     if entities:
         _LOGGER.debug("Adding %d camera entities", len(entities))
         async_add_entities(entities)
+
+    @callback
+    def _async_add_new_video_edge(space_id: str, video_edge_id: str) -> None:
+        """Add camera entities when a Video Edge device is discovered after setup."""
+        space = coordinator.get_space(space_id)
+        video_edge = space.video_edges.get(video_edge_id) if space else None
+        if not video_edge or not video_edge.ip_address:
+            return
+
+        ent_reg = er.async_get(hass)
+        new_entities: list[Camera] = []
+
+        def _append_if_new(camera: AjaxVideoEdgeCamera) -> None:
+            if camera.unique_id and ent_reg.async_get_entity_id(CAMERA_DOMAIN, DOMAIN, camera.unique_id):
+                return
+            new_entities.append(camera)
+
+        if video_edge.video_edge_type == VideoEdgeType.NVR and video_edge.channels:
+            for i, channel in enumerate(video_edge.channels):
+                channel_name = channel.get("name") if isinstance(channel, dict) else None
+                channel_id = channel.get("id") if isinstance(channel, dict) else None
+                _append_if_new(
+                    AjaxVideoEdgeCamera(
+                        coordinator=coordinator,
+                        entry=entry,
+                        video_edge=video_edge,
+                        space_id=space_id,
+                        stream_type="main",
+                        channel_index=i,
+                        channel_name=channel_name,
+                        channel_id=channel_id,
+                    )
+                )
+                _append_if_new(
+                    AjaxVideoEdgeCamera(
+                        coordinator=coordinator,
+                        entry=entry,
+                        video_edge=video_edge,
+                        space_id=space_id,
+                        stream_type="sub",
+                        channel_index=i,
+                        channel_name=channel_name,
+                        channel_id=channel_id,
+                    )
+                )
+        else:
+            _append_if_new(AjaxVideoEdgeCamera(coordinator, entry, video_edge, space_id, stream_type="main"))
+            _append_if_new(AjaxVideoEdgeCamera(coordinator, entry, video_edge, space_id, stream_type="sub"))
+
+        if new_entities:
+            async_add_entities(new_entities)
+            _LOGGER.info("Dynamically added %d camera entit(ies) for Video Edge %s", len(new_entities), video_edge_id)
+
+    entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_NEW_VIDEO_EDGE, _async_add_new_video_edge))
 
 
 class AjaxVideoEdgeCamera(CoordinatorEntity[AjaxDataCoordinator], Camera):

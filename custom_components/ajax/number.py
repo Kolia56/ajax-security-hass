@@ -10,17 +10,19 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components.number import NumberEntity, NumberMode
+from homeassistant.components.number import DOMAIN as NUMBER_DOMAIN, NumberEntity, NumberMode
 from homeassistant.const import DEGREE, PERCENTAGE, UnitOfElectricCurrent
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import AjaxConfigEntry
-from .const import DOMAIN
+from .const import DOMAIN, SIGNAL_NEW_DEVICE
 from .coordinator import AjaxDataCoordinator
 from .models import AjaxDevice, DeviceType, SecurityState
 
@@ -197,6 +199,68 @@ async def async_setup_entry(
     if entities:
         async_add_entities(entities)
         _LOGGER.info("Added %d Ajax number entities", len(entities))
+
+    @callback
+    def _async_add_new_device(space_id: str, device_id: str) -> None:
+        """Add number entities when a device is discovered after setup."""
+        space = coordinator.get_space(space_id)
+        device = space.devices.get(device_id) if space else None
+        if not device:
+            return
+
+        ent_reg = er.async_get(hass)
+        new_entities: list[NumberEntity] = []
+
+        def _is_new(unique_id: str) -> bool:
+            return ent_reg.async_get_entity_id(NUMBER_DOMAIN, DOMAIN, unique_id) is None
+
+        device_type_raw = device.raw_type or ""
+        if device_type_raw in DEVICES_WITH_DOOR_PLUS_NUMBERS and _is_new(f"{device_id}_tilt_degrees"):
+            new_entities.append(AjaxTiltDegreesNumber(coordinator, space_id, device_id))
+
+        if (
+            device.type in DEVICES_WITH_CURRENT_THRESHOLD
+            and "current_threshold" in device.attributes
+            and _is_new(f"{device_id}_current_threshold")
+        ):
+            new_entities.append(AjaxCurrentThresholdNumber(coordinator, space_id, device_id))
+
+        if device.type in DEVICES_WITH_CURRENT_THRESHOLD:
+            brightness = device.attributes.get("indicationBrightness")
+            if isinstance(brightness, int) and _is_new(f"{device_id}_led_brightness"):
+                new_entities.append(AjaxLedBrightnessV2Number(coordinator, space_id, device_id))
+
+        if is_dimmer_device(device):
+            for number_def in DIMMER_NUMBER_DEFINITIONS:
+                if number_def["attr_key"] in device.attributes and _is_new(f"{device_id}_{number_def['key']}"):
+                    new_entities.append(AjaxDimmerNumber(coordinator, space_id, device_id, number_def))
+
+        if is_lightswitch_device(device) and "touchSensitivity" in device.attributes:
+            unique_id = f"{device_id}_touch_sensitivity"
+            if _is_new(unique_id):
+                new_entities.append(
+                    AjaxDimmerNumber(
+                        coordinator=coordinator,
+                        space_id=space_id,
+                        device_id=device_id,
+                        number_def={
+                            "key": "touch_sensitivity",
+                            "translation_key": "touch_sensitivity",
+                            "attr_key": "touchSensitivity",
+                            "api_key": "touchSensitivity",
+                            "min_value": 1,
+                            "max_value": 7,
+                            "step": 1,
+                            "entity_category": "config",
+                        },
+                    )
+                )
+
+        if new_entities:
+            async_add_entities(new_entities)
+            _LOGGER.info("Dynamically added %d number entit(ies) for device %s", len(new_entities), device_id)
+
+    entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_NEW_DEVICE, _async_add_new_device))
 
 
 class AjaxDoorPlusBaseNumber(CoordinatorEntity[AjaxDataCoordinator], NumberEntity):

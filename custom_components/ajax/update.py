@@ -11,17 +11,20 @@ import logging
 from typing import Any
 
 from homeassistant.components.update import (
+    DOMAIN as UPDATE_DOMAIN,
     UpdateDeviceClass,
     UpdateEntity,
     UpdateEntityFeature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import AjaxConfigEntry
-from .const import DOMAIN, MANUFACTURER
+from .const import DOMAIN, MANUFACTURER, SIGNAL_NEW_VIDEO_EDGE
 from .coordinator import AjaxDataCoordinator
 from .models import VIDEO_EDGE_MODEL_NAMES, AjaxSpace, AjaxVideoEdge
 
@@ -76,6 +79,26 @@ async def async_setup_entry(
     if entities:
         _LOGGER.debug("Adding %d update entities", len(entities))
         async_add_entities(entities)
+
+    @callback
+    def _async_add_new_video_edge(space_id: str, video_edge_id: str) -> None:
+        """Add firmware update entity when a Video Edge device is discovered after setup."""
+        space = coordinator.get_space(space_id)
+        video_edge = space.video_edges.get(video_edge_id) if space else None
+        if not video_edge:
+            return
+
+        unique_id = f"{video_edge_id}_firmware_update"
+        ent_reg = er.async_get(hass)
+        if ent_reg.async_get_entity_id(UPDATE_DOMAIN, DOMAIN, unique_id):
+            return
+
+        async_add_entities(
+            [AjaxVideoEdgeFirmwareUpdate(coordinator=coordinator, video_edge=video_edge, space_id=space_id)]
+        )
+        _LOGGER.info("Dynamically added firmware update entity for Video Edge %s", video_edge_id)
+
+    entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_NEW_VIDEO_EDGE, _async_add_new_video_edge))
 
 
 class AjaxVideoEdgeFirmwareUpdate(CoordinatorEntity[AjaxDataCoordinator], UpdateEntity):

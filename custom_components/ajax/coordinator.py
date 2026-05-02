@@ -25,6 +25,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.debounce import Debouncer
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -39,6 +40,9 @@ from .const import (
     NOTIFICATION_FILTER_ALARMS_ONLY,
     NOTIFICATION_FILTER_ALL,
     NOTIFICATION_FILTER_NONE,
+    SIGNAL_NEW_DEVICE,
+    SIGNAL_NEW_SMART_LOCK,
+    SIGNAL_NEW_VIDEO_EDGE,
     UPDATE_INTERVAL,
     UPDATE_INTERVAL_ARMED,
     UPDATE_INTERVAL_DOOR_SENSORS,
@@ -565,7 +569,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                         tasks.append(self._async_update_video_edges(space_id))
                         tasks.append(self._async_update_smart_locks(space_id))
                         tasks.append(self._async_update_notifications(space_id, limit=20))
-                    await asyncio.gather(*tasks, return_exceptions=True)
+                    await asyncio.gather(*tasks)
 
                 # Restore SSE/SQS-discovered smart locks from storage
                 await self._async_restore_smart_locks()
@@ -1499,6 +1503,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
             known_ids.update(space.devices.keys())
             # Video edge cameras
             known_ids.update(space.video_edges.keys())
+            # Smart locks
+            known_ids.update(space.smart_locks.keys())
 
         # Scan HA device registry for Ajax devices
         device_registry = dr.async_get(self.hass)
@@ -1595,6 +1601,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 )
                 space.devices[device_id] = device
                 new_devices_count += 1
+                if self._initial_load_done:
+                    async_dispatcher_send(self.hass, SIGNAL_NEW_DEVICE, space_id, device_id)
 
                 # Log new device with details for debugging
                 multi_tx_id = device_data.get("multiTransmitterId", "")
@@ -2417,6 +2425,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                         raw_data=ve_data,
                     )
                     space.video_edges[ve_id] = video_edge
+                    if self._initial_load_done:
+                        async_dispatcher_send(self.hass, SIGNAL_NEW_VIDEO_EDGE, space_id, ve_id)
                     _LOGGER.info(
                         "Added video edge: %s (%s) - %s",
                         video_edge.name,
@@ -2525,6 +2535,8 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                         continue
 
                     space.smart_locks[sl_id] = smart_lock
+                    if self._initial_load_done:
+                        async_dispatcher_send(self.hass, SIGNAL_NEW_SMART_LOCK, space_id, sl_id)
                     _LOGGER.info("Discovered smart lock: %s (%s)", smart_lock.name, sl_id)
                 else:
                     # Update existing — preserve event-driven state
@@ -3053,7 +3065,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         # Clean up the type string (remove formatting artifacts)
         # Example: "wire_input_mt {\n}\n" -> "wire_input_mt"
         if not isinstance(type_str, str):
-            return None
+            return DeviceType.UNKNOWN
         type_cleaned = type_str.strip().split()[0].lower() if type_str else ""
 
         # Try exact match (case insensitive)

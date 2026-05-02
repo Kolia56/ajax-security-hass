@@ -8,14 +8,17 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.valve import ValveEntity, ValveEntityFeature
-from homeassistant.core import HomeAssistant
+from homeassistant.components.valve import DOMAIN as VALVE_DOMAIN, ValveEntity, ValveEntityFeature
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import AjaxConfigEntry
-from .const import DOMAIN, MANUFACTURER
+from .const import DOMAIN, MANUFACTURER, SIGNAL_NEW_DEVICE
 from .coordinator import AjaxDataCoordinator
 from .devices import WaterStopHandler
 from .models import AjaxDevice, DeviceType
@@ -70,6 +73,41 @@ async def async_setup_entry(
     if entities:
         async_add_entities(entities)
         _LOGGER.info("Added %d Ajax valve(s)", len(entities))
+
+    @callback
+    def _async_add_new_device(space_id: str, device_id: str) -> None:
+        """Add valve entities when a WaterStop is discovered after setup."""
+        space = coordinator.get_space(space_id)
+        device = space.devices.get(device_id) if space else None
+        if not device:
+            return
+
+        handler_class = DEVICE_HANDLERS.get(device.type)
+        if not handler_class:
+            return
+
+        ent_reg = er.async_get(hass)
+        new_entities: list[ValveEntity] = []
+        handler = handler_class(device)
+        for valve_desc in handler.get_valves():
+            unique_id = f"{device_id}_{valve_desc['key']}"
+            if ent_reg.async_get_entity_id(VALVE_DOMAIN, DOMAIN, unique_id):
+                continue
+            new_entities.append(
+                AjaxValve(
+                    coordinator=coordinator,
+                    space_id=space_id,
+                    device_id=device_id,
+                    valve_key=valve_desc["key"],
+                    valve_desc=valve_desc,
+                )
+            )
+
+        if new_entities:
+            async_add_entities(new_entities)
+            _LOGGER.info("Dynamically added %d valve entit(ies) for device %s", len(new_entities), device_id)
+
+    entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_NEW_DEVICE, _async_add_new_device))
 
 
 class AjaxValve(CoordinatorEntity[AjaxDataCoordinator], ValveEntity):
@@ -155,12 +193,10 @@ class AjaxValve(CoordinatorEntity[AjaxDataCoordinator], ValveEntity):
         space = self.coordinator.get_space(self._space_id)
         device = self._get_device()
         if not space or not device:
-            _LOGGER.error("Space or device not found for valve %s", self._valve_key)
-            return
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="device_not_found")
 
         if not space.hub_id:
-            _LOGGER.error("Hub ID not found for space %s", self._space_id)
-            return
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="hub_not_found")
 
         # Optimistic update
         old_value = device.attributes.get("valveState")
@@ -192,6 +228,11 @@ class AjaxValve(CoordinatorEntity[AjaxDataCoordinator], ValveEntity):
                 device.attributes["valveState"] = old_value
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="failed_to_change",
+                translation_placeholders={"entity": self._valve_key, "error": str(err)},
+            ) from err
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
