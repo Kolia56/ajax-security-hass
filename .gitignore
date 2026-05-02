@@ -6,9 +6,10 @@ DEVICE_HANDLERS_STATUS.md
 NEW_HANDLERS_RELAY_LIGHT.md
 SECURITY_AUDIT.md
 
-# Test files
+# Test files (root scratch tests only — keep tests/ tracked)
 test_*.py
 test_*.sh
+!tests/test_*.py
 
 # API documentation
 swagger.yaml
