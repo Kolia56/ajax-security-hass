@@ -9,7 +9,7 @@ import json
 import logging
 import time
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 import aiohttp
 
@@ -448,12 +448,39 @@ class AjaxRestApi:
                 response.raise_for_status()
                 result = await response.json()
 
-                # 2FA returns sessionToken like normal login
+                # 2FA returns the same auth payload as a normal login.
                 self.session_token = result.get("sessionToken")
+                self.refresh_token = result.get("refreshToken")
+                self.user_id = result.get("userId") or result.get("user_id")
+
+                if self.proxy_url:
+                    if not self.session_token and self.user_id:
+                        self.session_token = self.user_id
+                        _LOGGER.debug("Using user_id as session token for proxy mode after 2FA")
+
+                    proxy_api_key = result.get("apiKey")
+                    if proxy_api_key:
+                        self.api_key = proxy_api_key
+                        self._base_headers["X-Api-Key"] = proxy_api_key
+                        _LOGGER.info("Received API key from proxy after 2FA")
+
+                    self.sse_url = result.get("sseUrl")
+                    if not self.sse_url and self.user_id:
+                        self.sse_url = f"{self.proxy_url}/events?userId={self.user_id}"
+                    if self.sse_url:
+                        _LOGGER.info("SSE endpoint configured after 2FA")
+                        _LOGGER.debug("SSE endpoint host: %s", urlsplit(self.sse_url).netloc)
+
                 if not self.session_token:
                     raise AjaxRestApiError("No sessionToken in 2FA response")
+                if not self.user_id:
+                    raise AjaxRestApiError("No userId in 2FA response")
 
-                _LOGGER.info("2FA verification successful")
+                self._token_version += 1
+                self._last_login_time = time.monotonic()
+                self._token_obtained_at = time.monotonic()
+                self._refresh_failures = 0
+                _LOGGER.info("2FA verification successful (user: %s)", self.user_id[:8])
                 return self.session_token
 
         except aiohttp.ClientError as err:
@@ -1461,10 +1488,8 @@ class AjaxRestApi:
         Returns:
             List of recording dictionaries
         """
-        return await self._request(
-            "GET",
-            f"devices/{nvr_id}/recordings?cameraId={camera_id}&start={start}&end={end}",
-        )
+        query = urlencode({"cameraId": camera_id, "start": start, "end": end})
+        return await self._request("GET", f"devices/{nvr_id}/recordings?{query}")
 
     # Fields that should not be sent in device update requests (read-only or internal)
     # Note: deviceType MUST be included - API needs it for deserialization
