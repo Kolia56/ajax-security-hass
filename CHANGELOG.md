@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.28.0] - 2026-05-02
+
+### Added
+- **Dynamic device discovery via dispatcher signals.** Devices, video edges and smart locks added to the Ajax account between two coordinator refreshes are now picked up live instead of waiting for a full HA restart. New `SIGNAL_NEW_DEVICE` and `SIGNAL_NEW_VIDEO_EDGE` signals (alongside the existing `SIGNAL_NEW_SMART_LOCK`); every entity platform that owns per-device entities (binary_sensor, sensor, event, switch, light, number, select, valve, update, camera) listens to the relevant signal and creates entities through `async_dispatcher_connect`, with entity-registry guard against duplicates.
+- **`verify_ssl` togglable from the reconfigure flow.** Users on a self-signed proxy certificate no longer have to delete and recreate the entry to flip the SSL verification flag. Strings + 7 translations updated; reconfigure step exposes the field with a description explaining the self-signed proxy use case.
+- **2FA proxy session bootstrap is now complete.** After a successful 2FA verification in proxy mode the API client captures the same auth payload as a normal proxy login: `refreshToken`, `userId`, `sseUrl`, `apiKey`, plus the same TTL bookkeeping. Without this, a 2FA-protected proxy account had no SSE endpoint and no API key after first login, forcing a full reconfigure to recover. Hubs discovery after 2FA now also degrades gracefully when the proxy doesn't expose `/hubs` to a freshly-2FA'd session.
+- Translations test suite under `tests/` (with the necessary `.gitignore` carve-out so `tests/test_*.py` is tracked while root-level scratch tests stay ignored). Smoke-tests that `strings.json` and every `translations/<lang>.json` are valid JSON and share the same key tree.
+
+### Changed
+- Dependency bumps (dependabot): `aiobotocore>=3.5.0`, `pytest-asyncio>=1.3.0`, `pytest-homeassistant-custom-component>=0.13.326`, `coverage>=7.13.5`, `homeassistant>=2026.4.4`.
+- Pre-commit hooks autoupdate.
+
 ## [0.27.0] - 2026-04-22
 
 ### Added
