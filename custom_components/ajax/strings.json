@@ -85,7 +85,11 @@
           "api_key": "API Key",
           "email": "Email",
           "password": "Password",
-          "proxy_url": "Proxy URL"
+          "proxy_url": "Proxy URL",
+          "verify_ssl": "Verify SSL Certificate"
+        },
+        "data_description": {
+          "verify_ssl": "Disable if the proxy uses a self-signed certificate."
         },
         "description": "Update your Ajax credentials.",
         "title": "Reconfigure Ajax"

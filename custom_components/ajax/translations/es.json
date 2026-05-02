@@ -85,7 +85,11 @@
           "api_key": "Clave API",
           "email": "Correo electrónico",
           "password": "Contraseña",
-          "proxy_url": "URL del proxy"
+          "proxy_url": "URL del proxy",
+          "verify_ssl": "Verificar certificado SSL"
+        },
+        "data_description": {
+          "verify_ssl": "Desactivar si el proxy usa un certificado autofirmado."
         },
         "description": "Actualice sus credenciales de Ajax.",
         "title": "Reconfigurar Ajax"

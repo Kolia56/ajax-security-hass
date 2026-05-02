@@ -85,7 +85,11 @@
           "api_key": "API-nyckel",
           "email": "E-post",
           "password": "Lösenord",
-          "proxy_url": "Proxy-URL"
+          "proxy_url": "Proxy-URL",
+          "verify_ssl": "Verifiera SSL-certifikat"
+        },
+        "data_description": {
+          "verify_ssl": "Inaktivera om proxyn använder ett självsignerat certifikat."
         },
         "description": "Uppdatera dina Ajax-inloggningsuppgifter.",
         "title": "Omkonfigurera Ajax"

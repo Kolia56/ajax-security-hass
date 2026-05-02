@@ -255,6 +255,9 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
             self._user_input[CONF_AUTH_MODE] = self._auth_mode
 
             proxy_url = user_input[CONF_PROXY_URL].rstrip("/")
+            verify_ssl = user_input.get(CONF_VERIFY_SSL, True)
+            self._user_input[CONF_PROXY_URL] = proxy_url
+            self._user_input[CONF_VERIFY_SSL] = verify_ssl
 
             await self.async_set_unique_id(user_input[CONF_EMAIL].lower())
             self._abort_if_unique_id_configured()
@@ -267,6 +270,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                     password=user_input[CONF_PASSWORD],
                     proxy_url=proxy_url,
                     proxy_mode=self._auth_mode,
+                    verify_ssl=verify_ssl,
                 )
 
                 # Test connection by logging in via proxy
@@ -382,8 +386,18 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Verify 2FA code
                 await self._api.async_verify_2fa(self._request_id, code)
 
+                # Get auth mode from stored input
+                auth_mode = self._user_input.get(CONF_AUTH_MODE, AUTH_MODE_DIRECT)
+
                 # 2FA successful, discover spaces
-                hubs = await self._api.async_get_hubs()
+                try:
+                    hubs = await self._api.async_get_hubs()
+                except AjaxRestApiError as err:
+                    if auth_mode == AUTH_MODE_DIRECT:
+                        raise
+                    # Proxy may not expose all discovery endpoints.
+                    _LOGGER.debug("Proxy hubs discovery failed after 2FA: %s", err)
+                    hubs = []
                 self._spaces = []
                 for hub in hubs:
                     hub_id = hub.get("hubId")
@@ -403,9 +417,6 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 # Hash password for secure storage (never store plain password!)
                 password_hash = hashlib.sha256(self._user_input[CONF_PASSWORD].encode()).hexdigest()
 
-                # Get auth mode from stored input
-                auth_mode = self._user_input.get(CONF_AUTH_MODE, AUTH_MODE_DIRECT)
-
                 # Prepare entry data based on auth mode
                 self._entry_data = {
                     CONF_AUTH_MODE: auth_mode,
@@ -424,8 +435,9 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                     if self._user_input.get(CONF_QUEUE_NAME):
                         self._entry_data[CONF_QUEUE_NAME] = self._user_input[CONF_QUEUE_NAME]
                 else:
-                    # Proxy mode: include proxy URL
+                    # Proxy mode: include proxy URL and TLS preference
                     self._entry_data[CONF_PROXY_URL] = self._user_input[CONF_PROXY_URL]
+                    self._entry_data[CONF_VERIFY_SSL] = self._user_input.get(CONF_VERIFY_SSL, True)
 
                 # Check if this is a reauth flow
                 if self.context.get("source") == "reauth":
@@ -636,6 +648,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                         password=user_input[CONF_PASSWORD],
                         proxy_url=proxy_url,
                         proxy_mode=auth_mode,
+                        verify_ssl=reauth_entry.data.get(CONF_VERIFY_SSL, True),
                     )
 
                 # Test login
@@ -705,12 +718,15 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                     )
                 else:
                     proxy_url = user_input.get(CONF_PROXY_URL, reconfigure_entry.data.get(CONF_PROXY_URL))
+                    proxy_url = proxy_url.rstrip("/") if proxy_url else proxy_url
+                    verify_ssl = user_input.get(CONF_VERIFY_SSL, reconfigure_entry.data.get(CONF_VERIFY_SSL, True))
                     self._api = AjaxRestApi(
                         api_key="",
                         email=user_input[CONF_EMAIL],
                         password=user_input[CONF_PASSWORD],
                         proxy_url=proxy_url,
                         proxy_mode=auth_mode,
+                        verify_ssl=verify_ssl,
                     )
 
                 # Test login
@@ -733,7 +749,9 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
 
                 # Update proxy URL if in proxy mode
                 if auth_mode != AUTH_MODE_DIRECT and CONF_PROXY_URL in user_input:
-                    new_data[CONF_PROXY_URL] = user_input[CONF_PROXY_URL]
+                    new_data[CONF_PROXY_URL] = user_input[CONF_PROXY_URL].rstrip("/")
+                if auth_mode != AUTH_MODE_DIRECT and CONF_VERIFY_SSL in user_input:
+                    new_data[CONF_VERIFY_SSL] = user_input[CONF_VERIFY_SSL]
 
                 return self.async_update_reload_and_abort(
                     reconfigure_entry,
@@ -767,6 +785,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_PROXY_URL, default=reconfigure_entry.data.get(CONF_PROXY_URL, "")): str,
                     vol.Required(CONF_EMAIL, default=reconfigure_entry.data.get(CONF_EMAIL, "")): str,
                     vol.Required(CONF_PASSWORD): str,
+                    vol.Optional(CONF_VERIFY_SSL, default=reconfigure_entry.data.get(CONF_VERIFY_SSL, True)): bool,
                 }
             )
 

@@ -85,7 +85,11 @@
           "api_key": "API-sleutel",
           "email": "E-mailadres",
           "password": "Wachtwoord",
-          "proxy_url": "Proxy-URL"
+          "proxy_url": "Proxy-URL",
+          "verify_ssl": "SSL-certificaat verifiëren"
+        },
+        "data_description": {
+          "verify_ssl": "Schakel uit als de proxy een zelfondertekend certificaat gebruikt."
         },
         "description": "Werk je Ajax-referenties bij.",
         "title": "Ajax herconfigureren"

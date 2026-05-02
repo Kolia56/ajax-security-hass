@@ -85,7 +85,11 @@
           "api_key": "API-Schlüssel",
           "email": "E-Mail",
           "password": "Passwort",
-          "proxy_url": "Proxy-URL"
+          "proxy_url": "Proxy-URL",
+          "verify_ssl": "SSL-Zertifikat überprüfen"
+        },
+        "data_description": {
+          "verify_ssl": "Deaktivieren, wenn der Proxy ein selbstsigniertes Zertifikat verwendet."
         },
         "description": "Aktualisieren Sie Ihre Ajax-Anmeldedaten.",
         "title": "Ajax neu konfigurieren"
