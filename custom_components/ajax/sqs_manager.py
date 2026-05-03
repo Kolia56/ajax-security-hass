@@ -642,15 +642,11 @@ class SQSManager(EventHandlerMixin):
         )
 
         # Fire HA bus event so automations can branch on who triggered
-        # the arm/disarm (user name, keypad, space control, HA...).
-        # if state_changed:
-        #     self.coordinator._fire_security_state_event(
-        #         space,
-        #         old_state,
-        #         new_state,
-        #         source_name=source_name,
-        #         source_type=source_type,
-        #     )
+        # the arm/disarm (user name, keypad, space control, HA...). Always
+        # fire — when REST polling has already consumed the state change
+        # (state_changed=False) the bus event would otherwise never reach
+        # automations. The coordinator's _skip_state_change_event flag
+        # prevents the REST poller from emitting a duplicate.
         self.coordinator._fire_security_state_event(
             space,
             old_state,
