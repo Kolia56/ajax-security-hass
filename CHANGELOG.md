@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.28.1] - 2026-05-03
+
+### Fixed
+- **`ajax_armed` / `ajax_disarmed` / `ajax_armed_night` / `ajax_armed_home` bus events fire even when REST polling consumed the state change first** (#133, thanks @Kolia56). The previous gate `if state_changed:` in SSE/SQS `_handle_security_event` suppressed the fire whenever `old_state == new_state` — typically when REST had already updated the local state via optimistic update — so automations listening to the bus never saw `nightmodeon`/`nightmodeoff` transitions in particular. The coordinator's `_skip_state_change_event` flag already guarantees the REST poller doesn't emit a duplicate, so the gate was redundant *and* harmful.
+
+### Changed
+- Cleaned up the now-explanatory comment around the unconditional fire (no behaviour change).
+
 ## [0.28.0] - 2026-05-02
 
 ### Added
