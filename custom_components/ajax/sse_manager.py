@@ -220,7 +220,9 @@ class SSEManager(EventHandlerMixin):
             # Also check eventTypeV2 for video AI events
             event_type_v2 = event.get("eventTypeV2", "")
 
-            _LOGGER.info(
+            # DEBUG, not INFO: source_name can be an Ajax user's display
+            # name (PII) and this fires on every event.
+            _LOGGER.debug(
                 "SSE event: type=%s, tag=%s, code=%s, source=%s (%s), id=%s, transition=%s, typeV2=%s",
                 event_type,
                 event_tag,
@@ -377,17 +379,18 @@ class SSEManager(EventHandlerMixin):
                 event_tag,
                 space.hub_id,
             )
-            # Small delay to let Ajax backend process the change
-            # Reduced from 1.0s to 0.3s for faster real-time updates
-            await asyncio.sleep(0.3)
-            _LOGGER.debug("SSE: Sleep completed at t=%dms", int((time.time() - start_time) * 1000))
-            # Serialise concurrent security events so the skip-flag and
-            # cache-bypass flag cannot be flipped back to False while another
-            # security refresh is still running.
+            # The lock spans the whole sequence (sleep + refresh): the
+            # skip-flag must be set BEFORE the sleep, otherwise a REST poll
+            # tick landing in the 0.3s window sees the flag still False and
+            # fires a duplicate ajax_armed/ajax_disarmed bus event (#133).
             async with self._security_event_lock:
                 try:
-                    # Set flag to skip event creation during refresh (SSE already created it)
+                    # Skip REST-side event creation until the refresh is done
                     self.coordinator._skip_state_change_event = True
+                    # Small delay to let Ajax backend process the change
+                    # Reduced from 1.0s to 0.3s for faster real-time updates
+                    await asyncio.sleep(0.3)
+                    _LOGGER.debug("SSE: Sleep completed at t=%dms", int((time.time() - start_time) * 1000))
                     # CRITICAL: Bypass proxy cache to get fresh group states from Ajax API
                     self.coordinator._bypass_cache_next_refresh = True
                     # Use async_force_metadata_refresh to ensure full_refresh=True
@@ -413,8 +416,9 @@ class SSEManager(EventHandlerMixin):
             space.security_state = new_state
             self._last_state_update[space.hub_id] = time.time()
 
-        # Always create notification (even if state unchanged)
-        _LOGGER.info(
+        # Always create notification (even if state unchanged).
+        # DEBUG, not INFO: source_name is the Ajax user who armed/disarmed (PII).
+        _LOGGER.debug(
             "SSE instant: %s -> %s par %s (state_changed=%s)",
             old_state.value,
             new_state.value,
@@ -470,6 +474,11 @@ class SSEManager(EventHandlerMixin):
                 if device.name == source_name:
                     return device
 
+        # The device may have been added since the last poll — let the
+        # coordinator discover it instead of staying blind until the next
+        # full metadata refresh.
+        if source_id:
+            self._request_discovery_refresh(source_id)
         return None
 
     def _handle_door_event(self, space, event_tag: str, source_name: str, source_id: str, transition: str) -> None:

@@ -353,7 +353,9 @@ class SQSManager(EventHandlerMixin):
             transition = event.get("transition", "")  # TRIGGERED/RECOVERED/IMPULSE
             additional_data_v2 = event.get("additionalDataV2", [])
 
-            _LOGGER.info(
+            # DEBUG, not INFO: source_name can be an Ajax user's display
+            # name (PII) and this fires on every event.
+            _LOGGER.debug(
                 "SQS event: type=%s, tag=%s, code=%s, source=%s (%s), id=%s, transition=%s",
                 event_type,
                 event_tag,
@@ -593,17 +595,17 @@ class SQSManager(EventHandlerMixin):
                 event_tag,
                 space.hub_id,
             )
-            # Wait for Ajax backend to process the change before refreshing
-            # Without this delay, the API may return stale state
-            await asyncio.sleep(1.0)
-            # Serialise concurrent security events: without this lock a
-            # second event landing in the middle of the first refresh would
-            # flip _skip_state_change_event back to False and let the
-            # in-flight refresh emit a duplicate state change.
+            # The lock spans the whole sequence (sleep + refresh): the
+            # skip-flag must be set BEFORE the sleep, otherwise a REST poll
+            # tick landing in the 1s window sees the flag still False and
+            # fires a duplicate ajax_armed/ajax_disarmed bus event (#133).
             async with self._security_event_lock:
                 try:
-                    # Set flag to skip event creation during refresh (SQS already created it)
+                    # Skip REST-side event creation until the refresh is done
                     self.coordinator._skip_state_change_event = True
+                    # Wait for Ajax backend to process the change before refreshing
+                    # Without this delay, the API may return stale state
+                    await asyncio.sleep(1.0)
                     await self.coordinator.async_force_metadata_refresh()
                     _LOGGER.info("SQS: Metadata refresh completed after security event")
                 except Exception as err:
@@ -626,7 +628,8 @@ class SQSManager(EventHandlerMixin):
         # instead of system state (partially_armed)
         notification_action = SECURITY_EVENT_ACTIONS.get(event_tag, new_state.value)
 
-        _LOGGER.info(
+        # DEBUG, not INFO: source_name is the Ajax user who armed/disarmed (PII).
+        _LOGGER.debug(
             "SQS instant: %s -> %s par %s (action=%s, state_changed=%s)",
             old_state.value,
             new_state.value,
@@ -1014,6 +1017,10 @@ class SQSManager(EventHandlerMixin):
                 source_name,
                 device_ids,
             )
+            # The device may have been added since the last poll — let the
+            # coordinator discover it instead of staying blind until the
+            # next full metadata refresh.
+            self._request_discovery_refresh(source_id)
         return None
 
     async def _create_alarm_notification(self, space, event_record: dict[str, Any]) -> None:
