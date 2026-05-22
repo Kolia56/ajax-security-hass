@@ -9,13 +9,6 @@ Handles:
 from __future__ import annotations
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorStateClass,
-)
-from homeassistant.const import (
-    UnitOfTemperature,
-)
 
 from .base import AjaxDeviceHandler
 
@@ -296,14 +289,7 @@ class WireInputHandler(DoorContactHandler):
 
         # TWO_EOL wiring scheme has tamper detection (contactOneDetails)
         if self.device.attributes.get("wiring_type") == "TWO_EOL":
-            sensors.append(
-                {
-                    "key": "tamper",
-                    "device_class": BinarySensorDeviceClass.TAMPER,
-                    "value_fn": lambda: self.device.attributes.get("tampered", False),
-                    "enabled_by_default": True,
-                }
-            )
+            sensors.append(self._tamper_binary_sensor())
 
         return sensors
 
@@ -313,18 +299,8 @@ class WireInputHandler(DoorContactHandler):
         # Only return temperature if available
         sensors = []
 
-        # Note: No translation_key needed - HA provides automatic translation for TEMPERATURE device_class
         if "temperature" in self.device.attributes:
-            sensors.append(
-                {
-                    "key": "temperature",
-                    "device_class": SensorDeviceClass.TEMPERATURE,
-                    "native_unit_of_measurement": UnitOfTemperature.CELSIUS,
-                    "state_class": SensorStateClass.MEASUREMENT,
-                    "value_fn": lambda: self.device.attributes.get("temperature"),
-                    "enabled_by_default": True,
-                }
-            )
+            sensors.append(self._temperature_sensor())
 
         return sensors
 

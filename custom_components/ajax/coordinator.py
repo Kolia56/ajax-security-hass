@@ -363,7 +363,10 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                 if not self.account:
                     continue
 
-                # Poll door sensors and transmitters for each space
+                # Poll door sensors and transmitters for each space.
+                # Notify HA once after all spaces are processed so that N
+                # changed spaces do not trigger N full entity recomputes.
+                any_updated = False
                 for space_id, space in self.account.spaces.items():
                     current_state = space.security_state
 
@@ -477,7 +480,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                                             updated = True
 
                         if updated:
-                            self.async_set_updated_data(self.account)
+                            any_updated = True
 
                     except (AjaxRestApiError, AjaxRestAuthError) as err:
                         _LOGGER.debug(
@@ -485,6 +488,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
                             space_id,
                             err,
                         )
+
+                if any_updated:
+                    self.async_set_updated_data(self.account)
 
         except asyncio.CancelledError:
             _LOGGER.debug("Door sensor polling loop cancelled")

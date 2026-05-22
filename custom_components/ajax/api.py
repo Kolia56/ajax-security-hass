@@ -166,6 +166,13 @@ class AjaxRestApi:
         self._space_cache: dict[str, tuple[float, dict[str, Any]]] = {}
         self._space_cache_ttl: float = 5.0
 
+        # Short-lived cache of GET /hubs/{id}/devices responses, keyed by
+        # (hub_id, enrich). The periodic update loop and the door-sensor
+        # fast-poll loop both hit this endpoint; when their schedules cross
+        # the cache coalesces them into a single request.
+        self._devices_cache: dict[tuple[str, bool], tuple[float, list[dict[str, Any]]]] = {}
+        self._devices_cache_ttl: float = 5.0
+
         # Base headers with API key (may be empty for proxy modes initially)
         self._base_headers = {
             "Content-Type": "application/json",
@@ -978,10 +985,20 @@ class AjaxRestApi:
         Returns:
             List of device dictionaries (with full details if enrich=True)
         """
+        # Serve from the short-lived cache unless a cache bypass is pending
+        # (bypass must reach the real endpoint to get fresh state).
+        cache_key = (hub_id, enrich)
+        if not self._bypass_cache_once:
+            cached = self._devices_cache.get(cache_key)
+            if cached and (time.time() - cached[0]) < self._devices_cache_ttl:
+                return cached[1]
+
         endpoint = f"user/{self.user_id}/hubs/{hub_id}/devices"
         if enrich:
             endpoint += "?enrich=true"
-        return await self._request("GET", endpoint)
+        data = await self._request("GET", endpoint)
+        self._devices_cache[cache_key] = (time.time(), data)
+        return data
 
     async def async_get_device(self, hub_id: str, device_id: str) -> dict[str, Any]:
         """Get device details.
