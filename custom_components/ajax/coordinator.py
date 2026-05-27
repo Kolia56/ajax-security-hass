@@ -31,6 +31,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from ._coordinator_arm import AjaxArmServiceMixin
 from ._coordinator_events import AjaxEventDispatchMixin
+from ._coordinator_init import SMART_LOCK_STORE_VERSION, AjaxBootstrapMixin
 from ._coordinator_onvif import AjaxOnvifMixin
 from ._coordinator_state import AjaxStateUpdaterMixin
 from .api import AjaxRestApi, AjaxRestApiError, AjaxRestAuthError
@@ -48,7 +49,6 @@ from .models import (
     AjaxDevice,
     AjaxGroup,
     AjaxRoom,
-    AjaxSmartLock,
     AjaxSpace,
     DeviceType,
     GroupState,
@@ -61,43 +61,16 @@ if TYPE_CHECKING:
     from .sqs_manager import SQSManager
     from .sse_manager import SSEManager
 
-# Optional SQS support
-SQS_AVAILABLE = False
-_SQSManager: type | None = None
-_AjaxSQSClient: type | None = None
-try:
-    from .sqs_client import AjaxSQSClient as _AjaxSQSClient
-    from .sqs_manager import SQSManager as _SQSManager
-
-    SQS_AVAILABLE = True
-except ImportError:
-    pass
-
-# Optional SSE support (for proxy mode)
-SSE_AVAILABLE = False
-_SSEManager: type | None = None
-_AjaxSSEClient: type | None = None
-try:
-    from .sse_client import AjaxSSEClient as _AjaxSSEClient
-    from .sse_manager import SSEManager as _SSEManager
-
-    SSE_AVAILABLE = True
-except ImportError:
-    pass
-
-# ONVIF availability and the manager singleton live in
-# ``_coordinator_onvif`` — the mixin owns the optional-import guard.
+# The optional-import guards (SQS_AVAILABLE / SSE_AVAILABLE / ONVIF_AVAILABLE)
+# live in their respective coordinator mixin modules now — the coordinator
+# itself only needs the typing-only imports above.
 
 _LOGGER = logging.getLogger(__name__)
-
-# Storage schema version for SSE/SQS-discovered smart locks.
-# Increment when the on-disk layout changes and update
-# AjaxDataCoordinator._async_migrate_smart_locks_store accordingly.
-SMART_LOCK_STORE_VERSION = 1
 
 
 class AjaxDataCoordinator(
     AjaxArmServiceMixin,
+    AjaxBootstrapMixin,
     AjaxEventDispatchMixin,
     AjaxOnvifMixin,
     AjaxStateUpdaterMixin,
@@ -734,233 +707,8 @@ class AjaxDataCoordinator(
             if device_id in self._fast_poll_tasks:
                 del self._fast_poll_tasks[device_id]
 
-    async def _async_init_account(self) -> None:
-        """Initialize the account data."""
-        # Use login info directly (no /user endpoint available)
-        self.account = AjaxAccount(
-            user_id=self.api.user_id or "",
-            name=self.api.email.split("@")[0] if self.api.email else "Unknown",
-            email=self.api.email or "",
-        )
-
-        _LOGGER.info(
-            "Initialized account for %s (user_id: %s)",
-            self.account.name,
-            self.account.user_id,
-        )
-
-    @staticmethod
-    async def _async_migrate_smart_locks_store(old_major_version: int, old_minor_version: int, old_data: dict) -> dict:
-        """Migrate the smart-locks Store payload across schema versions.
-
-        The current schema (v1) is a mapping ``space_id -> list[smart_lock]``.
-        This function is a placeholder: the day we bump
-        ``SMART_LOCK_STORE_VERSION`` we translate ``old_data`` here.
-        """
-        _LOGGER.debug(
-            "Smart-lock store migration: %s.%s -> %s",
-            old_major_version,
-            old_minor_version,
-            SMART_LOCK_STORE_VERSION,
-        )
-        return old_data or {}
-
-    async def _async_save_smart_locks(self) -> None:
-        """Persist SSE/SQS-discovered smart locks to storage."""
-        if not self.account:
-            return
-        data: dict[str, list[dict]] = {}
-        for space_id, space in self.account.spaces.items():
-            locks = []
-            for sl in space.smart_locks.values():
-                # Only persist SSE/SQS-discovered locks (no raw_data from API)
-                if not sl.raw_data:
-                    locks.append(
-                        {
-                            "id": sl.id,
-                            "name": sl.name,
-                            "is_locked": sl.is_locked,
-                            "is_door_open": sl.is_door_open,
-                            "last_changed_by": sl.last_changed_by,
-                        }
-                    )
-            if locks:
-                data[space_id] = locks
-        if data:
-            await self._smart_lock_store.async_save(data)
-
-    async def _async_restore_smart_locks(self) -> None:
-        """Restore SSE/SQS-discovered smart locks from storage."""
-        if not self.account:
-            return
-        data = await self._smart_lock_store.async_load()
-        if not data or not isinstance(data, dict):
-            return
-        count = 0
-        for space_id, locks in data.items():
-            space = self.account.spaces.get(space_id)
-            if not space:
-                continue
-            for lock_data in locks:
-                sl_id = lock_data.get("id")
-                if not sl_id or sl_id in space.smart_locks:
-                    continue
-                smart_lock = AjaxSmartLock(
-                    id=sl_id,
-                    name=lock_data.get("name", f"Smart Lock {sl_id[:6]}"),
-                    space_id=space_id,
-                )
-                smart_lock.is_locked = lock_data.get("is_locked")
-                smart_lock.is_door_open = lock_data.get("is_door_open")
-                smart_lock.last_changed_by = lock_data.get("last_changed_by")
-                space.smart_locks[sl_id] = smart_lock
-                count += 1
-        if count:
-            _LOGGER.info("Restored %d SSE-discovered smart lock(s) from storage", count)
-
-    async def _async_init_sqs(self) -> None:
-        """Initialize AWS SQS for real-time events (optional).
-
-        SQS provides real-time event notifications (<1s latency) that trigger
-        immediate REST API updates. This creates a hybrid mode:
-        - SQS events: Real-time triggers for instant state updates
-        - REST polling: Baseline updates every 30s as fallback
-
-        Note:
-            Requires aiobotocore package and AWS credentials.
-            If SQS fails to initialize, integration falls back to REST-only mode.
-        """
-        # Check if SQS is available
-        if not SQS_AVAILABLE:
-            _LOGGER.info("AWS SQS not available (aiobotocore not installed). Using REST API polling only.")
-            self._sqs_initialized = True  # Mark as "initialized" to prevent retries
-            return
-
-        # Check if credentials are provided
-        if not self._aws_access_key_id or not self._aws_secret_access_key or not self._queue_name:
-            _LOGGER.debug("AWS credentials not configured. Using REST API polling only.")
-            self._sqs_initialized = True
-            return
-
-        try:
-            _LOGGER.info("Initializing AWS SQS for real-time events...")
-
-            # Create SQS client with HA's event loop for thread-safe callbacks
-            assert _AjaxSQSClient is not None  # Validated by SQS_AVAILABLE check above
-            assert _SQSManager is not None
-            sqs_client = _AjaxSQSClient(
-                aws_access_key_id=self._aws_access_key_id,
-                aws_secret_access_key=self._aws_secret_access_key,
-                queue_name=self._queue_name,
-                hass_loop=self.hass.loop,
-            )
-
-            # Create SQS manager
-            self.sqs_manager = _SQSManager(
-                coordinator=self,
-                sqs_client=sqs_client,
-            )
-
-            # Set language from Home Assistant settings
-            ha_language = self.hass.config.language or "en"
-            # Map HA language codes to our supported languages
-            lang_map = {"fr": "fr", "es": "es", "en": "en"}
-            sqs_language = lang_map.get(ha_language[:2], "en")
-            self.sqs_manager.set_language(sqs_language)
-
-            # Start receiving events
-            success = await self.sqs_manager.start()
-
-            if success:
-                _LOGGER.info("✓ AWS SQS initialized successfully - Real-time events enabled!")
-            else:
-                _LOGGER.warning("Failed to start SQS - Falling back to REST API polling only")
-                self.sqs_manager = None
-
-        except Exception as err:
-            _LOGGER.warning(
-                "Failed to initialize AWS SQS: %s - Using REST API polling only",
-                err,
-            )
-            self.sqs_manager = None
-
-        finally:
-            self._sqs_initialized = True
-
-    async def _async_init_sse(self) -> None:
-        """Initialize SSE for real-time events (proxy mode).
-
-        SSE provides real-time event notifications via the proxy server.
-        This is used when connecting through a proxy instead of direct SQS.
-
-        Note:
-            Requires proxy mode and SSE URL from login response.
-            If SSE fails to initialize, integration falls back to REST-only mode.
-        """
-        # Check if SSE is available
-        if not SSE_AVAILABLE:
-            _LOGGER.info("SSE not available (module not loaded). Using REST API polling only.")
-            self._sse_initialized = True
-            return
-
-        # Check if SSE URL is provided
-        if not self._sse_url:
-            _LOGGER.debug("SSE URL not configured. Using REST API polling only.")
-            self._sse_initialized = True
-            return
-
-        # Check if we have a session token
-        if not self.api.session_token:
-            _LOGGER.warning("No session token available for SSE. Using REST API polling only.")
-            self._sse_initialized = True
-            return
-
-        try:
-            _LOGGER.info("Initializing SSE for real-time events...")
-
-            # Create SSE client
-            assert _AjaxSSEClient is not None  # Validated by SSE_AVAILABLE check above
-            assert _SSEManager is not None
-            sse_client = _AjaxSSEClient(
-                sse_url=self._sse_url,
-                session_token=self.api.session_token or "",
-                callback=lambda event: None,  # Will be set by manager
-                hass_loop=self.hass.loop,
-                user_id=self.api.user_id,
-                verify_ssl=self.api.verify_ssl,
-                token_provider=lambda: self.api.session_token,
-            )
-
-            # Create SSE manager
-            self.sse_manager = _SSEManager(
-                coordinator=self,
-                sse_client=sse_client,
-            )
-
-            # Set language from Home Assistant settings
-            ha_language = self.hass.config.language or "en"
-            lang_map = {"fr": "fr", "es": "es", "en": "en"}
-            sse_language = lang_map.get(ha_language[:2], "en")
-            self.sse_manager.set_language(sse_language)
-
-            # Start receiving events
-            success = await self.sse_manager.start()
-
-            if success:
-                _LOGGER.info("✓ SSE initialized successfully - Real-time events enabled!")
-            else:
-                _LOGGER.warning("Failed to start SSE - Falling back to REST API polling only")
-                self.sse_manager = None
-
-        except Exception as err:
-            _LOGGER.warning(
-                "Failed to initialize SSE: %s - Using REST API polling only",
-                err,
-            )
-            self.sse_manager = None
-
-        finally:
-            self._sse_initialized = True
+    # Account / smart-lock store / SSE / SQS bootstrap live in
+    # ``_coordinator_init.AjaxBootstrapMixin``.
 
     # ONVIF init + event handler + NVR routing live in
     # ``_coordinator_onvif.AjaxOnvifMixin``.
