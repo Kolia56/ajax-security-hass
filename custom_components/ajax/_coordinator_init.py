@@ -15,6 +15,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from homeassistant.helpers import issue_registry as ir
+
+from .const import DOMAIN
 from .models import AjaxAccount, AjaxSmartLock
 
 if TYPE_CHECKING:
@@ -198,6 +201,9 @@ class AjaxBootstrapMixin:
             self._sqs_initialized = True
             return
 
+        entry_id = self.config_entry.entry_id if self.config_entry else "unknown"
+        sqs_issue = f"sqs_init_failed_{entry_id}"
+
         try:
             _LOGGER.info("Initializing AWS SQS for real-time events...")
 
@@ -224,9 +230,19 @@ class AjaxBootstrapMixin:
 
             if success:
                 _LOGGER.info("✓ AWS SQS initialized successfully - Real-time events enabled!")
+                ir.async_delete_issue(self.hass, DOMAIN, sqs_issue)
             else:
                 _LOGGER.warning("Failed to start SQS - Falling back to REST API polling only")
                 self.sqs_manager = None
+                ir.async_create_issue(
+                    self.hass,
+                    DOMAIN,
+                    sqs_issue,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key="sqs_init_failed",
+                    translation_placeholders={"error": "Manager failed to start"},
+                )
 
         except Exception as err:
             _LOGGER.warning(
@@ -234,6 +250,15 @@ class AjaxBootstrapMixin:
                 err,
             )
             self.sqs_manager = None
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                sqs_issue,
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="sqs_init_failed",
+                translation_placeholders={"error": str(err)},
+            )
         finally:
             self._sqs_initialized = True
 
@@ -262,6 +287,9 @@ class AjaxBootstrapMixin:
             _LOGGER.warning("No session token available for SSE. Using REST API polling only.")
             self._sse_initialized = True
             return
+
+        entry_id = self.config_entry.entry_id if self.config_entry else "unknown"
+        sse_issue = f"sse_init_failed_{entry_id}"
 
         try:
             _LOGGER.info("Initializing SSE for real-time events...")
@@ -292,9 +320,19 @@ class AjaxBootstrapMixin:
 
             if success:
                 _LOGGER.info("✓ SSE initialized successfully - Real-time events enabled!")
+                ir.async_delete_issue(self.hass, DOMAIN, sse_issue)
             else:
                 _LOGGER.warning("Failed to start SSE - Falling back to REST API polling only")
                 self.sse_manager = None
+                ir.async_create_issue(
+                    self.hass,
+                    DOMAIN,
+                    sse_issue,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key="sse_init_failed",
+                    translation_placeholders={"error": "Manager failed to start"},
+                )
 
         except Exception as err:
             _LOGGER.warning(
@@ -302,5 +340,14 @@ class AjaxBootstrapMixin:
                 err,
             )
             self.sse_manager = None
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                sse_issue,
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="sse_init_failed",
+                translation_placeholders={"error": str(err)},
+            )
         finally:
             self._sse_initialized = True

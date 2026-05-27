@@ -1554,6 +1554,26 @@
     }
   },
   "issues": {
+    "onvif_init_failed": {
+      "description": "L'intégration Ajax n'a pas pu démarrer ONVIF — les détections IA locales (mouvement, humain, véhicule, animal, sonnette) sont désactivées et l'intégration retombe sur le polling cloud REST.\n\nErreur : {error}\n\nVérifiez les identifiants RTSP/ONVIF dans l'étape Configurer de l'intégration et que les caméras sont joignables sur le réseau.",
+      "title": "Détections IA locales ONVIF indisponibles"
+    },
+    "onvif_no_cameras": {
+      "description": "ONVIF a démarré mais aucune caméra n'a accepté les identifiants. Les détections IA locales (humain, véhicule, animal, sonnerie) ne se déclencheront pas — l'API cloud REST est la seule source.\n\nVérifiez le nom d'utilisateur et le mot de passe RTSP/ONVIF dans l'étape Configurer, et que les ports réseau des caméras (80, 554) sont accessibles depuis Home Assistant.",
+      "title": "ONVIF : aucune caméra connectée"
+    },
+    "onvif_partial_cameras": {
+      "description": "ONVIF a accepté les identifiants mais seulement {connected} caméras sur {total} ont pu se connecter. Les caméras restantes ne produiront pas de détections IA locales ; l'API cloud REST est la seule source pour celles-ci.\n\nVérifiez le réseau et le support ONVIF sur les caméras injoignables.",
+      "title": "ONVIF : {connected}/{total} caméras connectées seulement"
+    },
+    "sqs_init_failed": {
+      "description": "L'intégration Ajax n'a pas pu se connecter à AWS SQS — les notifications d'événements en temps réel sont désactivées et l'intégration retombe sur le polling de l'API REST (plus lent).\n\nErreur : {error}\n\nVérifiez la clé d'accès AWS, la clé secrète et le nom de la file dans l'étape Configurer de l'intégration.",
+      "title": "Événements temps réel AWS SQS indisponibles"
+    },
+    "sse_init_failed": {
+      "description": "L'intégration Ajax n'a pas pu se connecter au point d'accès SSE — les notifications d'événements en temps réel sont désactivées et l'intégration retombe sur le polling de l'API REST (plus lent).\n\nErreur : {error}\n\nVérifiez que l'URL du proxy est joignable et que le jeton de session est valide (essayez Reconfigurer pour le rafraîchir).",
+      "title": "Événements temps réel SSE indisponibles"
+    },
     "verify_ssl_disabled": {
       "description": "L'intégration Ajax se connecte au proxy sans vérifier le certificat SSL. Les jetons de session et identifiants transitent sur un canal qui ne peut pas être authentifié, les exposant à des attaques de l'homme du milieu. Réactivez « Vérifier le certificat SSL » dans l'étape Reconfigurer de l'intégration dès que votre proxy dispose d'un certificat valide.",
       "title": "La vérification SSL est désactivée"

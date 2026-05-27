@@ -16,8 +16,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from homeassistant.helpers import issue_registry as ir
+
 from ._event_helpers import resolve_camera_entity_id
-from .const import CONF_RTSP_PASSWORD, CONF_RTSP_USERNAME
+from .const import CONF_RTSP_PASSWORD, CONF_RTSP_USERNAME, DOMAIN
 from .models import VideoEdgeType
 
 if TYPE_CHECKING:
@@ -131,6 +133,11 @@ class AjaxOnvifMixin:
             self._onvif_initialized = True
             return
 
+        entry_id = self.config_entry.entry_id
+        init_issue = f"onvif_init_failed_{entry_id}"
+        no_cam_issue = f"onvif_no_cameras_{entry_id}"
+        partial_issue = f"onvif_partial_cameras_{entry_id}"
+
         try:
             _LOGGER.info("Initializing ONVIF for local AI detections...")
 
@@ -143,18 +150,55 @@ class AjaxOnvifMixin:
 
             await self.onvif_manager.async_start(video_edges)
 
-            if self.onvif_manager.connected_count > 0:
+            # Init succeeded — clear the "init failed" Repairs issue if it was raised before.
+            ir.async_delete_issue(self.hass, DOMAIN, init_issue)
+
+            connected = self.onvif_manager.connected_count
+            total = len(video_edges)
+            if connected == 0:
+                _LOGGER.warning("ONVIF: No cameras connected - Check ONVIF credentials and camera network")
+                ir.async_delete_issue(self.hass, DOMAIN, partial_issue)
+                ir.async_create_issue(
+                    self.hass,
+                    DOMAIN,
+                    no_cam_issue,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key="onvif_no_cameras",
+                )
+            elif connected < total:
                 _LOGGER.info(
                     "✓ ONVIF initialized - %d/%d cameras connected for local AI detections",
-                    self.onvif_manager.connected_count,
-                    len(video_edges),
+                    connected,
+                    total,
+                )
+                ir.async_delete_issue(self.hass, DOMAIN, no_cam_issue)
+                ir.async_create_issue(
+                    self.hass,
+                    DOMAIN,
+                    partial_issue,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key="onvif_partial_cameras",
+                    translation_placeholders={"connected": str(connected), "total": str(total)},
                 )
             else:
-                _LOGGER.warning("ONVIF: No cameras connected - Check ONVIF credentials and camera network")
+                _LOGGER.info("✓ ONVIF initialized - %d/%d cameras connected for local AI detections", connected, total)
+                ir.async_delete_issue(self.hass, DOMAIN, no_cam_issue)
+                ir.async_delete_issue(self.hass, DOMAIN, partial_issue)
 
         except Exception as err:
             _LOGGER.warning("Failed to initialize ONVIF: %s", err)
             self.onvif_manager = None
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                init_issue,
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="onvif_init_failed",
+                translation_placeholders={"error": str(err)},
+            )
         finally:
             self._onvif_initialized = True
 

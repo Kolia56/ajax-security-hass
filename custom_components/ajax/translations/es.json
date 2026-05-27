@@ -1554,6 +1554,26 @@
     }
   },
   "issues": {
+    "onvif_init_failed": {
+      "description": "Ajax could not start ONVIF, so local AI detections (motion, human, vehicle, pet, doorbell) are disabled and the integration falls back to cloud REST polling.\n\nError: {error}\n\nCheck the RTSP/ONVIF credentials in the integration's Configure step and that the cameras are reachable on the network.",
+      "title": "ONVIF local AI detections unavailable"
+    },
+    "onvif_no_cameras": {
+      "description": "ONVIF started but no camera accepted the credentials. Local AI detections (human, vehicle, pet, doorbell ring) will not fire — the cloud REST API is the only source.\n\nVerify the RTSP/ONVIF username and password in the integration's Configure step, and that the cameras' network ports (80, 554) are reachable from Home Assistant.",
+      "title": "ONVIF: no cameras connected"
+    },
+    "onvif_partial_cameras": {
+      "description": "ONVIF accepted the credentials but only {connected} of {total} cameras connected. The remaining cameras will not produce local AI detections; the cloud REST API is the only source for those.\n\nCheck the network and ONVIF support on the unreachable cameras.",
+      "title": "ONVIF: only {connected}/{total} cameras connected"
+    },
+    "sqs_init_failed": {
+      "description": "Ajax could not connect to AWS SQS, so real-time event notifications are disabled and the integration falls back to REST API polling (slower).\n\nError: {error}\n\nVerify the AWS Access Key, Secret Key, and Queue Name in the integration's Configure step.",
+      "title": "AWS SQS real-time events unavailable"
+    },
+    "sse_init_failed": {
+      "description": "Ajax could not connect to the SSE endpoint, so real-time event notifications are disabled and the integration falls back to REST API polling (slower).\n\nError: {error}\n\nVerify that the proxy URL is reachable and that the session token is valid (try Reconfigure to refresh).",
+      "title": "SSE real-time events unavailable"
+    },
     "verify_ssl_disabled": {
       "description": "La integración Ajax se conecta al proxy sin verificar el certificado SSL. Los tokens de sesión y las credenciales viajan por un canal que no puede autenticarse, exponiéndolos a ataques de intermediario. Vuelva a activar «Verificar certificado SSL» en el paso Reconfigurar de la integración en cuanto su proxy tenga un certificado válido.",
       "title": "La verificación SSL está desactivada"
