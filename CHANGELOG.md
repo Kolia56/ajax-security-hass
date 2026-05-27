@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.29.0] - 2026-05-27
+
+### Added
+- **Quality Scale: Gold** (bumped from Bronze → Silver → Gold in this cycle). All Gold rules implemented and acknowledged in `quality_scale.yaml`: `devices` (DeviceInfo with model/sw/hw + `via_device`), `discovery-update-info` (DHCP confirm refreshes entry data), `dynamic-devices`, `stale-devices` (`_async_cleanup_stale_devices` prunes the HA registry on startup), `icon-translations` (77-entry `icons.json` across 12 entity categories).
+- **Snapshot URL on detection events.** `ajax_camera_detection` and `ajax_doorbell_ring` bus events now ship `camera_entity_id` and `snapshot_url=/api/camera_proxy/<entity>` so automations can embed snapshots directly in Telegram / `notify` payloads without an extra `camera.snapshot` call. Resolved via `entity_registry` for both standalone cameras and NVR channel 0. Wired in SSE/SQS *and* ONVIF paths.
+- **5 new Repairs issues** for soft-failed inits — guided UI message instead of a buried log line: `onvif_init_failed`, `onvif_no_cameras`, `onvif_partial_cameras` (with `{connected}/{total}` placeholders), `sse_init_failed`, `sqs_init_failed`. Each issue auto-deletes when the underlying problem resolves. Full FR translation + EN fallback for de/en/es/nl/sv/uk.
+- **Coordinator diagnostics counters.** `stats` dict tracks `events_sse_received`, `events_sqs_received`, `events_onvif_received`, `auth_errors`, `discovery_refreshes` — visible in the integration's diagnostics download.
+- **README extensions for Gold docs**: *How It Works (Data Update)*, *Use Cases & Examples* (3 ready-to-paste automations including the new snapshot URL), *Known Limitations* (5-row table).
+
+### Changed
+- **`coordinator.py` god-class split into 7 thematic mixins**: 3329 → 803 lines (-76%). The runtime behaviour is unchanged; the file split makes the bootstrap, arm/disarm services, devices reconciliation, event dispatch, ONVIF handling, spaces reconciliation, and state updaters each readable in isolation. Loggers now carry the actual module name (e.g. `custom_components.ajax._coordinator_spaces`) instead of a single 3.3k-line bucket.
+- **16 "device not found" warnings demoted to debug** in `sse_manager.py` / `sqs_manager.py`. These fire on event-vs-discovery race conditions (event arrives before / after the device is known) and are not actionable.
+- **HACS visibility**: `hacs.json` drops the FR-only country filter (Ajax is sold in 169 countries) and explicitly sets `zip_release: false`. HACS Action validation passes 8/8 checks; ready for HACS default submission.
+
+### Fixed
+- **`time` import hoisted to module level** in `models.py` so test patches can target `custom_components.ajax.models.time` consistently.
+- **Orphan `@callback` decorators** removed during the coordinator extraction passes.
+
+### Tests
+- **75 → 141 tests (+88%)**. `models.py` 79% → 89%, `devices/__init__.py` 84% → 100%, `devices/*.py` handlers avg ~25% → ~40%. New files: `test_device_handlers.py`, `test_coordinator_parsers.py`, `test_models_extras.py`, `test_repair_issues.py`, `test_runtime_data.py`, `test_socket_energy.py`.
+
 ## [0.28.2] - 2026-05-22
 
 ### Fixed
