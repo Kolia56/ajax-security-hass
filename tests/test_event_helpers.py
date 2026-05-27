@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -55,7 +55,8 @@ def test_video_detection_event_types_covers_all_onvif_events() -> None:
     }
 
 
-def test_fire_video_detection_event_fires_matching_entity() -> None:
+@patch("custom_components.ajax._event_helpers.resolve_camera_entity_id", return_value=None)
+def test_fire_video_detection_event_fires_matching_entity(_resolve) -> None:
     mgr = _StubManager(_hass_with_create_task())
     event_entity = MagicMock()
     mgr.coordinator._event_entities["ve1_detection"] = event_entity
@@ -66,7 +67,8 @@ def test_fire_video_detection_event_fires_matching_entity() -> None:
     event_entity.fire.assert_called_once_with("human")
 
 
-def test_fire_video_detection_event_silent_when_entity_missing() -> None:
+@patch("custom_components.ajax._event_helpers.resolve_camera_entity_id", return_value=None)
+def test_fire_video_detection_event_silent_when_entity_missing(_resolve) -> None:
     """Missing entity must not crash — entities are registered lazily."""
     mgr = _StubManager(_hass_with_create_task())
     video_edge = SimpleNamespace(id="ve1", name="Cam")
@@ -74,7 +76,8 @@ def test_fire_video_detection_event_silent_when_entity_missing() -> None:
     mgr._fire_video_detection_event(video_edge, "VIDEO_HUMAN")
 
 
-def test_fire_video_detection_event_ignores_unknown_detection_type() -> None:
+@patch("custom_components.ajax._event_helpers.resolve_camera_entity_id", return_value=None)
+def test_fire_video_detection_event_ignores_unknown_detection_type(_resolve) -> None:
     mgr = _StubManager(_hass_with_create_task())
     event_entity = MagicMock()
     mgr.coordinator._event_entities["ve1_detection"] = event_entity
@@ -83,6 +86,30 @@ def test_fire_video_detection_event_ignores_unknown_detection_type() -> None:
     mgr._fire_video_detection_event(video_edge, "VIDEO_NOT_A_REAL_TYPE")
 
     event_entity.fire.assert_not_called()
+
+
+@patch(
+    "custom_components.ajax._event_helpers.resolve_camera_entity_id",
+    return_value="camera.entrance_main",
+)
+def test_fire_video_detection_event_attaches_snapshot_when_resolved(_resolve) -> None:
+    """When the camera entity exists, the bus event ships a snapshot URL.
+
+    The proxy URL is what automations embed in Telegram/notify payloads,
+    so dropping it would silently break user flows the moment the resolver
+    or the entity_id format changes.
+    """
+    hass = _hass_with_create_task()
+    mgr = _StubManager(hass)
+    video_edge = SimpleNamespace(id="ve1", name="Cam")
+
+    mgr._fire_video_detection_event(video_edge, "VIDEO_HUMAN")
+
+    hass.bus.async_fire.assert_called_once()
+    name, bus_data = hass.bus.async_fire.call_args[0]
+    assert name == "ajax_camera_detection"
+    assert bus_data["camera_entity_id"] == "camera.entrance_main"
+    assert bus_data["snapshot_url"] == "/api/camera_proxy/camera.entrance_main"
 
 
 def test_request_discovery_refresh_triggers_coordinator_refresh() -> None:

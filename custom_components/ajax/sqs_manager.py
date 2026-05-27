@@ -688,7 +688,7 @@ class SQSManager(EventHandlerMixin):
             _LOGGER.info("SQS instant: %s -> %s", source_name, message)
             return True
 
-        _LOGGER.warning("SQS: Door device %s not found", source_name)
+        _LOGGER.debug("SQS: Door device %s not found", source_name)
         return False
 
     async def _handle_motion_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
@@ -715,7 +715,7 @@ class SQSManager(EventHandlerMixin):
                 _LOGGER.info("SQS: Alarm TRIGGERED by motion on %s", device.name)
             return True
 
-        _LOGGER.warning("SQS: Motion device %s not found", source_name)
+        _LOGGER.debug("SQS: Motion device %s not found", source_name)
         return False
 
     async def _handle_alarm_event(
@@ -755,7 +755,7 @@ class SQSManager(EventHandlerMixin):
 
             return True
 
-        _LOGGER.warning("SQS: Alarm device %s not found", source_name)
+        _LOGGER.debug("SQS: Alarm device %s not found", source_name)
         return False
 
     async def _handle_relay_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
@@ -772,7 +772,7 @@ class SQSManager(EventHandlerMixin):
             _LOGGER.info("SQS instant: %s -> %s", source_name, message)
             return True
 
-        _LOGGER.warning("SQS: Relay device %s not found", source_name)
+        _LOGGER.debug("SQS: Relay device %s not found", source_name)
         return False
 
     async def _handle_wire_input_event(
@@ -841,7 +841,7 @@ class SQSManager(EventHandlerMixin):
             _LOGGER.info("SQS instant: %s -> %s (button)", source_name, message)
             return True
 
-        _LOGGER.warning("SQS: Button device %s not found", source_name)
+        _LOGGER.debug("SQS: Button device %s not found", source_name)
         return False
 
     async def _handle_doorbell_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
@@ -895,7 +895,7 @@ class SQSManager(EventHandlerMixin):
             _LOGGER.info("SQS instant: %s -> doorbell ring", source_name)
             return True
 
-        _LOGGER.warning("SQS: Doorbell device %s not found", source_name)
+        _LOGGER.debug("SQS: Doorbell device %s not found", source_name)
         return False
 
     async def _handle_scenario_event(self, space, event_tag: str, source_name: str, additional_data_v2: list) -> bool:
@@ -944,7 +944,7 @@ class SQSManager(EventHandlerMixin):
         """Handle device status events (online/offline, battery, tamper)."""
         device = self._find_device(space, source_name, source_id)
         if not device:
-            _LOGGER.warning("SQS: Device %s not found for status event", source_name)
+            _LOGGER.debug("SQS: Device %s not found for status event", source_name)
             return False
 
         action = event_tag

@@ -498,7 +498,7 @@ class SSEManager(EventHandlerMixin):
             dev.attributes["door_opened_at"] = datetime.now(UTC).isoformat()
             _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
         else:
-            _LOGGER.warning("SSE: Door device not found: name=%s, id=%s", source_name, source_id)
+            _LOGGER.debug("SSE: Door device not found: name=%s, id=%s", source_name, source_id)
 
     def _handle_motion_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle motion detected events."""
@@ -525,7 +525,7 @@ class SSEManager(EventHandlerMixin):
                     space.security_state.value,
                 )
         else:
-            _LOGGER.warning("SSE: Motion device not found: name=%s, id=%s", source_name, source_id)
+            _LOGGER.debug("SSE: Motion device not found: name=%s, id=%s", source_name, source_id)
 
     def _handle_smoke_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle smoke/fire detector events."""
@@ -548,7 +548,7 @@ class SSEManager(EventHandlerMixin):
                 space.security_state = SecurityState.TRIGGERED
                 _LOGGER.info("SSE: Alarm TRIGGERED by smoke/fire on %s", dev.name)
         else:
-            _LOGGER.warning("SSE: Smoke device not found: name=%s, id=%s", source_name, source_id)
+            _LOGGER.debug("SSE: Smoke device not found: name=%s, id=%s", source_name, source_id)
 
     def _handle_flood_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle flood/leak detector events."""
@@ -566,7 +566,7 @@ class SSEManager(EventHandlerMixin):
                 space.security_state = SecurityState.TRIGGERED
                 _LOGGER.info("SSE: Alarm TRIGGERED by flood on %s", dev.name)
         else:
-            _LOGGER.warning("SSE: Flood device not found: name=%s, id=%s", source_name, source_id)
+            _LOGGER.debug("SSE: Flood device not found: name=%s, id=%s", source_name, source_id)
 
     def _handle_glass_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle glass break events."""
@@ -588,7 +588,7 @@ class SSEManager(EventHandlerMixin):
                 space.security_state = SecurityState.TRIGGERED
                 _LOGGER.info("SSE: Alarm TRIGGERED by glass break on %s", dev.name)
         else:
-            _LOGGER.warning("SSE: Glass device not found: name=%s, id=%s", source_name, source_id)
+            _LOGGER.debug("SSE: Glass device not found: name=%s, id=%s", source_name, source_id)
 
     def _handle_tamper_event(self, space, event_tag: str, source_name: str, source_id: str, transition: str) -> None:
         """Handle tamper events."""
@@ -645,7 +645,7 @@ class SSEManager(EventHandlerMixin):
             dev.attributes["is_on"] = is_on
             _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
         else:
-            _LOGGER.warning("SSE: Relay device not found: name=%s, id=%s", source_name, source_id)
+            _LOGGER.debug("SSE: Relay device not found: name=%s, id=%s", source_name, source_id)
 
     def _handle_doorbell_event(self, space, source_name: str, source_id: str) -> None:
         """Handle doorbell ring events.
@@ -691,7 +691,7 @@ class SSEManager(EventHandlerMixin):
 
             _LOGGER.info("SSE instant: %s -> doorbell ring", source_name)
         else:
-            _LOGGER.warning("SSE: Doorbell device not found: name=%s, id=%s", source_name, source_id)
+            _LOGGER.debug("SSE: Doorbell device not found: name=%s, id=%s", source_name, source_id)
 
     def _handle_button_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle button press events (single/double/long/panic/emergency)."""
@@ -702,7 +702,7 @@ class SSEManager(EventHandlerMixin):
 
         dev = self._find_device(space, source_name, source_id)
         if not dev:
-            _LOGGER.warning("SSE: Button device not found: %s (id=%s)", source_name, source_id)
+            _LOGGER.debug("SSE: Button device not found: %s (id=%s)", source_name, source_id)
             return
 
         dev.attributes["last_action"] = action
@@ -745,7 +745,7 @@ class SSEManager(EventHandlerMixin):
 
         dev = self._find_device(space, source_name, source_id)
         if not dev:
-            _LOGGER.warning("SSE: WireInput device not found: %s (id=%s)", source_name, source_id)
+            _LOGGER.debug("SSE: WireInput device not found: %s (id=%s)", source_name, source_id)
             return
 
         dev.attributes["door_opened"] = is_triggered

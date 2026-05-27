@@ -16,10 +16,36 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+
     from .coordinator import AjaxDataCoordinator  # noqa: F401
     from .models import AjaxSpace, AjaxVideoEdge
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def resolve_camera_entity_id(hass: HomeAssistant, video_edge_id: str) -> str | None:
+    """Resolve the main-stream camera entity_id for a video_edge.
+
+    Returns the standalone camera first; falls back to the first NVR
+    channel. Used to attach ``camera_entity_id`` / ``snapshot_url`` to
+    detection bus events so automations can fire `camera.snapshot` or
+    embed `/api/camera_proxy/...` directly.
+    """
+    from homeassistant.helpers import entity_registry as er  # noqa: PLC0415
+
+    from .const import DOMAIN  # noqa: PLC0415
+
+    registry = er.async_get(hass)
+    for unique_id in (
+        f"{video_edge_id}_camera_main",
+        f"{video_edge_id}_camera_ch0_main",
+    ):
+        entity_id = registry.async_get_entity_id("camera", DOMAIN, unique_id)
+        if entity_id:
+            return entity_id
+    return None
+
 
 VIDEO_DETECTION_EVENT_TYPES: dict[str, str] = {
     "VIDEO_MOTION": "motion",
@@ -160,6 +186,10 @@ class EventHandlerMixin:
         }
         if event_entity is not None and event_entity.entity_id:
             bus_data["entity_id"] = event_entity.entity_id
+        camera_entity_id = resolve_camera_entity_id(self.coordinator.hass, video_edge.id)
+        if camera_entity_id:
+            bus_data["camera_entity_id"] = camera_entity_id
+            bus_data["snapshot_url"] = f"/api/camera_proxy/{camera_entity_id}"
         self.coordinator.hass.bus.async_fire("ajax_camera_detection", bus_data)
 
     def _reset_doorbell_ring(self, space_id: str, device_id: str) -> None:

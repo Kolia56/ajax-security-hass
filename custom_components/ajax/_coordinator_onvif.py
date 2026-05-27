@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from ._event_helpers import resolve_camera_entity_id
 from .const import CONF_RTSP_PASSWORD, CONF_RTSP_USERNAME
 from .models import VideoEdgeType
 
@@ -215,19 +216,21 @@ class AjaxOnvifMixin:
 
             # Fire HA event entities for ONVIF detections (active=True only).
             if event.active:
+                camera_entity_id = resolve_camera_entity_id(self.hass, target_ve.id)
                 if detection_key == "doorbell_ring":
                     event_entity = self._event_entities.get(f"{target_ve.id}_doorbell_press")
                     if event_entity:
                         event_entity.fire("ring")
                     # Legacy bus event for automations.
-                    self.hass.bus.async_fire(
-                        "ajax_doorbell_ring",
-                        {
-                            "device_id": target_ve.id,
-                            "device_name": target_ve.name,
-                            "source": "onvif",
-                        },
-                    )
+                    doorbell_data: dict[str, str] = {
+                        "device_id": target_ve.id,
+                        "device_name": target_ve.name,
+                        "source": "onvif",
+                    }
+                    if camera_entity_id:
+                        doorbell_data["camera_entity_id"] = camera_entity_id
+                        doorbell_data["snapshot_url"] = f"/api/camera_proxy/{camera_entity_id}"
+                    self.hass.bus.async_fire("ajax_doorbell_ring", doorbell_data)
 
                 event_type = _ONVIF_DETECTION_EVENT_TYPES.get(detection_key)
                 if event_type:
@@ -246,6 +249,9 @@ class AjaxOnvifMixin:
                         # HA logbook needs entity_id to attach the describer
                         # to the right device row instead of dropping the line.
                         bus_data["entity_id"] = event_entity.entity_id
+                    if camera_entity_id:
+                        bus_data["camera_entity_id"] = camera_entity_id
+                        bus_data["snapshot_url"] = f"/api/camera_proxy/{camera_entity_id}"
                     self.hass.bus.async_fire("ajax_camera_detection", bus_data)
 
             # Refresh entities so the detection_key change is reflected.
