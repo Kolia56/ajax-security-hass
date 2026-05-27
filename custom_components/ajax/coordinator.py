@@ -177,6 +177,17 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         self._cycle_counter: int = 0
         self._realtime_skip_factor: int = 3
 
+        # Lightweight diagnostics counters: each handler increments the
+        # matching key, diagnostics.py reads the whole dict. Plain ints so
+        # no lock is needed (single-threaded asyncio).
+        self.stats: dict[str, int] = {
+            "events_sse_received": 0,
+            "events_sqs_received": 0,
+            "events_onvif_received": 0,
+            "auth_errors": 0,
+            "discovery_refreshes": 0,
+        }
+
         # SQS real-time events (optional, for direct mode)
         self.sqs_manager: SQSManager | None = None
         self._aws_access_key_id = aws_access_key_id
@@ -657,6 +668,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
 
         except AjaxRestAuthError as err:
             self._consecutive_auth_errors += 1
+            self.stats["auth_errors"] += 1
             if self._consecutive_auth_errors >= self._max_auth_errors:
                 _LOGGER.error(
                     "Authentication failed %d times consecutively, triggering reauth: %s",
@@ -1051,6 +1063,7 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
         Args:
             event: The ONVIF detection event
         """
+        self.stats["events_onvif_received"] += 1
         if not self.account:
             return
 

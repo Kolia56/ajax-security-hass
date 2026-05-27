@@ -337,6 +337,7 @@ class SQSManager(EventHandlerMixin):
 
         try:
             self._last_event_time = time.time()
+            self.coordinator.stats["events_sqs_received"] += 1
 
             # Extract event info
             event = event_data.get("event", {})

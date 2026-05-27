@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import time
+from pathlib import Path
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
@@ -10,9 +13,109 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from . import AjaxConfigEntry
-from .const import DOMAIN
+from .const import CONF_AUTH_MODE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+# Read the integration version straight from the manifest so the value
+# stays accurate across releases without a second source of truth.
+_MANIFEST_VERSION: str | None = None
+
+
+def _integration_version() -> str:
+    global _MANIFEST_VERSION  # noqa: PLW0603
+    if _MANIFEST_VERSION is None:
+        try:
+            manifest = json.loads((Path(__file__).parent / "manifest.json").read_text())
+            _MANIFEST_VERSION = str(manifest.get("version", "unknown"))
+        except (OSError, ValueError):
+            _MANIFEST_VERSION = "unknown"
+    return _MANIFEST_VERSION
+
+
+def _seconds_since(epoch: float | None) -> float | None:
+    """Return ``time.time() - epoch`` (or None when ``epoch`` is falsy)."""
+    if not epoch:
+        return None
+    return round(time.time() - epoch, 1)
+
+
+def _runtime_snapshot(coordinator) -> dict[str, Any]:
+    """Pure-Python view of the coordinator's runtime state (no IO)."""
+    update_interval = coordinator.update_interval.total_seconds() if coordinator.update_interval else None
+    last_exception = getattr(coordinator, "last_exception", None)
+    return {
+        "integration_version": _integration_version(),
+        "auth_mode": coordinator.config_entry.data.get(CONF_AUTH_MODE) if coordinator.config_entry else None,
+        "last_update_success": coordinator.last_update_success,
+        "last_exception": repr(last_exception) if last_exception else None,
+        "update_interval_seconds": update_interval,
+        "cycle_counter": coordinator._cycle_counter,
+        "consecutive_auth_errors": coordinator._consecutive_auth_errors,
+        "seconds_since_last_metadata_refresh": _seconds_since(coordinator._last_metadata_refresh),
+        "spaces": len(coordinator.account.spaces) if coordinator.account else 0,
+    }
+
+
+def _connectivity_snapshot(coordinator) -> dict[str, Any]:
+    """SSE / SQS / ONVIF connection status without touching the network."""
+    sse = coordinator.sse_manager
+    sqs = coordinator.sqs_manager
+    onvif = getattr(coordinator, "onvif_manager", None)
+
+    sse_client = sse.sse_client if sse else None
+    sqs_client = sqs.sqs_client if sqs else None
+    return {
+        "sse": {
+            "enabled": sse is not None,
+            "connected": getattr(sse_client, "is_connected", lambda: False)() if sse_client else False,
+        },
+        "sqs": {
+            "enabled": sqs is not None,
+            "connected": getattr(sqs_client, "is_connected", lambda: False)() if sqs_client else False,
+            "seconds_since_last_event": _seconds_since(getattr(sqs, "_last_event_time", None)) if sqs else None,
+        },
+        "onvif": {
+            "configured_count": len(onvif._clients) if onvif else 0,
+            "connected_count": onvif.connected_count if onvif else 0,
+        },
+    }
+
+
+def _cache_snapshot(coordinator) -> dict[str, Any]:
+    """Sizes of the short-TTL API caches (per-hub + per-space)."""
+    api = coordinator.api
+    return {
+        "devices_cache_entries": len(getattr(api, "_devices_cache", {}) or {}),
+        "devices_cache_ttl_seconds": getattr(api, "_devices_cache_ttl", None),
+        "space_cache_entries": len(getattr(api, "_space_cache", {}) or {}),
+        "space_cache_ttl_seconds": getattr(api, "_space_cache_ttl", None),
+    }
+
+
+def _spaces_summary(coordinator) -> list[dict[str, Any]]:
+    """Per-space counts (devices / video_edges / smart_locks / groups).
+
+    No hub_id, room names or device names — those land in the redacted
+    ``ajax_data`` section so we keep this summary leak-free.
+    """
+    if not coordinator.account:
+        return []
+    summary = []
+    for space in coordinator.account.spaces.values():
+        summary.append(
+            {
+                "security_state": space.security_state.value if space.security_state else None,
+                "group_mode_enabled": space.group_mode_enabled,
+                "devices": len(space.devices),
+                "video_edges": len(space.video_edges),
+                "smart_locks": len(space.smart_locks),
+                "groups": len(space.groups),
+                "recent_events": len(space.recent_events),
+            }
+        )
+    return summary
+
 
 TO_REDACT = {
     "email",
@@ -165,13 +268,30 @@ async def get_ajax_raw_data(
     }
 
 
+def _runtime_diagnostics(coordinator) -> dict[str, Any]:
+    """The bundle of zero-IO snapshots — the part useful for triage.
+
+    Lives alongside the heavy ``ajax_data`` dump so the user can grab a
+    cheap diag without re-hitting the Ajax API.
+    """
+    return {
+        "runtime": _runtime_snapshot(coordinator),
+        "connectivity": _connectivity_snapshot(coordinator),
+        "stats": dict(coordinator.stats),
+        "cache": _cache_snapshot(coordinator),
+        "spaces": _spaces_summary(coordinator),
+    }
+
+
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: AjaxConfigEntry) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
 
+    coordinator = entry.runtime_data
     ajax_data = await get_ajax_raw_data(hass, entry)
 
     return {
         "config_entry_data": async_redact_data(entry.data, TO_REDACT),
+        "diagnostics": _runtime_diagnostics(coordinator),
         "ajax_data": async_redact_data(ajax_data, TO_REDACT),
     }
 
@@ -181,6 +301,7 @@ async def async_get_device_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a specific device."""
 
+    coordinator = entry.runtime_data
     device_info = {
         "manufacturer": device.manufacturer,
         "model": device.model,
@@ -195,5 +316,6 @@ async def async_get_device_diagnostics(
     return {
         "device_info": async_redact_data(device_info, TO_REDACT),
         "config_entry_data": async_redact_data(entry.data, TO_REDACT),
+        "diagnostics": _runtime_diagnostics(coordinator),
         "ajax_data": async_redact_data(ajax_data, TO_REDACT),
     }

@@ -170,6 +170,7 @@ class SSEManager(EventHandlerMixin):
         }
         """
         try:
+            self.coordinator.stats["events_sse_received"] += 1
             # Handle both nested and flat event formats
             event = event_data.get("event", event_data)
 

@@ -62,6 +62,12 @@ class EventHandlerMixin:
             return
         self._last_discovery_refresh = now
         _LOGGER.debug("Unknown device id=%s in event — requesting discovery refresh", source_id)
+        # Bump the diagnostics counter only when we actually fire the
+        # refresh (post-throttle); 'attempts' would mostly count duplicate
+        # event bursts and drown the useful signal.
+        stats = getattr(self.coordinator, "stats", None)
+        if stats is not None:
+            stats["discovery_refreshes"] = stats.get("discovery_refreshes", 0) + 1
         self.coordinator.hass.async_create_task(self.coordinator.async_request_refresh())
 
     def _find_video_edge(
