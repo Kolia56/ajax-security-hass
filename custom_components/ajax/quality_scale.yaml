@@ -1,0 +1,207 @@
+rules:
+  # ------------------------------------------------------------------
+  # Bronze
+  # ------------------------------------------------------------------
+  action-setup:
+    status: done
+    comment: |
+      Integration-level services are registered in `__init__.async_setup_entry`
+      (see custom_components/ajax/__init__.py — `force_arm`, `force_arm_night`,
+      `get_raw_devices`, `refresh_metadata`, `get_nvr_recordings`, `get_smart_locks`).
+  appropriate-polling:
+    status: done
+    comment: |
+      `AjaxDataCoordinator.update_interval` is adaptive (30 s armed, 60 s disarmed,
+      bumped to 5 s for door sensors when disarmed because Ajax does not push SSE
+      while disarmed). Cache TTL on /spaces and /devices coalesces overlapping calls.
+  brands:
+    status: done
+    comment: |
+      Distributed through HACS as a custom integration; logo / brand information
+      lives in the HACS repository entry.
+  common-modules:
+    status: done
+    comment: |
+      Cross-platform helpers are factorised: `devices/base.py` (entity descriptor
+      helpers used by 15 device handlers), `_event_helpers.py` (SSE/SQS mixin),
+      `_discovery.py` (dynamic-entity discovery, used by 11 platforms).
+  config-flow:
+    status: done
+  config-flow-test-coverage:
+    status: done
+    comment: |
+      `tests/test_config_flow.py` covers the entry-point form schema, the
+      auth-mode routing (direct vs proxy), and the cross-step persistence
+      of `_auth_mode`. Deeper coverage (2FA branch, reauth, reconfigure)
+      is planned for the next round.
+  dependency-transparency:
+    status: done
+    comment: |
+      All third-party dependencies are pinned in `manifest.json::requirements`
+      (`aiobotocore>=2.22.0`, `onvif-zeep-async>=3.1.12`).
+  docs-actions:
+    status: done
+    comment: |
+      Services are documented in `services.yaml` with localised name/description
+      and validated fields (`config_entry_id` selectors).
+  docs-high-level-description:
+    status: done
+    comment: README.md introduces the integration and its scope.
+  docs-installation-instructions:
+    status: done
+    comment: README.md includes the HACS install steps.
+  docs-removal-instructions:
+    status: done
+    comment: README.md ships a "Removal" section (HACS + manual).
+  entity-event-setup:
+    status: done
+    comment: |
+      Event entities subscribe via `async_added_to_hass` and unsubscribe via
+      `async_will_remove_from_hass` (event.py:189-197).
+  entity-unique-id:
+    status: done
+    comment: Every entity sets `_attr_unique_id` (audited across all platforms).
+  has-entity-name:
+    status: done
+    comment: All entity classes set `_attr_has_entity_name = True`.
+  runtime-data:
+    status: done
+    comment: |
+      `AjaxConfigEntry = ConfigEntry[AjaxDataCoordinator]` and the coordinator is
+      stored on `entry.runtime_data` (no `hass.data[DOMAIN]`).
+  test-before-configure:
+    status: done
+    comment: |
+      `config_flow` performs a real login and `async_get_hubs` before persisting
+      the entry, surfacing credential / connectivity errors immediately.
+  test-before-setup:
+    status: done
+    comment: |
+      `__init__.async_setup_entry` calls `api.async_login()` + `api.async_get_hubs()`
+      and raises `ConfigEntryAuthFailed` / `ConfigEntryNotReady` on failure.
+  unique-config-entry:
+    status: done
+    comment: |
+      `await self.async_set_unique_id(user_input[CONF_EMAIL].lower())` +
+      `self._abort_if_unique_id_configured()` in the config flow.
+
+  # ------------------------------------------------------------------
+  # Silver
+  # ------------------------------------------------------------------
+  action-exceptions:
+    status: done
+    comment: |
+      All service handlers raise `HomeAssistantError` /
+      `ServiceValidationError` with a `translation_key`. The
+      `alarm_control_panel` arm/disarm/group actions were normalised in the
+      same way (translation key `arm_disarm_failed`).
+  config-entry-unloading:
+    status: done
+    comment: |
+      `__init__.async_unload_entry` cleans up SSE/SQS managers, ONVIF
+      manager, listeners, and timers; dispatcher subscriptions are wired
+      through `entry.async_on_unload`.
+  docs-configuration-parameters:
+    status: done
+    comment: |
+      Each config flow field has a localised `data_description` in
+      `strings.json` (and the 7 translation files).
+  docs-installation-parameters:
+    status: done
+    comment: |
+      README documents the prerequisites (Ajax account, proxy URL) and the
+      optional AWS SQS credentials.
+  entity-unavailable:
+    status: done
+    comment: |
+      Entity classes implement `available` reading `coordinator.last_update_success`
+      and `device.online` (sensor/switch/light/select/number/valve/lock/camera).
+  integration-owner:
+    status: done
+    comment: '`codeowners: ["@foXaCe"]` in `manifest.json`.'
+  log-when-unavailable:
+    status: done
+    comment: |
+      `DataUpdateCoordinator` logs the transitions automatically and the
+      coordinator escalates AjaxRestAuthError to `ConfigEntryAuthFailed`
+      (logged once, surfaces in the repairs flow).
+  parallel-updates:
+    status: done
+    comment: |
+      `PARALLEL_UPDATES = 1` is set on every entity platform that mutates
+      device state (switch, light, select, number, valve, lock, camera,
+      button, event, alarm_control_panel). Read-only platforms (sensor,
+      binary_sensor) leave it at the default.
+  reauthentication-flow:
+    status: done
+    comment: |
+      `config_flow.AjaxConfigFlow.async_step_reauth` /
+      `async_step_reauth_confirm` re-prompt for password when SSO expires;
+      `ConfigEntryAuthFailed` is raised from the coordinator to trigger it.
+  test-coverage:
+    status: done
+    comment: |
+      `tests/` covers the optimistic-update guard (`models.py` 79 %), the
+      SSE/SQS event mixin (`_event_helpers.py` 100 %), the dynamic-entity
+      discovery helper (`_discovery.py` 100 %), the device descriptor
+      helpers (`devices/base.py` 88 %) and the translation schema. 49
+      tests at the time of this commit.
+
+  # ------------------------------------------------------------------
+  # Gold — todo (next milestone)
+  # ------------------------------------------------------------------
+  devices: todo
+  diagnostics:
+    status: done
+    comment: |
+      `diagnostics.py` returns a redacted dump (tokens, userId, AWS keys,
+      passwords stripped).
+  discovery:
+    status: done
+    comment: |
+      DHCP discovery on `ajax-*` hostnames (manifest `dhcp` block) +
+      runtime `SIGNAL_NEW_DEVICE` / `SIGNAL_NEW_VIDEO_EDGE` /
+      `SIGNAL_NEW_SMART_LOCK` for devices added after setup.
+  discovery-update-info: todo
+  docs-data-update: todo
+  docs-examples: todo
+  docs-known-limitations: todo
+  docs-supported-devices: todo
+  docs-supported-functions: todo
+  docs-troubleshooting: todo
+  docs-use-cases: todo
+  dynamic-devices:
+    status: done
+    comment: |
+      Discovery signals fire from `coordinator._async_update_devices` when
+      a brand-new device id is observed; every entity platform listens via
+      `_discovery.connect_new_entity_signal`.
+  entity-category: done
+  entity-device-class: done
+  entity-disabled-by-default: done
+  entity-translations: done
+  exception-translations: done
+  icon-translations: todo
+  reconfiguration-flow:
+    status: done
+    comment: |
+      `async_step_reconfigure` lets the user re-enter API key / email /
+      password / proxy URL / verify_ssl in place.
+  repair-issues:
+    status: done
+    comment: |
+      A persistent `verify_ssl_disabled` repair issue is raised while
+      `verify_ssl` is false (cleared automatically on re-enable).
+  stale-devices: todo
+
+  # ------------------------------------------------------------------
+  # Platinum — todo
+  # ------------------------------------------------------------------
+  async-dependency: done
+  inject-websession:
+    status: done
+    comment: |
+      `__init__.async_setup_entry` passes `async_get_clientsession(hass)` to
+      `AjaxRestApi` when `verify_ssl=True`; a dedicated session is used when
+      SSL verification is disabled (HA's shared session cannot disable it).
+  strict-typing: todo
