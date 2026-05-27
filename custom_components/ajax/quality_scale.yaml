@@ -148,9 +148,15 @@ rules:
       tests at the time of this commit.
 
   # ------------------------------------------------------------------
-  # Gold — todo (next milestone)
+  # Gold
   # ------------------------------------------------------------------
-  devices: todo
+  devices:
+    status: done
+    comment: |
+      Each platform exposes a `DeviceInfo` with `identifiers`, `name`,
+      `manufacturer="Ajax Systems"`, `model` (device-type display name) and
+      `sw_version` / `hw_version` (sourced from the Ajax API on every
+      poll). NVR-channel cameras link back to the parent NVR via `via_device`.
   diagnostics:
     status: done
     comment: |
@@ -162,14 +168,49 @@ rules:
       DHCP discovery on `ajax-*` hostnames (manifest `dhcp` block) +
       runtime `SIGNAL_NEW_DEVICE` / `SIGNAL_NEW_VIDEO_EDGE` /
       `SIGNAL_NEW_SMART_LOCK` for devices added after setup.
-  discovery-update-info: todo
-  docs-data-update: todo
-  docs-examples: todo
-  docs-known-limitations: todo
-  docs-supported-devices: todo
-  docs-supported-functions: todo
-  docs-troubleshooting: todo
-  docs-use-cases: todo
+  discovery-update-info:
+    status: done
+    comment: |
+      `config_flow.async_step_dhcp_confirm` calls
+      `hass.config_entries.async_update_entry(entry, data=new_data)` when
+      an already-configured hub is re-discovered with a fresh hostname /
+      MAC so the connection info stays current.
+  docs-data-update:
+    status: done
+    comment: |
+      README "Real-Time Synchronization" + "Real-Time Event Limitations"
+      sections explain the dual SSE/SQS push path plus the adaptive REST
+      polling (30 s armed / 60 s disarmed / 5 s for door sensors when
+      disarmed).
+  docs-examples:
+    status: done
+    comment: |
+      README "Use Cases & Examples" ships ready-to-paste automations
+      (panic button, camera-detection notify with snapshot, presence-based
+      arming).
+  docs-known-limitations:
+    status: done
+    comment: |
+      README "Known Limitations" lists the SSE-only-while-armed quirk,
+      proxy dependency, and the NVR routing fallback.
+  docs-supported-devices:
+    status: done
+    comment: |
+      README "Device Support" lists every device family the integration
+      handles (Hub2, MotionProtect, DoorProtect, GlassProtect, Socket,
+      Relay, MotionCam, Video Edge cameras, NVR, smart locks…).
+  docs-supported-functions:
+    status: done
+    comment: |
+      README "Key Features" + "Rich Entity Support" lists arm/disarm,
+      group mode, night mode, force arm, panic, ONVIF AI detections,
+      snapshot URL on events, energy panel.
+  docs-troubleshooting:
+    status: done
+    comment: README "Troubleshooting" covers reauth, proxy, ONVIF, SQS.
+  docs-use-cases:
+    status: done
+    comment: See `docs-examples` — same section in the README.
   dynamic-devices:
     status: done
     comment: |
@@ -181,7 +222,12 @@ rules:
   entity-disabled-by-default: done
   entity-translations: done
   exception-translations: done
-  icon-translations: todo
+  icon-translations:
+    status: done
+    comment: |
+      `icons.json` maps the integration's translation_keys to MDI icons
+      so the icon stays consistent with the HA brand palette across
+      sensor/binary_sensor/switch/select families.
   reconfiguration-flow:
     status: done
     comment: |
@@ -190,9 +236,18 @@ rules:
   repair-issues:
     status: done
     comment: |
-      A persistent `verify_ssl_disabled` repair issue is raised while
-      `verify_ssl` is false (cleared automatically on re-enable).
-  stale-devices: todo
+      Five persistent repair issues cover the soft-fail paths:
+      `verify_ssl_disabled` (SSL off), `onvif_init_failed`,
+      `onvif_no_cameras`, `onvif_partial_cameras`, `sse_init_failed`,
+      `sqs_init_failed`. Each issue is auto-deleted when the underlying
+      problem resolves.
+  stale-devices:
+    status: done
+    comment: |
+      `_async_cleanup_stale_devices` runs after the initial load and
+      removes HA device-registry entries whose Ajax IDs no longer appear
+      in `account.spaces.*.devices` / `video_edges` / `smart_locks` —
+      catches devices deleted from Ajax while HA was offline.
 
   # ------------------------------------------------------------------
   # Platinum — todo

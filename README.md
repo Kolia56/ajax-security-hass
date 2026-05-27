@@ -317,6 +317,80 @@ service: ajax.generate_device_info
 
 This creates an anonymized JSON file with device information (no sensitive data included).
 
+## 🔄 How It Works (Data Update)
+
+The integration combines **push** and **adaptive polling** so the UI stays in sync without hammering the Ajax cloud:
+
+| Mode | Push channel | REST polling | Notes |
+|------|--------------|--------------|-------|
+| Armed | SSE (proxy) **or** AWS SQS (direct) | 30 s | Real-time events arrive in < 1 s and immediately refresh the relevant entities |
+| Disarmed | None (Ajax limitation) | 60 s | Door sensors fall back to 5 s fast-poll when a door opens (recovers fast-close UX) |
+| Cameras with ONVIF credentials | Local ONVIF PullPoint | n/a | AI detections (motion/human/vehicle/pet/doorbell ring) fire entirely offline, even when disarmed |
+
+The coordinator caches metadata (rooms, users, groups) and only refreshes the heavy `/spaces` payload once an hour — push events trigger a forced refresh as needed.
+
+## 💡 Use Cases & Examples
+
+### Notify with camera snapshot on AI detection
+
+`ajax_camera_detection` events now ship a `snapshot_url` you can embed directly in Telegram / mobile_app payloads (no extra `camera.snapshot` call required):
+
+```yaml
+automation:
+  - alias: "Telegram: human detected on the front door camera"
+    trigger:
+      - platform: event
+        event_type: ajax_camera_detection
+        event_data:
+          event_type: human
+    action:
+      - service: notify.mobile_app_phone
+        data:
+          message: "{{ trigger.event.data.device_name }} detected a human"
+          data:
+            image: "{{ trigger.event.data.snapshot_url }}"
+```
+
+### Auto-arm when nobody is home
+
+```yaml
+automation:
+  - alias: "Arm Ajax when everyone leaves"
+    trigger:
+      - platform: state
+        entity_id: zone.home
+        to: "0"
+    action:
+      - service: alarm_control_panel.alarm_arm_away
+        target:
+          entity_id: alarm_control_panel.ajax_alarm_home
+```
+
+### Trigger the panic button from a wall switch
+
+```yaml
+automation:
+  - alias: "Wall switch → Ajax panic"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.kitchen_panic_switch
+        to: "on"
+    action:
+      - service: button.press
+        target:
+          entity_id: button.ajax_panic_home
+```
+
+## ⚠️ Known Limitations
+
+| Limitation | Impact | Workaround |
+|------------|--------|------------|
+| Ajax does not push events while **disarmed** | Door / motion state changes only seen on the next REST poll | Door-sensor fast-poll (5 s) when disarmed; enable "Always Active" on the sensor to receive real-time events |
+| Enterprise API key not available to the general public | Direct mode requires Ajax partnership | Use Proxy mode with a community / shared proxy |
+| ONVIF requires the camera's IP to be reachable from Home Assistant | AI detections silent if cameras are on an isolated VLAN | Open ports 80 (HTTP) and 554 (RTSP) between HA and the camera subnet |
+| NVR-channel routing depends on `sourceAliases` payload | Some NVR firmwares omit the alias → detections route to NVR fallback instead of the linked camera | Update the NVR firmware to the latest Ajax release |
+| Real-time event source is single-tenant | A user can only consume SSE **or** SQS, not both | The integration auto-picks SSE (proxy) > SQS (direct) |
+
 ## 🔧 Troubleshooting
 
 ### Authentication Errors
