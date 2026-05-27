@@ -29,6 +29,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from ._coordinator_arm import AjaxArmServiceMixin
 from .api import AjaxRestApi, AjaxRestApiError, AjaxRestAuthError
 from .const import (
     CONF_NOTIFICATION_FILTER,
@@ -112,7 +113,7 @@ _LOGGER = logging.getLogger(__name__)
 SMART_LOCK_STORE_VERSION = 1
 
 
-class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
+class AjaxDataCoordinator(AjaxArmServiceMixin, DataUpdateCoordinator[AjaxAccount]):
     """Coordinator to manage Ajax data updates.
 
     Architecture:
@@ -3111,152 +3112,9 @@ class AjaxDataCoordinator(DataUpdateCoordinator[AjaxAccount]):
     # Control methods
     # ============================================================================
 
-    def _register_ha_action(self, hub_id: str) -> None:
-        """Register that Home Assistant triggered an action on this hub."""
-        self._pending_ha_actions[hub_id] = time.time()
-
-    def has_pending_ha_action(self, hub_id: str) -> bool:
-        """Check if Home Assistant triggered an action on this hub recently.
-
-        Returns True if HA action was within the last 10 seconds.
-        Does NOT consume the pending action (can be called multiple times).
-        """
-        timestamp = self._pending_ha_actions.get(hub_id, 0)
-        return time.time() - timestamp < 10
-
-    def get_pending_ha_action(self, hub_id: str) -> bool:
-        """Check and consume pending HA action.
-
-        Returns True if HA action was within the last 10 seconds.
-        Clears the pending action after returning True.
-        """
-        timestamp = self._pending_ha_actions.get(hub_id, 0)
-        if time.time() - timestamp < 10:
-            # Clear the pending action
-            del self._pending_ha_actions[hub_id]
-            return True
-        return False
-
-    def _arm_lock_for(self, space_id: str) -> asyncio.Lock:
-        """Return (and lazily create) the asyncio.Lock for ``space_id``."""
-        lock = self._arm_locks.get(space_id)
-        if lock is None:
-            lock = asyncio.Lock()
-            self._arm_locks[space_id] = lock
-        return lock
-
-    async def async_arm_space(self, space_id: str, force: bool = True) -> None:
-        """Arm a space.
-
-        Args:
-            space_id: The space ID to arm
-            force: If True, ignore problems and force arm even with open sensors
-        """
-        _LOGGER.info("Arming space %s (force=%s)", space_id, force)
-
-        async with self._arm_lock_for(space_id):
-            try:
-                self._register_ha_action(space_id)
-                await self.api.async_arm(space_id, ignore_problems=force)
-                # State will be updated via SQS with "Home Assistant" as source
-
-            except AjaxRestApiError as err:
-                _LOGGER.error("Failed to arm space %s: %s", space_id, err)
-                raise
-
-    async def async_disarm_space(self, space_id: str) -> None:
-        """Disarm a space."""
-        _LOGGER.info("Disarming space %s", space_id)
-
-        async with self._arm_lock_for(space_id):
-            try:
-                self._register_ha_action(space_id)
-                await self.api.async_disarm(space_id)
-                # State will be updated via SQS with "Home Assistant" as source
-
-            except AjaxRestApiError as err:
-                _LOGGER.error("Failed to disarm space %s: %s", space_id, err)
-                raise
-
-    async def async_arm_night_mode(self, space_id: str, force: bool = False) -> None:
-        """Activate night mode for a space.
-
-        Args:
-            space_id: The space ID to arm in night mode
-            force: If True, ignore alarms and force arm even with open sensors or problems
-        """
-        _LOGGER.info("Activating night mode for space %s (force=%s)", space_id, force)
-
-        async with self._arm_lock_for(space_id):
-            try:
-                self._register_ha_action(space_id)
-                await self.api.async_night_mode(space_id, enabled=True)
-                # State will be updated via SQS with "Home Assistant" as source
-
-            except AjaxRestApiError as err:
-                _LOGGER.error("Failed to activate night mode for space %s: %s", space_id, err)
-                raise
-
-    async def async_press_panic_button(self, space_id: str) -> None:
-        """Press panic button (trigger panic alarm) for a space."""
-        _LOGGER.warning("PANIC BUTTON pressed for space %s", space_id)
-
-        try:
-            await self.api.async_press_panic_button(space_id)
-            # No state update needed, panic is instantaneous
-
-        except AjaxRestApiError as err:
-            _LOGGER.error("Failed to trigger panic for space %s: %s", space_id, err)
-            raise
-
-    async def async_arm_group(self, space_id: str, group_id: str, force: bool = True) -> None:
-        """Arm a specific group.
-
-        Args:
-            space_id: The space ID (hub_id)
-            group_id: The group ID to arm
-            force: If True, ignore problems and force arm
-        """
-        _LOGGER.info("Arming group %s in space %s (force=%s)", group_id, space_id, force)
-
-        async with self._arm_lock_for(space_id):
-            try:
-                self._register_ha_action(space_id)
-                await self.api.async_arm_group(space_id, group_id, ignore_problems=force)
-                # Update local state
-                space = self.get_space(space_id)
-                if space and group_id in space.groups:
-                    space.groups[group_id].state = GroupState.ARMED
-                # Trigger refresh to sync state
-                await self.async_request_refresh()
-
-            except AjaxRestApiError as err:
-                _LOGGER.error("Failed to arm group %s in space %s: %s", group_id, space_id, err)
-                raise
-
-    async def async_disarm_group(self, space_id: str, group_id: str) -> None:
-        """Disarm a specific group.
-
-        Args:
-            space_id: The space ID (hub_id)
-            group_id: The group ID to disarm
-        """
-        _LOGGER.info("Disarming group %s in space %s", group_id, space_id)
-
-        async with self._arm_lock_for(space_id):
-            try:
-                self._register_ha_action(space_id)
-                await self.api.async_disarm_group(space_id, group_id)
-                # Update local state
-                space = self.get_space(space_id)
-                if space and group_id in space.groups:
-                    space.groups[group_id].state = GroupState.DISARMED
-                # Trigger refresh to sync state
-                await self.async_request_refresh()
-
-            except AjaxRestApiError as err:
-                _LOGGER.error("Failed to disarm group %s in space %s: %s", group_id, space_id, err)
-                raise
+    # Arm / disarm / night-mode / panic / group actions live in
+    # ``_coordinator_arm.AjaxArmServiceMixin`` to keep this file focused
+    # on the polling-and-state-update pipeline.
 
     # ============================================================================
     # Helper methods
