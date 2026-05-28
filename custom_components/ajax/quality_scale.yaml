@@ -262,12 +262,20 @@ rules:
   strict-typing:
     status: todo
     comment: |
-      Progressive typing landed: `pyproject.toml [tool.mypy]` enables
-      `warn_unused_ignores` / `warn_redundant_casts` / `no_implicit_optional`
-      and CI runs mypy on every push (currently `continue-on-error: true`).
-      A first cleanup pass removed 10 unused `# type: ignore` comments and
-      tightened the `_discovery.EntityBuilder` covariance (Sequence vs list)
-      — 392 -> 28 errors. Full `--strict` flip pending the remaining 28
-      errors (mostly `union-attr` on `Optional` chains we can prove non-None
-      and `arg-type` from `Optional[str]` callbacks); will turn `--strict`
-      on and mark this rule done once we're at 0 errors.
+      Two-step roadmap:
+      1. **Done** — `pyproject.toml [tool.mypy]` enables
+         `warn_unused_ignores` / `warn_redundant_casts` /
+         `no_implicit_optional`. CI's `typing` job blocks merges at
+         **0 errors**. Cleanup pass: removed 10 unused `# type: ignore`,
+         tightened `_discovery.EntityBuilder` covariance (Sequence vs list),
+         narrowed Optional chains in `coordinator` /
+         `_coordinator_state` / `_coordinator_devices` /
+         `binary_sensor` / `sensor`, typed `DIMMER_SELECT_DEFINITIONS`
+         and `EventBuilder.get_events()`, wrapped SQS receipt handles
+         with a None guard — **392 -> 0 errors**.
+      2. **Todo** — flip `--strict`. Adds `disallow_untyped_defs`,
+         `check_untyped_defs`, `warn_return_any`, `disallow_any_generics`,
+         `disallow_untyped_calls`. ~300 new errors mostly in the entity
+         platforms (`alarm_control_panel`, `sensor`, `switch`, `light`,
+         `select`, `number`, `valve`). Tracked for the next milestone;
+         marking the rule done requires `mypy --strict` clean.

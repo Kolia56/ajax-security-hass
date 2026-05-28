@@ -421,8 +421,8 @@ class AjaxStateUpdaterMixin:
                 if removed_ve_ids:
                     device_registry = dr.async_get(self.hass)
                     for ve_id in removed_ve_ids:
-                        video_edge = space.video_edges.get(ve_id)
-                        ve_name = video_edge.name if video_edge else ve_id
+                        removed_ve = space.video_edges.get(ve_id)
+                        ve_name = removed_ve.name if removed_ve else ve_id
 
                         ha_device = device_registry.async_get_device(identifiers={(DOMAIN, ve_id)})
                         if ha_device:
@@ -520,17 +520,17 @@ class AjaxStateUpdaterMixin:
                 if removed_ids:
                     device_registry = dr.async_get(self.hass)
                     for sl_id in removed_ids:
-                        smart_lock = space.smart_locks.get(sl_id)
+                        removed_sl = space.smart_locks.get(sl_id)
 
-                        if smart_lock and not smart_lock.raw_data:
+                        if removed_sl and not removed_sl.raw_data:
                             _LOGGER.debug(
                                 "Preserving SSE/SQS-discovered smart lock '%s' (ID: %s)",
-                                smart_lock.name,
+                                removed_sl.name,
                                 sl_id,
                             )
                             continue
 
-                        sl_name = smart_lock.name if smart_lock else sl_id
+                        sl_name = removed_sl.name if removed_sl else sl_id
 
                         ha_device = device_registry.async_get_device(identifiers={(DOMAIN, sl_id)})
                         if ha_device:

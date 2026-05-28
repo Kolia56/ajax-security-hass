@@ -13,7 +13,7 @@ consistently instead of copy-pasting dict literals in every subclass.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
@@ -138,7 +138,7 @@ class AjaxDeviceHandler(ABC):
         """
         return []
 
-    def get_events(self) -> list[dict]:
+    def get_events(self) -> list[dict[str, Any]]:
         """Return event entity descriptions for this device.
 
         Returns:

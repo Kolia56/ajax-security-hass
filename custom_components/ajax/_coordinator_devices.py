@@ -668,8 +668,8 @@ class AjaxDevicesMixin:
             if removed_device_ids:
                 device_registry = dr.async_get(self.hass)
                 for device_id in removed_device_ids:
-                    device = space.devices.get(device_id)
-                    device_name = device.name if device else device_id
+                    removed_device = space.devices.get(device_id)
+                    device_name = removed_device.name if removed_device else device_id
 
                     # Remove from HA device registry
                     ha_device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})

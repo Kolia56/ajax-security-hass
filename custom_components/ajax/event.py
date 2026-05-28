@@ -113,7 +113,7 @@ async def async_setup_entry(
                     coordinator=coordinator,
                     space_id=space_id,
                     device_id=ve_id,
-                    event_key=event_desc["key"],
+                    event_key=str(event_desc["key"]),
                     event_desc=event_desc,
                 )
                 entities.append(entity)
@@ -302,11 +302,14 @@ class AjaxEventEntity(CoordinatorEntity[AjaxDataCoordinator], EventEntity):
     async def async_added_to_hass(self) -> None:
         """Register entity in coordinator dispatch map."""
         await super().async_added_to_hass()
+        # _attr_unique_id is set in __init__ and the framework guarantees it stays non-None.
+        assert self._attr_unique_id is not None
         self.coordinator._event_entities[self._attr_unique_id] = self
 
     async def async_will_remove_from_hass(self) -> None:
         """Remove entity from coordinator dispatch map to avoid stale refs."""
-        self.coordinator._event_entities.pop(self._attr_unique_id, None)
+        if self._attr_unique_id is not None:
+            self.coordinator._event_entities.pop(self._attr_unique_id, None)
         await super().async_will_remove_from_hass()
 
     @property

@@ -300,10 +300,13 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
 
         Falls back to all spaces only if no target was specified.
         """
+        if coordinator.account is None:
+            return []
+        account = coordinator.account
         selected = async_extract_referenced_entity_ids(call.hass, call, expand_group=True)
         referenced = set(selected.referenced) | set(selected.indirectly_referenced)
         if not referenced:
-            return list(coordinator.account.spaces.keys())
+            return list(account.spaces.keys())
 
         registry = er.async_get(call.hass)
         space_ids: list[str] = []
@@ -316,7 +319,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
             marker = "_alarm_"
             if marker in uid:
                 space_id = uid.rsplit(marker, 1)[-1]
-                if space_id in coordinator.account.spaces:
+                if space_id in account.spaces:
                     space_ids.append(space_id)
         return space_ids
 

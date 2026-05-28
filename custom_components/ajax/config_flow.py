@@ -14,6 +14,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -555,8 +556,9 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 # This hub is already configured, abort discovery
                 return self.async_abort(reason="already_configured")
 
-        # Store discovered MAC and check for existing entries
-        self.context["discovered_mac"] = discovered_mac
+        # Store discovered MAC and check for existing entries.
+        # `discovered_mac` is a custom extension key not in HA's ConfigFlowContext TypedDict.
+        self.context["discovered_mac"] = discovered_mac  # type: ignore[typeddict-unknown-key]
         self.context["title_placeholders"] = {"name": discovery_info.hostname or "Ajax Hub"}
 
         # If there are existing entries, ask user if they want to associate
@@ -576,10 +578,9 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
             if action == "new":
                 # User wants to create a new configuration
                 return await self.async_step_user()
-            else:
-                # Associate with existing entry
-                entry_id = action
-                entry = self.hass.config_entries.async_get_entry(entry_id)
+            elif isinstance(action, str):
+                # Associate with existing entry — action holds the target entry_id.
+                entry = self.hass.config_entries.async_get_entry(action)
                 if entry:
                     # Add MAC to existing entry
                     existing_macs = list(entry.data.get(CONF_DISCOVERED_MACS, []))
@@ -591,11 +592,11 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "entry_not_found"
 
         # Build options from existing entries
-        options = []
+        options: list[SelectOptionDict] = []
         for entry in self._async_current_entries():
             email = entry.data.get(CONF_EMAIL, "Unknown")
-            options.append({"value": entry.entry_id, "label": f"{email}"})
-        options.append({"value": "new", "label": "Create new configuration"})
+            options.append(SelectOptionDict(value=entry.entry_id, label=f"{email}"))
+        options.append(SelectOptionDict(value="new", label="Create new configuration"))
 
         data_schema = vol.Schema(
             {
@@ -610,8 +611,8 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={
-                "mac": discovered_mac,
-                "hostname": self.context.get("title_placeholders", {}).get("name", "Ajax Hub"),
+                "mac": str(discovered_mac),
+                "hostname": str(self.context.get("title_placeholders", {}).get("name", "Ajax Hub")),
             },
         )
 

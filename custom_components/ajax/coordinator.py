@@ -307,7 +307,7 @@ class AjaxDataCoordinator(
         # Store security state for the polling loop
         self._door_sensor_poll_security_state = security_state
 
-        if should_poll and self._door_sensor_poll_task is None:
+        if should_poll and self._door_sensor_poll_task is None and self.config_entry is not None:
             # Start door sensor polling when disarmed or in night mode
             self._door_sensor_poll_task = self.config_entry.async_create_background_task(
                 self.hass, self._async_poll_door_sensors_loop(), "ajax_door_sensor_poll"
@@ -572,18 +572,18 @@ class AjaxDataCoordinator(
 
                 # Initialize real-time events in background
                 # Priority: SSE (proxy mode) > SQS (direct mode)
-                if not self._sse_initialized and self._sse_url:
-                    # Proxy mode: use SSE for real-time events
-                    self.config_entry.async_create_background_task(self.hass, self._async_init_sse(), "ajax_init_sse")
-                elif not self._sqs_initialized and self._aws_access_key_id:
-                    # Direct mode: use SQS for real-time events
-                    self.config_entry.async_create_background_task(self.hass, self._async_init_sqs(), "ajax_init_sqs")
+                if self.config_entry is not None:
+                    entry = self.config_entry
+                    if not self._sse_initialized and self._sse_url:
+                        # Proxy mode: use SSE for real-time events
+                        entry.async_create_background_task(self.hass, self._async_init_sse(), "ajax_init_sse")
+                    elif not self._sqs_initialized and self._aws_access_key_id:
+                        # Direct mode: use SQS for real-time events
+                        entry.async_create_background_task(self.hass, self._async_init_sqs(), "ajax_init_sqs")
 
-                # Initialize ONVIF for local AI detections (works even when disarmed)
-                if not self._onvif_initialized:
-                    self.config_entry.async_create_background_task(
-                        self.hass, self._async_init_onvif(), "ajax_init_onvif"
-                    )
+                    # Initialize ONVIF for local AI detections (works even when disarmed)
+                    if not self._onvif_initialized:
+                        entry.async_create_background_task(self.hass, self._async_init_onvif(), "ajax_init_onvif")
             else:
                 # Periodic update - optimized polling
                 # Check if we need full metadata refresh (hourly or forced)

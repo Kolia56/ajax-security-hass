@@ -37,14 +37,13 @@ jobs:
         run: codespell custom_components/ajax/
 
   typing:
-    name: Typing (mypy, soft)
+    name: Typing (mypy)
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # Strict-typing for Platinum is still in progress (see quality_scale.yaml).
-    # mypy runs at every push as a regression signal but doesn't block merges
-    # until we're at 0 errors and able to flip --strict on.
-    continue-on-error: true
+    # We're at 0 errors under the project's mypy config (see pyproject.toml).
+    # The job now blocks merges — flipping --strict for full Platinum
+    # strict-typing is the next milestone (see quality_scale.yaml).
     steps:
       - name: Checkout code
         uses: actions/checkout@v6

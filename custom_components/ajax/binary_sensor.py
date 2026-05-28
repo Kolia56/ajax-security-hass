@@ -202,7 +202,9 @@ async def async_setup_entry(
     def _build_video_edge(space_id: str, video_edge_id: str) -> list[tuple[str, BinarySensorEntity]]:
         """Build binary sensors for a newly-discovered Video Edge device."""
         space = coordinator.get_space(space_id)
-        video_edge = space.video_edges.get(video_edge_id) if space else None
+        if space is None:
+            return []
+        video_edge = space.video_edges.get(video_edge_id)
         if not video_edge:
             return []
         handler = VideoEdgeHandler(video_edge, space.video_edges)

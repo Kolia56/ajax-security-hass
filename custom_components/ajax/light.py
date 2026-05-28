@@ -182,7 +182,7 @@ class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
         else:
             # Use current brightness or 100%
             current = device.attributes.get("actualBrightnessCh1")
-            brightness_percent = current if isinstance(current, (int, float)) and current > 0 else 100
+            brightness_percent = int(current) if isinstance(current, (int, float)) and current > 0 else 100
 
         # Save old state for rollback (preserve None/unset distinction)
         had_brightness = "actualBrightnessCh1" in device.attributes

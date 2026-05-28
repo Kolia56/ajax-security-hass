@@ -9,6 +9,7 @@ This module creates select entities for Ajax device settings like:
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.select import DOMAIN as SELECT_DOMAIN, SelectEntity
 from homeassistant.core import HomeAssistant, callback
@@ -60,7 +61,10 @@ INDICATION_MODE_OPTIONS = {
 INDICATION_MODE_VALUES = {v: k for k, v in INDICATION_MODE_OPTIONS.items()}
 
 # LightSwitchDimmer select definitions
-DIMMER_SELECT_DEFINITIONS = [
+# Values are heterogeneous (str / list / dict) by design — typing the whole
+# constant as dict[str, Any] avoids 20+ mypy `Collection[str]` complaints on
+# every consumer that pulls ``select_def["attr_key"]`` as a str.
+DIMMER_SELECT_DEFINITIONS: list[dict[str, Any]] = [
     {
         "key": "touch_mode",
         "translation_key": "touch_mode",
@@ -129,11 +133,11 @@ LIGHTSWITCH_TOUCH_MODE_SELECT = {
 }
 
 
-def _get_dimmer_attr(device: AjaxDevice, attr_key: str):
+def _get_dimmer_attr(device: AjaxDevice, attr_key: str) -> Any:
     """Get nested attribute value from device."""
     if "." in attr_key:
         parts = attr_key.split(".")
-        value = device.attributes
+        value: Any = device.attributes
         for part in parts:
             if isinstance(value, dict):
                 value = value.get(part)

@@ -233,6 +233,11 @@ class AjaxSQSClient:
         receipt = message.get("ReceiptHandle")
         msg_id = message.get("MessageId", "")[:8]
 
+        # AWS guarantees ReceiptHandle on a polled message — bail loudly if not.
+        if receipt is None:
+            _LOGGER.warning("SQS message %s missing ReceiptHandle, skipping", msg_id)
+            return
+
         try:
             body = json.loads(message.get("Body", "{}"))
 
