@@ -455,7 +455,7 @@ async def async_setup_entry(
         for device_id, device in space.devices.items():
             handler_class = get_device_handler(device)
             if handler_class:
-                handler = handler_class(device)  # type: ignore[abstract]
+                handler = handler_class(device)
                 # Get device-specific sensors + common sensors (room, etc.)
                 sensors = handler.get_sensors() + handler.get_common_sensors()
 
@@ -575,7 +575,7 @@ async def async_setup_entry(
         handler_class = get_device_handler(device)
         if not handler_class:
             return []
-        handler = handler_class(device)  # type: ignore[abstract]
+        handler = handler_class(device)
         return [
             (
                 f"{device_id}_{sensor_desc['key']}",
@@ -596,7 +596,7 @@ async def async_setup_entry(
         video_edge = space.video_edges.get(video_edge_id) if space else None
         if not video_edge:
             return []
-        handler = VideoEdgeHandler(video_edge, space.video_edges)  # type: ignore[assignment]
+        handler = VideoEdgeHandler(video_edge, space.video_edges)
         return [
             (
                 f"{video_edge_id}_{sensor_desc['key']}",

@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -108,7 +109,7 @@ class SSEManager(EventHandlerMixin):
 
         return success
 
-    def _schedule_later(self, delay: float, callback: callable) -> None:
+    def _schedule_later(self, delay: float, callback: Callable[[], Any]) -> None:
         """Wrap hass.loop.call_later to track the handle for cancellation."""
         handle = self.coordinator.hass.loop.call_later(delay, callback)
         self._pending_timers.add(handle)

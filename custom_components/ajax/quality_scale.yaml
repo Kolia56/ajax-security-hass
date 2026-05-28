@@ -259,4 +259,15 @@ rules:
       `__init__.async_setup_entry` passes `async_get_clientsession(hass)` to
       `AjaxRestApi` when `verify_ssl=True`; a dedicated session is used when
       SSL verification is disabled (HA's shared session cannot disable it).
-  strict-typing: todo
+  strict-typing:
+    status: todo
+    comment: |
+      Progressive typing landed: `pyproject.toml [tool.mypy]` enables
+      `warn_unused_ignores` / `warn_redundant_casts` / `no_implicit_optional`
+      and CI runs mypy on every push (currently `continue-on-error: true`).
+      A first cleanup pass removed 10 unused `# type: ignore` comments and
+      tightened the `_discovery.EntityBuilder` covariance (Sequence vs list)
+      — 392 -> 28 errors. Full `--strict` flip pending the remaining 28
+      errors (mostly `union-attr` on `Optional` chains we can prove non-None
+      and `arg-type` from `Optional[str]` callbacks); will turn `--strict`
+      on and mark this rule done once we're at 0 errors.

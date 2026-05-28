@@ -69,7 +69,7 @@ class EventHandlerMixin:
     since they only touch in-memory coordinator state.
     """
 
-    coordinator: AjaxDataCoordinator  # type: ignore[assignment]
+    coordinator: AjaxDataCoordinator
     _last_discovery_refresh: float = 0.0
 
     def _request_discovery_refresh(self, source_id: str) -> None:

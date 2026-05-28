@@ -14,7 +14,7 @@ only supplies a ``builder`` returning ``(unique_id, entity)`` pairs.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
 from homeassistant.core import HomeAssistant, callback
@@ -30,8 +30,12 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
-# builder(space_id, obj_id) -> list of (unique_id, entity) pairs.
-EntityBuilder = Callable[[str, str], list[tuple[str, Entity]]]
+# builder(space_id, obj_id) -> sequence of (unique_id, entity) pairs.
+# Sequence is covariant in its item type, so a builder that produces
+# ``list[tuple[str, SensorEntity]]`` is accepted where
+# ``Sequence[tuple[str, Entity]]`` is expected — list[T] is invariant and
+# would reject every platform-specific subclass.
+EntityBuilder = Callable[[str, str], "Sequence[tuple[str, Entity]]"]
 
 
 def connect_new_entity_signal(

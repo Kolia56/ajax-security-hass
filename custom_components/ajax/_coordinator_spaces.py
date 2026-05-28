@@ -32,8 +32,8 @@ class AjaxSpacesMixin:
         account: AjaxAccount | None
         api: AjaxRestApi
         all_discovered_spaces: dict[str, str]
-        sqs_manager: object | None
-        sse_manager: object | None
+        sqs_manager: Any | None
+        sse_manager: Any | None
         _enabled_spaces: list[str] | None
         _space_binding_cache: dict[str, dict]
         _skip_state_change_event: bool

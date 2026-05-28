@@ -132,7 +132,7 @@ async def async_setup_entry(
             # Standard handler-based switches for other devices
             handler_class = get_device_handler(device)
             if handler_class:
-                handler = handler_class(device)  # type: ignore[abstract]
+                handler = handler_class(device)
                 switches = handler.get_switches()
 
                 for switch_desc in switches:
@@ -223,7 +223,7 @@ async def async_setup_entry(
         else:
             handler_class = get_device_handler(device)
             if handler_class:
-                handler = handler_class(device)  # type: ignore[abstract]
+                handler = handler_class(device)
                 for switch_desc in handler.get_switches():
                     pairs.append(
                         (

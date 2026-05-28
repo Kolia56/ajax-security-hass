@@ -57,7 +57,7 @@ async def async_setup_entry(
         for device_id, device in space.devices.items():
             handler_class = get_device_handler(device)
             if handler_class:
-                handler = handler_class(device)  # type: ignore[abstract]
+                handler = handler_class(device)
                 binary_sensors = handler.get_binary_sensors()
 
                 for sensor_desc in binary_sensors:
@@ -184,7 +184,7 @@ async def async_setup_entry(
         handler_class = get_device_handler(device)
         if not handler_class:
             return []
-        handler = handler_class(device)  # type: ignore[abstract]
+        handler = handler_class(device)
         return [
             (
                 f"{device_id}_{sensor_desc['key']}",
@@ -205,7 +205,7 @@ async def async_setup_entry(
         video_edge = space.video_edges.get(video_edge_id) if space else None
         if not video_edge:
             return []
-        handler = VideoEdgeHandler(video_edge, space.video_edges)  # type: ignore[assignment]
+        handler = VideoEdgeHandler(video_edge, space.video_edges)
         pairs: list[tuple[str, BinarySensorEntity]] = []
         for sensor_desc in handler.get_binary_sensors():
             target_ve_id = sensor_desc.get("target_video_edge_id") or video_edge_id

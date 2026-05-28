@@ -52,3 +52,20 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
 ]
+
+# ---------------------------------------------------------------------------
+# mypy — progressive typing, not yet --strict.
+#
+# Enable the highest-signal flags (warn unused ignores, no implicit Optional,
+# silent imports for our own code). Leave full --strict off until the issues
+# tracked in QS rule `strict-typing` are resolved (392 errors under --strict,
+# vs ~10 here). Running ``mypy custom_components/ajax`` should stay at
+# 0 errors to keep CI green.
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+follow_imports = "silent"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true

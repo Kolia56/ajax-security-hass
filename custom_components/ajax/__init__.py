@@ -154,7 +154,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AjaxConfigEntry) -> bool
         )
 
     api = AjaxRestApi(
-        api_key=api_key or "",  # type: ignore[arg-type]
+        api_key=api_key or "",
         email=email,
         password=password_hash,
         password_is_hashed=True,  # Password is already SHA256 hash

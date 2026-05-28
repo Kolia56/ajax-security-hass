@@ -14,7 +14,7 @@ is installed.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import issue_registry as ir
 
@@ -75,7 +75,7 @@ class AjaxOnvifMixin:
         config_entry: ConfigEntry | None
         onvif_manager: AjaxOnvifManager | None
         _onvif_initialized: bool
-        _event_entities: dict[str, object]
+        _event_entities: dict[str, Any]
         stats: dict[str, int]
 
         def async_set_updated_data(self, data: AjaxAccount) -> None: ...
