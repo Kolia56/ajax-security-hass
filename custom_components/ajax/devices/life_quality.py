@@ -6,6 +6,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -23,7 +25,7 @@ from .base import AjaxDeviceHandler
 class LifeQualityHandler(AjaxDeviceHandler):
     """Handler for Ajax LifeQuality air quality sensors."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for LifeQuality."""
         sensors = []
 
@@ -72,7 +74,7 @@ class LifeQualityHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for LifeQuality."""
         sensors = []
 
@@ -131,7 +133,7 @@ class LifeQualityHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for LifeQuality."""
         switches = []
 
@@ -172,7 +174,7 @@ class LifeQualityHandler(AjaxDeviceHandler):
         co2 = self.device.attributes.get("actualCO2")
         max_comfort = self.device.attributes.get("maxComfortCO2", 1000)
         if co2 is not None and max_comfort is not None:
-            return co2 > max_comfort
+            return co2 > max_comfort  # type: ignore[no-any-return]
         return False
 
     def _is_temperature_problem(self) -> bool:
@@ -196,5 +198,5 @@ class LifeQualityHandler(AjaxDeviceHandler):
         max_comfort = self.device.attributes.get("maxComfortHumidity")
         if humidity is not None and min_comfort is not None and max_comfort is not None:
             # Convert thresholds to same unit as actualHumidity (0.1%)
-            return humidity < (min_comfort * 10) or humidity > (max_comfort * 10)
+            return humidity < (min_comfort * 10) or humidity > (max_comfort * 10)  # type: ignore[no-any-return]
         return False

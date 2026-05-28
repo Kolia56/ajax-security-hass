@@ -82,7 +82,7 @@ class AjaxOnvifClient:
         self._camera: ONVIFCamera | None = None
         self._pullpoint_manager: Any = None
         self._running = False
-        self._poll_task: asyncio.Task | None = None
+        self._poll_task: asyncio.Task[Any] | None = None
         # Flag set by _on_subscription_lost so _poll_loop reacts immediately.
         self._subscription_lost = False
         self._last_states: dict[str, bool] = {}  # Cache to filter duplicate events

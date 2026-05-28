@@ -35,7 +35,7 @@ from .event_codes import (
     get_event_type_description,
     parse_event_code,
 )
-from .models import AjaxSmartLock, SecurityState
+from .models import AjaxDevice, AjaxSmartLock, AjaxSpace, SecurityState
 
 if TYPE_CHECKING:
     from .coordinator import AjaxDataCoordinator
@@ -266,7 +266,7 @@ class SQSManager(EventHandlerMixin):
         # Track scheduled call_later handles so we can cancel them on stop()
         # and strong-ref background tasks so they are not GC'd mid-flight.
         self._pending_timers: set[asyncio.TimerHandle] = set()
-        self._background_tasks: set[asyncio.Task] = set()
+        self._background_tasks: set[asyncio.Task[Any]] = set()
         # Serialise security_event handlers so overlapping events cannot
         # flip the coordinator skip-flag in a racy way.
         self._security_event_lock = asyncio.Lock()
@@ -298,7 +298,7 @@ class SQSManager(EventHandlerMixin):
         handle = self.coordinator.hass.loop.call_later(delay, callback)
         self._pending_timers.add(handle)
 
-    def _spawn_background(self, coro) -> None:
+    def _spawn_background(self, coro: Any) -> None:
         """Create a tracked background task so it cannot be GC'd mid-flight."""
         task = self.coordinator.hass.async_create_task(coro)
         self._background_tasks.add(task)
@@ -461,7 +461,7 @@ class SQSManager(EventHandlerMixin):
             _LOGGER.error("Error handling SQS event: %s", err, exc_info=True)
             return True
 
-    def _find_space(self, hub_id: str):
+    def _find_space(self, hub_id: str) -> AjaxSpace | None:
         """Find space by hub ID."""
         if self.coordinator.account is None:
             return None
@@ -545,7 +545,7 @@ class SQSManager(EventHandlerMixin):
             "transition": transition,
         }
 
-    def _add_event_to_history(self, space, event_record: dict[str, Any]) -> None:
+    def _add_event_to_history(self, space: AjaxSpace, event_record: dict[str, Any]) -> None:
         """Add event to space's recent events history."""
         # Insert at beginning (most recent first)
         space.recent_events.insert(0, event_record)
@@ -555,7 +555,7 @@ class SQSManager(EventHandlerMixin):
 
     async def _handle_security_event(
         self,
-        space,
+        space: AjaxSpace,
         event_tag: str,
         source_name: str,
         source_type: str | None = None,
@@ -570,7 +570,7 @@ class SQSManager(EventHandlerMixin):
         state_changed = old_state != new_state
 
         # Check if this was triggered by Home Assistant
-        ha_action_pending = self.coordinator.has_pending_ha_action(space.hub_id)
+        ha_action_pending = self.coordinator.has_pending_ha_action(space.hub_id)  # type: ignore[arg-type]
         if ha_action_pending:
             source_name = "Home Assistant"
             source_type = "HA"
@@ -620,7 +620,7 @@ class SQSManager(EventHandlerMixin):
         # But still record the event in history and create notification
         if state_changed and not ha_action_pending and not is_group_event:
             space.security_state = new_state
-            self._last_state_update[space.hub_id] = time.time()
+            self._last_state_update[space.hub_id] = time.time()  # type: ignore[index]
             # Update polling interval based on new state
             self.coordinator._update_polling_interval(new_state)
 
@@ -662,7 +662,7 @@ class SQSManager(EventHandlerMixin):
         return True
 
     async def _handle_door_event(
-        self, space, event_tag: str, source_name: str, source_id: str, transition: str
+        self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str, transition: str
     ) -> bool:
         """Handle door open/close events."""
         event_data = DOOR_EVENTS.get(event_tag)
@@ -692,7 +692,7 @@ class SQSManager(EventHandlerMixin):
         _LOGGER.debug("SQS: Door device %s not found", source_name)
         return False
 
-    async def _handle_motion_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
+    async def _handle_motion_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> bool:
         """Handle motion detection events."""
         event_data = MOTION_EVENTS.get(event_tag)
         if event_data is None:
@@ -720,7 +720,7 @@ class SQSManager(EventHandlerMixin):
         return False
 
     async def _handle_alarm_event(
-        self, space, alarm_type: str, event_tag: str, source_name: str, source_id: str
+        self, space: AjaxSpace, alarm_type: str, event_tag: str, source_name: str, source_id: str
     ) -> bool:
         """Handle smoke/flood/glass alarm events."""
         device = self._find_device(space, source_name, source_id)
@@ -759,7 +759,7 @@ class SQSManager(EventHandlerMixin):
         _LOGGER.debug("SQS: Alarm device %s not found", source_name)
         return False
 
-    async def _handle_relay_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
+    async def _handle_relay_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> bool:
         """Handle relay/socket/light on/off events."""
         event_data = RELAY_EVENTS.get(event_tag)
         if event_data is None:
@@ -777,7 +777,7 @@ class SQSManager(EventHandlerMixin):
         return False
 
     async def _handle_wire_input_event(
-        self, space, event_tag: str, source_name: str, source_id: str, transition: str
+        self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str, transition: str
     ) -> bool:
         """Handle WireInput alarm events (intrusion, S1/S2/S3, roller shutter).
 
@@ -809,7 +809,7 @@ class SQSManager(EventHandlerMixin):
         _LOGGER.warning("SQS: WireInput device %s (id=%s) not found", source_name, source_id)
         return False
 
-    async def _handle_button_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
+    async def _handle_button_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> bool:
         """Handle button press events."""
         event_data = BUTTON_EVENTS.get(event_tag)
         if event_data is None:
@@ -818,7 +818,7 @@ class SQSManager(EventHandlerMixin):
 
         device = self._find_device(space, source_name, source_id)
         if device:
-            # Store the last action in device attributes
+            # Store[Any] the last action in device attributes
             device.attributes["last_action"] = action
             device.last_trigger_time = datetime.now(UTC)
 
@@ -845,7 +845,7 @@ class SQSManager(EventHandlerMixin):
         _LOGGER.debug("SQS: Button device %s not found", source_name)
         return False
 
-    async def _handle_doorbell_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
+    async def _handle_doorbell_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> bool:
         """Handle doorbell ring events.
 
         The Ajax Doorbell is a Video Edge device, so we search both
@@ -899,7 +899,9 @@ class SQSManager(EventHandlerMixin):
         _LOGGER.debug("SQS: Doorbell device %s not found", source_name)
         return False
 
-    async def _handle_scenario_event(self, space, event_tag: str, source_name: str, additional_data_v2: list) -> bool:
+    async def _handle_scenario_event(
+        self, space: AjaxSpace, event_tag: str, source_name: str, additional_data_v2: list[Any]
+    ) -> bool:
         """Handle scenario events that might be triggered by a Button.
 
         When a Button is configured in 'Control' mode, Ajax doesn't send a direct
@@ -941,7 +943,9 @@ class SQSManager(EventHandlerMixin):
 
         return True
 
-    async def _handle_device_status_event(self, space, event_tag: str, source_name: str, source_id: str) -> bool:
+    async def _handle_device_status_event(
+        self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str
+    ) -> bool:
         """Handle device status events (online/offline, battery, tamper)."""
         device = self._find_device(space, source_name, source_id)
         if not device:
@@ -967,7 +971,7 @@ class SQSManager(EventHandlerMixin):
         _LOGGER.info("SQS instant: %s - %s", source_name, message)
         return True
 
-    def _find_device(self, space, source_name: str, source_id: str):
+    def _find_device(self, space: AjaxSpace, source_name: str, source_id: str) -> AjaxDevice | None:
         """Find device by name or ID.
 
         WireInput devices have composite IDs (parent ID + wire input index).
@@ -1025,7 +1029,7 @@ class SQSManager(EventHandlerMixin):
             self._request_discovery_refresh(source_id)
         return None
 
-    async def _create_alarm_notification(self, space, event_record: dict[str, Any]) -> None:
+    async def _create_alarm_notification(self, space: AjaxSpace, event_record: dict[str, Any]) -> None:
         """Create a Home Assistant notification for alarm events.
 
         Respects user notification preferences:
@@ -1081,7 +1085,7 @@ class SQSManager(EventHandlerMixin):
 
     async def _handle_video_event(
         self,
-        space,
+        space: AjaxSpace,
         event_tag: str,
         event_type: str,
         source_name: str,
@@ -1140,7 +1144,7 @@ class SQSManager(EventHandlerMixin):
 
     async def _handle_lock_event(
         self,
-        space,
+        space: AjaxSpace,
         event_tag: str,
         source_name: str,
         source_id: str,

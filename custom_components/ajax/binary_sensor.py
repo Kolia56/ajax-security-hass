@@ -276,7 +276,7 @@ class AjaxBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEntit
         space_id: str,
         device_id: str,
         sensor_key: str,
-        sensor_desc: dict,
+        sensor_desc: dict[str, Any],
     ) -> None:
         """Initialize the Ajax binary sensor."""
         super().__init__(coordinator)
@@ -322,7 +322,7 @@ class AjaxBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEntit
         value_fn = self._sensor_desc.get("value_fn")
         if value_fn:
             try:
-                return value_fn()
+                return value_fn()  # type: ignore[no-any-return]
             except Exception as err:
                 _LOGGER.error(
                     "Error getting value for sensor %s: %s",
@@ -427,7 +427,7 @@ class AjaxVideoEdgeBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySe
         space_id: str,
         video_edge_id: str,
         sensor_key: str,
-        sensor_desc: dict,
+        sensor_desc: dict[str, Any],
     ) -> None:
         """Initialize the Ajax video edge binary sensor."""
         super().__init__(coordinator)
@@ -460,7 +460,7 @@ class AjaxVideoEdgeBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySe
         value_fn = self._sensor_desc.get("value_fn")
         if value_fn:
             try:
-                return value_fn()
+                return value_fn()  # type: ignore[no-any-return]
             except Exception as err:
                 _LOGGER.error(
                     "Error getting value for video edge sensor %s: %s",
@@ -590,13 +590,13 @@ class AjaxHubBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEn
         value_fn = self._sensor_config.get("value_fn")
         if value_fn:
             try:
-                return value_fn(space.hub_details)
+                return value_fn(space.hub_details)  # type: ignore[no-any-return]
             except Exception:
                 return None
 
         value_key = self._sensor_config.get("value_key")
         if value_key:
-            return space.hub_details.get(value_key, False)
+            return space.hub_details.get(value_key, False)  # type: ignore[no-any-return]
         return None
 
     @property

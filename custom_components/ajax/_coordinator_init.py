@@ -13,7 +13,7 @@ methods have moved.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.helpers import issue_registry as ir
 
@@ -80,7 +80,7 @@ class AjaxBootstrapMixin:
         _sqs_initialized: bool
         _sse_url: str | None
         _sse_initialized: bool
-        _smart_lock_store: Store
+        _smart_lock_store: Store[Any]
 
     # ------------------------------------------------------------------
     # Account
@@ -108,8 +108,10 @@ class AjaxBootstrapMixin:
     # ------------------------------------------------------------------
 
     @staticmethod
-    async def _async_migrate_smart_locks_store(old_major_version: int, old_minor_version: int, old_data: dict) -> dict:
-        """Migrate the smart-locks ``Store`` payload across schema versions.
+    async def _async_migrate_smart_locks_store(
+        old_major_version: int, old_minor_version: int, old_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Migrate the smart-locks ``Store[Any]`` payload across schema versions.
 
         Current schema (v1) is ``space_id -> list[smart_lock_dict]``.
         This is a placeholder: the day we bump ``SMART_LOCK_STORE_VERSION``
@@ -127,7 +129,7 @@ class AjaxBootstrapMixin:
         """Persist SSE/SQS-discovered smart locks to storage."""
         if not self.account:
             return
-        data: dict[str, list[dict]] = {}
+        data: dict[str, list[dict[str, Any]]] = {}
         for space_id, space in self.account.spaces.items():
             locks = []
             for sl in space.smart_locks.values():

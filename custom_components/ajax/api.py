@@ -230,7 +230,7 @@ class AjaxRestApi:
         """
         self._bypass_cache_once = True
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the session if we own it."""
         if self._owns_session and self.session and not self.session.closed:
             await self.session.close()
@@ -277,7 +277,7 @@ class AjaxRestApi:
         Returns:
             Delay in seconds
         """
-        delay = RETRY_BACKOFF_BASE * (2**attempt)
+        delay: float = RETRY_BACKOFF_BASE * (2**attempt)
         return min(delay, RETRY_BACKOFF_MAX)
 
     async def async_login(self) -> str:
@@ -892,7 +892,7 @@ class AjaxRestApi:
         """
         if not self.user_id:
             raise AjaxRestApiError("No user_id available. Call async_login() first.")
-        return await self._request("GET", f"user/{self.user_id}/hubs")
+        return await self._request("GET", f"user/{self.user_id}/hubs")  # type: ignore[no-any-return]
 
     async def async_get_hub(self, hub_id: str) -> dict[str, Any]:
         """Get hub details.
@@ -905,7 +905,7 @@ class AjaxRestApi:
         """
         if not self.user_id:
             raise AjaxRestApiError("No user_id available. Call async_login() first.")
-        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}")
+        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}")  # type: ignore[no-any-return]
 
     async def async_get_space_by_hub(self, hub_id: str) -> dict[str, Any] | None:
         """Get space details by hub ID.
@@ -922,7 +922,7 @@ class AjaxRestApi:
         spaces = await self._request("GET", f"user/{self.user_id}/spaces?hubId={hub_id}")
         # Returns array of SpaceBinding, get first one
         if spaces and isinstance(spaces, list) and len(spaces) > 0:
-            return spaces[0]
+            return spaces[0]  # type: ignore[no-any-return]
         return None
 
     async def async_get_rooms(self, hub_id: str) -> list[dict[str, Any]]:
@@ -936,7 +936,7 @@ class AjaxRestApi:
         """
         if not self.user_id:
             raise AjaxRestApiError("No user_id available. Call async_login() first.")
-        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/rooms")
+        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/rooms")  # type: ignore[no-any-return]
 
     async def async_get_users(self, hub_id: str) -> list[dict[str, Any]]:
         """Get users for a hub.
@@ -949,7 +949,7 @@ class AjaxRestApi:
         """
         if not self.user_id:
             raise AjaxRestApiError("No user_id available. Call async_login() first.")
-        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/users")
+        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/users")  # type: ignore[no-any-return]
 
     async def async_get_hub_mode(self, hub_id: str) -> dict[str, Any]:
         """Get hub alarm mode.
@@ -960,7 +960,7 @@ class AjaxRestApi:
         Returns:
             Hub mode dictionary
         """
-        return await self._request("GET", f"hubs/{hub_id}/mode")
+        return await self._request("GET", f"hubs/{hub_id}/mode")  # type: ignore[no-any-return]
 
     async def async_set_hub_mode(self, hub_id: str, mode: str) -> dict[str, Any]:
         """Set hub alarm mode.
@@ -972,7 +972,7 @@ class AjaxRestApi:
         Returns:
             Updated hub mode
         """
-        return await self._request("POST", f"hubs/{hub_id}/mode", {"mode": mode})
+        return await self._request("POST", f"hubs/{hub_id}/mode", {"mode": mode})  # type: ignore[no-any-return]
 
     # Device methods
     async def async_get_devices(self, hub_id: str, enrich: bool = True) -> list[dict[str, Any]]:
@@ -998,7 +998,7 @@ class AjaxRestApi:
             endpoint += "?enrich=true"
         data = await self._request("GET", endpoint)
         self._devices_cache[cache_key] = (time.time(), data)
-        return data
+        return data  # type: ignore[no-any-return]
 
     async def async_get_device(self, hub_id: str, device_id: str) -> dict[str, Any]:
         """Get device details.
@@ -1010,7 +1010,7 @@ class AjaxRestApi:
         Returns:
             Device details dictionary
         """
-        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/devices/{device_id}")
+        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/devices/{device_id}")  # type: ignore[no-any-return]
 
     async def async_get_device_state(self, device_id: str) -> dict[str, Any]:
         """Get device state.
@@ -1021,7 +1021,7 @@ class AjaxRestApi:
         Returns:
             Device state dictionary
         """
-        return await self._request("GET", f"devices/{device_id}/state")
+        return await self._request("GET", f"devices/{device_id}/state")  # type: ignore[no-any-return]
 
     # Device control methods (direct API mode)
     async def async_control_device(self, device_id: str, command: dict[str, Any]) -> dict[str, Any]:
@@ -1037,7 +1037,7 @@ class AjaxRestApi:
         Returns:
             Device response
         """
-        return await self._request("POST", f"devices/{device_id}/control", command)
+        return await self._request("POST", f"devices/{device_id}/control", command)  # type: ignore[no-any-return]
 
     async def async_send_device_command(self, hub_id: str, device_id: str, command: str, device_type: str) -> None:
         """Send command to device (Socket/Relay/WallSwitch).
@@ -1144,7 +1144,7 @@ class AjaxRestApi:
         Returns:
             Power consumption data
         """
-        return await self._request("GET", f"devices/{device_id}/power")
+        return await self._request("GET", f"devices/{device_id}/power")  # type: ignore[no-any-return]
 
     # Camera methods
     async def async_get_cameras(self, hub_id: str) -> list[dict[str, Any]]:
@@ -1156,7 +1156,7 @@ class AjaxRestApi:
         Returns:
             List of camera dictionaries
         """
-        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/cameras")
+        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/cameras")  # type: ignore[no-any-return]
 
     async def async_get_camera(self, hub_id: str, camera_id: str) -> dict[str, Any]:
         """Get camera details.
@@ -1168,7 +1168,7 @@ class AjaxRestApi:
         Returns:
             Camera details dictionary
         """
-        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}")
+        return await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}")  # type: ignore[no-any-return]
 
     async def async_get_camera_snapshot(self, hub_id: str, camera_id: str) -> bytes:
         """Get camera snapshot.
@@ -1234,7 +1234,7 @@ class AjaxRestApi:
             Stream URL string
         """
         data = await self._request("GET", f"user/{self.user_id}/hubs/{hub_id}/cameras/{camera_id}/stream")
-        return data.get("url", "")
+        return data.get("url", "")  # type: ignore[no-any-return]
 
     # Video Edge methods (Bullet/Turret/MiniDome cameras)
     async def async_get_space(self, space_id: str) -> dict[str, Any]:
@@ -1251,7 +1251,7 @@ class AjaxRestApi:
             return cached[1]
         data = await self._request("GET", f"user/{self.user_id}/spaces/{space_id}")
         self._space_cache[space_id] = (time.time(), data)
-        return data
+        return data  # type: ignore[no-any-return]
 
     async def async_get_video_edges(self, space_id: str) -> list[dict[str, Any]]:
         """Get all video edge devices for a space.
@@ -1293,7 +1293,7 @@ class AjaxRestApi:
         Returns:
             Video edge details dictionary
         """
-        return await self._request(
+        return await self._request(  # type: ignore[no-any-return]
             "GET",
             f"user/{self.user_id}/spaces/{space_id}/devices/video-edges/{video_edge_id}",
         )
@@ -1308,7 +1308,7 @@ class AjaxRestApi:
         Returns:
             ONVIF settings dictionary with userAuthEnabled, users, httpPort
         """
-        return await self._request(
+        return await self._request(  # type: ignore[no-any-return]
             "GET",
             f"user/{self.user_id}/spaces/{space_id}/devices/video-edges/{video_edge_id}/onvif",
         )
@@ -1323,7 +1323,7 @@ class AjaxRestApi:
         Returns:
             RTSP settings dictionary with httpPort
         """
-        return await self._request(
+        return await self._request(  # type: ignore[no-any-return]
             "GET",
             f"user/{self.user_id}/spaces/{space_id}/devices/video-edges/{video_edge_id}/rtsp",
         )
@@ -1375,7 +1375,7 @@ class AjaxRestApi:
         Returns:
             Smart lock details dictionary
         """
-        return await self._request(
+        return await self._request(  # type: ignore[no-any-return]
             "GET",
             f"user/{self.user_id}/spaces/{space_id}/devices/smart-locks/{smart_lock_id}",
         )
@@ -1400,7 +1400,7 @@ class AjaxRestApi:
         payload: dict[str, str | int] = {"state": "on" if state else "off"}
         if brightness is not None:
             payload["brightness"] = brightness
-        return await self._request("POST", f"devices/{device_id}/control", payload)
+        return await self._request("POST", f"devices/{device_id}/control", payload)  # type: ignore[no-any-return]
 
     async def async_set_dimmer_brightness(
         self,
@@ -1444,7 +1444,7 @@ class AjaxRestApi:
         Returns:
             List of automation dictionaries
         """
-        return await self._request("GET", f"hubs/{hub_id}/automations")
+        return await self._request("GET", f"hubs/{hub_id}/automations")  # type: ignore[no-any-return]
 
     async def async_trigger_automation(
         self,
@@ -1460,7 +1460,7 @@ class AjaxRestApi:
         Returns:
             Automation trigger response
         """
-        return await self._request("POST", f"hubs/{hub_id}/automations/{automation_id}/trigger")
+        return await self._request("POST", f"hubs/{hub_id}/automations/{automation_id}/trigger")  # type: ignore[no-any-return]
 
     # Events methods
     async def async_get_events(self, hub_id: str, limit: int = 100) -> list[dict[str, Any]]:
@@ -1473,7 +1473,7 @@ class AjaxRestApi:
         Returns:
             List of event dictionaries
         """
-        return await self._request("GET", f"hubs/{hub_id}/events?limit={limit}")
+        return await self._request("GET", f"hubs/{hub_id}/events?limit={limit}")  # type: ignore[no-any-return]
 
     # NVR methods
     async def async_get_nvr_status(self, nvr_id: str) -> dict[str, Any]:
@@ -1485,7 +1485,7 @@ class AjaxRestApi:
         Returns:
             NVR status dictionary
         """
-        return await self._request("GET", f"devices/{nvr_id}/status")
+        return await self._request("GET", f"devices/{nvr_id}/status")  # type: ignore[no-any-return]
 
     async def async_get_nvr_recordings(
         self,
@@ -1506,7 +1506,7 @@ class AjaxRestApi:
             List of recording dictionaries
         """
         query = urlencode({"cameraId": camera_id, "start": start, "end": end})
-        return await self._request("GET", f"devices/{nvr_id}/recordings?{query}")
+        return await self._request("GET", f"devices/{nvr_id}/recordings?{query}")  # type: ignore[no-any-return]
 
     # Fields that should not be sent in device update requests (read-only or internal)
     # Note: deviceType MUST be included - API needs it for deserialization
@@ -1650,7 +1650,7 @@ class AjaxRestApi:
             updated_device,
         )
 
-    def _deep_merge(self, base: dict, updates: dict) -> dict:
+    def _deep_merge(self, base: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
         """Deep merge two dictionaries, preserving nested structures."""
         result = base.copy()
         for key, value in updates.items():
@@ -1888,7 +1888,7 @@ class AjaxRestApi:
         if not self.user_id:
             raise AjaxRestApiError("No user_id available. Call async_login() first.")
 
-        return await self._request(
+        return await self._request(  # type: ignore[no-any-return]
             "GET",
             f"user/{self.user_id}/hubs/{hub_id}/groups",
         )

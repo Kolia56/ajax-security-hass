@@ -72,7 +72,7 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
         """Get the options flow for this handler."""
         return AjaxOptionsFlow()
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the config flow."""
         self._api: AjaxRestApi | None = None
         self._user_input: dict[str, Any] = {}

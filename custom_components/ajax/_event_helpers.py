@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -137,7 +137,7 @@ class EventHandlerMixin:
         if not isinstance(channels, list):
             return
 
-        target_channel: dict | None = None
+        target_channel: dict[str, Any] | None = None
         for channel in channels:
             if isinstance(channel, dict) and (channel_id is None or channel.get("id") == channel_id):
                 target_channel = channel

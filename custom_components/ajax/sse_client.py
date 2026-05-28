@@ -76,13 +76,13 @@ class AjaxSSEClient:
         self._callback = callback
         self._hass_loop = hass_loop
         self._running = False
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[Any] | None = None
         self._session: aiohttp.ClientSession | None = None
         self._reconnect_delay = self.RECONNECT_DELAY
         self._auth_failures = 0
         self._on_auth_failure = on_auth_failure
         # Hold strong refs on callback tasks so they are not GC'd mid-flight
-        self._pending_callback_tasks: set[asyncio.Task] = set()
+        self._pending_callback_tasks: set[asyncio.Task[Any]] = set()
 
     async def start(self) -> bool:
         """Start receiving SSE events.

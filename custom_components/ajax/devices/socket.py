@@ -8,6 +8,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -26,7 +28,7 @@ from .base import AjaxDeviceHandler
 class SocketHandler(AjaxDeviceHandler):
     """Handler for Ajax Socket/Relay smart devices."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for sockets/relays."""
         sensors = [
             {
@@ -52,7 +54,7 @@ class SocketHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for sockets/relays."""
         sensors = []
 
@@ -158,7 +160,7 @@ class SocketHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for sockets/relays."""
         # Check if this is a LightSwitch device with channel(s)
         # LightSwitchTwoWay has only channel 1, LightSwitchTwoGang/TwoChannelTwoWay have both
@@ -225,7 +227,7 @@ class SocketHandler(AjaxDeviceHandler):
 
         return switches
 
-    def _get_multi_gang_switches(self) -> list[dict]:
+    def _get_multi_gang_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for multi-gang LightSwitch devices."""
         switches = []
 

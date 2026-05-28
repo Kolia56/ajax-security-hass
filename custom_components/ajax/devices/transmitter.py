@@ -6,6 +6,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import (
     UnitOfTime,
@@ -33,7 +35,7 @@ class TransmitterHandler(AjaxDeviceHandler):
         "MEDICAL": BinarySensorDeviceClass.SAFETY,
     }
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for Transmitter."""
         sensors = []
 
@@ -67,9 +69,9 @@ class TransmitterHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for Transmitter."""
-        sensors: list[dict] = [
+        sensors: list[dict[str, Any]] = [
             self._battery_sensor(),
             self._signal_strength_percent_sensor(),
         ]
@@ -147,7 +149,7 @@ class TransmitterHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for Transmitter."""
         switches = []
 

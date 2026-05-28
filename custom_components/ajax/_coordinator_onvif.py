@@ -318,7 +318,7 @@ class AjaxOnvifMixin:
         if not isinstance(channels, list):
             return nvr
 
-        def get_linked_camera_from_channel(channel: dict) -> AjaxVideoEdge | None:
+        def get_linked_camera_from_channel(channel: dict[str, Any]) -> AjaxVideoEdge | None:
             """Extract the linked camera from a channel's ``sourceAliases``."""
             if not isinstance(channel, dict):
                 return None

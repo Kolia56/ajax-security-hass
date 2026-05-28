@@ -14,6 +14,8 @@ Features:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 from .base import AjaxDeviceHandler
@@ -22,7 +24,7 @@ from .base import AjaxDeviceHandler
 class LightSwitchHandler(AjaxDeviceHandler):
     """Handler for Ajax LightSwitch devices (non-dimmer)."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for LightSwitch."""
         # Note: LightSwitch devices have no tamper sensor
         sensors = [
@@ -72,9 +74,9 @@ class LightSwitchHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for LightSwitch."""
-        sensors: list[dict] = [self._signal_strength_percent_sensor()]
+        sensors: list[dict[str, Any]] = [self._signal_strength_percent_sensor()]
         if "temperature" in self.device.attributes:
             sensors.append(self._temperature_sensor())
 
@@ -97,7 +99,7 @@ class LightSwitchHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for LightSwitch settings."""
         switches = []
 
@@ -174,7 +176,7 @@ class LightSwitchHandler(AjaxDeviceHandler):
 
         return switches
 
-    def get_numbers(self) -> list[dict]:
+    def get_numbers(self) -> list[dict[str, Any]]:
         """Return number entities for LightSwitch settings."""
         numbers = []
 
@@ -196,7 +198,7 @@ class LightSwitchHandler(AjaxDeviceHandler):
 
         return numbers
 
-    def get_selects(self) -> list[dict]:
+    def get_selects(self) -> list[dict[str, Any]]:
         """Return select entities for LightSwitch settings."""
         selects = []
 

@@ -10,6 +10,8 @@ a fire alarm. The button state is tracked via switchState attribute.
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -21,7 +23,7 @@ from .base import AjaxDeviceHandler
 class ManualCallPointHandler(AjaxDeviceHandler):
     """Handler for Ajax Manual Call Point (MCP) fire alarm buttons."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for MCP."""
         sensors = [
             # Fire alarm triggered (button pressed)
@@ -43,9 +45,9 @@ class ManualCallPointHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for MCP."""
-        sensors: list[dict] = [
+        sensors: list[dict[str, Any]] = [
             self._battery_sensor(),
             self._signal_strength_percent_sensor(),
         ]
@@ -79,7 +81,7 @@ class ManualCallPointHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for MCP."""
         # MCP doesn't have configurable switches
         return []

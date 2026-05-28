@@ -106,7 +106,7 @@ class VideoEdgeHandler:
     the video-edge setup paths in each platform.
     """
 
-    def __init__(self, video_edge: AjaxVideoEdge, all_video_edges: dict | None = None) -> None:
+    def __init__(self, video_edge: AjaxVideoEdge, all_video_edges: dict[str, Any] | None = None) -> None:
         """Initialize the handler.
 
         Args:
@@ -128,10 +128,10 @@ class VideoEdgeHandler:
         """Get the first storage device safely, returning empty dict if none."""
         devices = self.video_edge.raw_data.get("storageDevices", [])
         if isinstance(devices, list) and len(devices) > 0:
-            return devices[0]
+            return devices[0]  # type: ignore[no-any-return]
         return {}
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for video edges."""
         sensors = []
 
@@ -268,7 +268,7 @@ class VideoEdgeHandler:
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for video edges."""
         sensors = []
         raw_data = self.video_edge.raw_data
@@ -536,7 +536,7 @@ class VideoEdgeHandler:
         if channel:
             mode = channel.get("recordMode", "UNKNOWN")
             # Convert API value to translation key (lowercase)
-            return RECORD_MODE_TRANSLATIONS.get(mode, mode.lower())
+            return RECORD_MODE_TRANSLATIONS.get(mode, mode.lower())  # type: ignore[no-any-return]
         return None
 
     def _get_channel_record_policy(self, channel_id: str) -> str | None:
@@ -545,7 +545,7 @@ class VideoEdgeHandler:
         if channel:
             policy = channel.get("recordPolicy", "UNKNOWN")
             # Convert API value to translation key (lowercase)
-            return RECORD_POLICY_TRANSLATIONS.get(policy, policy.lower())
+            return RECORD_POLICY_TRANSLATIONS.get(policy, policy.lower())  # type: ignore[no-any-return]
         return None
 
     def _get_storage_status(self) -> str:
@@ -554,10 +554,10 @@ class VideoEdgeHandler:
         if storage_devices and len(storage_devices) > 0:
             status = storage_devices[0].get("status", {})
             state = status.get("state", "NONE")
-            return STORAGE_STATUS_TRANSLATIONS.get(state, state.lower())
+            return STORAGE_STATUS_TRANSLATIONS.get(state, state.lower())  # type: ignore[no-any-return]
         return "none"
 
-    def _get_channel_by_id(self, channel_id: str) -> dict | None:
+    def _get_channel_by_id(self, channel_id: str) -> dict[str, Any] | None:
         """Get channel dict by ID from current video_edge.channels."""
         channels = self.video_edge.channels
         if not isinstance(channels, list):
@@ -605,7 +605,7 @@ class VideoEdgeHandler:
             return False
         return self._has_detection(channel, detection_type)
 
-    def _has_detection(self, channel: dict, detection_type: str) -> bool:
+    def _has_detection(self, channel: dict[str, Any], detection_type: str) -> bool:
         """Check if channel has a specific detection active."""
         if not isinstance(channel, dict):
             return False
@@ -614,10 +614,10 @@ class VideoEdgeHandler:
             return False
         for state in states:
             if isinstance(state, dict) and state.get("type") == detection_type:
-                return state.get("active", False)
+                return state.get("active", False)  # type: ignore[no-any-return]
         return False
 
-    def _get_linked_camera_info(self, channel: dict) -> dict | None:
+    def _get_linked_camera_info(self, channel: dict[str, Any]) -> dict[str, Any] | None:
         """Get info about the Ajax camera linked to this NVR channel.
 
         Returns dict with camera info {id, name} if this is an NVR channel
@@ -673,7 +673,7 @@ class VideoEdgeHandler:
 
         return count
 
-    def _get_nvr_cameras_attributes(self) -> dict:
+    def _get_nvr_cameras_attributes(self) -> dict[str, Any]:
         """Get detailed attributes for NVR cameras sensor.
 
         Returns dict with cameras list and their types.
@@ -707,7 +707,7 @@ class VideoEdgeHandler:
 
         return {"cameras": cameras}
 
-    def _get_linked_nvrs(self) -> list[dict]:
+    def _get_linked_nvrs(self) -> list[dict[str, Any]]:
         """Find all NVRs that record this camera.
 
         Returns a list of dicts with NVR info: {id, name}.

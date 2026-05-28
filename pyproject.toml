@@ -54,18 +54,26 @@ exclude_lines = [
 ]
 
 # ---------------------------------------------------------------------------
-# mypy — progressive typing, not yet --strict.
+# mypy — strict mode on (Quality Scale Platinum `strict-typing`).
 #
-# Enable the highest-signal flags (warn unused ignores, no implicit Optional,
-# silent imports for our own code). Leave full --strict off until the issues
-# tracked in QS rule `strict-typing` are resolved (392 errors under --strict,
-# vs ~10 here). Running ``mypy custom_components/ajax`` should stay at
-# 0 errors to keep CI green.
+# The full --strict flag set is enabled; the only carve-out is
+# warn_return_any, which we tag inline with `# type: ignore[no-any-return]`
+# at the boundary where an Ajax API JSON payload (`dict.get(...)` /
+# `response[...]`) is downcast to the declared concrete type. CI fails
+# on any new error here.
 # ---------------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.13"
 follow_imports = "silent"
 ignore_missing_imports = true
-warn_unused_ignores = true
-warn_redundant_casts = true
-no_implicit_optional = true
+strict = true
+
+# Allow re-exporting from homeassistant.* even when the upstream module
+# omits the explicit `__all__` entry. The HA team does not always update
+# `__all__` when they move a public symbol; under --strict, every such
+# import (EntityCategory, AlarmControlPanelState, DOMAIN, ...) is flagged
+# as attr-defined. Trusting HA's flat package surface is the pragmatic
+# call — the alternative is dozens of pinpoint `type: ignore`.
+[[tool.mypy.overrides]]
+module = "homeassistant.*"
+implicit_reexport = true

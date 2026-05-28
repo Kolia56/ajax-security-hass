@@ -8,6 +8,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.event import EventDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass
 
@@ -17,13 +19,13 @@ from .base import AjaxDeviceHandler
 class ButtonHandler(AjaxDeviceHandler):
     """Handler for Ajax Button devices."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for buttons."""
         return [self._tamper_binary_sensor()]
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for buttons."""
-        sensors: list[dict] = [
+        sensors: list[dict[str, Any]] = [
             self._battery_sensor(),
             self._signal_strength_percent_sensor(),
         ]
@@ -79,7 +81,7 @@ class ButtonHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_events(self) -> list[dict]:
+    def get_events(self) -> list[dict[str, Any]]:
         """Return event entities for buttons."""
         return [
             {
@@ -97,7 +99,7 @@ class ButtonHandler(AjaxDeviceHandler):
             },
         ]
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for buttons."""
         # Buttons typically don't have configurable switches
         return []

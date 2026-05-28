@@ -10,6 +10,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 from .base import AjaxDeviceHandler
@@ -18,7 +20,7 @@ from .base import AjaxDeviceHandler
 class MotionDetectorHandler(AjaxDeviceHandler):
     """Handler for Ajax MotionProtect motion detectors."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for motion detectors."""
         # Note: No translation_key needed - HA provides automatic translation for device_class
         sensors = [
@@ -53,9 +55,9 @@ class MotionDetectorHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for motion detectors."""
-        sensors: list[dict] = [
+        sensors: list[dict[str, Any]] = [
             self._battery_sensor(),
             self._signal_strength_percent_sensor(),
         ]
@@ -84,7 +86,7 @@ class MotionDetectorHandler(AjaxDeviceHandler):
         except (ValueError, TypeError):
             return str(raw)
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for motion detectors."""
         switches = []
 

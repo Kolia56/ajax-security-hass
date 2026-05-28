@@ -289,7 +289,7 @@ class AjaxDoorPlusBaseSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEntit
         self._space_id = space_id
         self._device_id = device_id
 
-    def _get_device(self):
+    def _get_device(self) -> AjaxDevice | None:
         space = self.coordinator.get_space(self._space_id)
         return space.devices.get(self._device_id) if space else None
 
@@ -328,7 +328,7 @@ class AjaxShockSensitivitySelect(AjaxDoorPlusBaseSelect):
         value = device.attributes.get("shock_sensor_sensitivity")
         # Return None for unmapped values so HA displays "unknown" rather
         # than forcing a wrong option.
-        return SHOCK_SENSITIVITY_OPTIONS.get(value)
+        return SHOCK_SENSITIVITY_OPTIONS.get(value)  # type: ignore[arg-type]
 
     async def async_select_option(self, option: str) -> None:
         """Change the shock sensor sensitivity."""
@@ -385,7 +385,7 @@ class AjaxLedBrightnessSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEnti
         self._attr_unique_id = f"{device_id}_led_brightness"
         self._attr_translation_key = "led_brightness"
 
-    def _get_device(self):
+    def _get_device(self) -> AjaxDevice | None:
         space = self.coordinator.get_space(self._space_id)
         return space.devices.get(self._device_id) if space else None
 
@@ -395,7 +395,7 @@ class AjaxLedBrightnessSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEnti
         if not device or not device.online:
             return False
         # Hide when LED indication is disabled
-        return device.attributes.get("indicationEnabled", False)
+        return device.attributes.get("indicationEnabled", False)  # type: ignore[no-any-return]
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -466,7 +466,7 @@ class AjaxIndicationModeSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEnt
         self._attr_unique_id = f"{device_id}_indication_mode"
         self._attr_translation_key = "indication_mode"
 
-    def _get_device(self):
+    def _get_device(self) -> AjaxDevice | None:
         space = self.coordinator.get_space(self._space_id)
         return space.devices.get(self._device_id) if space else None
 
@@ -485,7 +485,7 @@ class AjaxIndicationModeSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEnt
         if not device:
             return None
         api_value = device.attributes.get("indicationMode")
-        return INDICATION_MODE_OPTIONS.get(api_value)
+        return INDICATION_MODE_OPTIONS.get(api_value)  # type: ignore[arg-type]
 
     async def async_select_option(self, option: str) -> None:
         """Change the indication mode."""
@@ -534,7 +534,7 @@ class AjaxDimmerSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEntity):
         coordinator: AjaxDataCoordinator,
         space_id: str,
         device_id: str,
-        select_def: dict,
+        select_def: dict[str, Any],
     ) -> None:
         """Initialize the dimmer select entity."""
         super().__init__(coordinator)
@@ -575,7 +575,7 @@ class AjaxDimmerSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEntity):
         value_lower = str(value).lower()
         for option in self._select_def["options"]:
             if option == value_lower:
-                return option
+                return option  # type: ignore[no-any-return]
         return None
 
     async def async_select_option(self, option: str) -> None:
@@ -635,7 +635,7 @@ class AjaxHandlerSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEntity):
         coordinator: AjaxDataCoordinator,
         space_id: str,
         device_id: str,
-        select_desc: dict,
+        select_desc: dict[str, Any],
     ) -> None:
         super().__init__(coordinator)
         self._space_id = space_id
@@ -646,7 +646,7 @@ class AjaxHandlerSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEntity):
         self._attr_translation_key = select_desc.get("translation_key", select_desc["key"])
         self._attr_options = select_desc.get("options", [])
 
-    def _get_device(self):
+    def _get_device(self) -> AjaxDevice | None:
         space = self.coordinator.get_space(self._space_id)
         return space.devices.get(self._device_id) if space else None
 
@@ -663,7 +663,7 @@ class AjaxHandlerSelect(CoordinatorEntity[AjaxDataCoordinator], SelectEntity):
     def current_option(self) -> str | None:
         value_fn = self._select_desc.get("value_fn")
         if value_fn:
-            return value_fn()
+            return value_fn()  # type: ignore[no-any-return]
         return None
 
     async def async_select_option(self, option: str) -> None:

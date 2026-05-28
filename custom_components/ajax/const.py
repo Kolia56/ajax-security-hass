@@ -22,7 +22,7 @@ def get_integration_version() -> str:
     try:
         with manifest_path.open() as f:
             manifest = json.load(f)
-            return manifest.get("version", "0.0.0")
+            return manifest.get("version", "0.0.0")  # type: ignore[no-any-return]
     except (OSError, json.JSONDecodeError):
         return "0.0.0"
 

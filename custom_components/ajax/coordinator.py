@@ -120,9 +120,9 @@ class AjaxDataCoordinator(
         self._enabled_spaces: list[str] | None = enabled_spaces
         self.all_discovered_spaces: dict[str, str] = {}  # space_id -> name (for options flow)
         # Cached space_binding responses to avoid repeated per-tick API calls.
-        self._space_binding_cache: dict[str, dict] = {}  # hub_id -> space_binding
-        self._fast_poll_tasks: dict[str, asyncio.Task] = {}  # device_id -> fast polling task for door sensors
-        self._door_sensor_poll_task: asyncio.Task | None = (
+        self._space_binding_cache: dict[str, dict[str, Any]] = {}  # hub_id -> space_binding
+        self._fast_poll_tasks: dict[str, asyncio.Task[Any]] = {}  # device_id -> fast polling task for door sensors
+        self._door_sensor_poll_task: asyncio.Task[Any] | None = (
             None  # Continuous door sensor polling when disarmed or in night mode
         )
         self._door_sensor_poll_security_state: SecurityState = SecurityState.DISARMED
@@ -194,8 +194,8 @@ class AjaxDataCoordinator(
 
         # Persistent storage for SSE/SQS-discovered smart locks (survives reboots).
         # Schema migration is handled manually in _async_load_smart_locks so we
-        # stay compatible with Store implementations that predate migrate_func.
-        self._smart_lock_store: Store = Store(hass, SMART_LOCK_STORE_VERSION, f"{DOMAIN}_smart_locks")
+        # stay compatible with Store[Any] implementations that predate migrate_func.
+        self._smart_lock_store: Store[Any] = Store[Any](hass, SMART_LOCK_STORE_VERSION, f"{DOMAIN}_smart_locks")
 
         super().__init__(
             hass,
@@ -215,7 +215,7 @@ class AjaxDataCoordinator(
         )
 
     @staticmethod
-    def _parse_door_state_from_wiring(external_state: str | None, wiring_details: dict | None) -> bool:
+    def _parse_door_state_from_wiring(external_state: str | None, wiring_details: dict[str, Any] | None) -> bool:
         """Derive door-opened state from externalContactState + wiring scheme.
 
         Handles TWO_EOL / ONE_EOL / NO_EOL wiring schemas with the OR logic
@@ -304,7 +304,7 @@ class AjaxDataCoordinator(
         if not self._door_sensor_fast_poll_enabled or self._sse_url:
             should_poll = False
 
-        # Store security state for the polling loop
+        # Store[Any] security state for the polling loop
         self._door_sensor_poll_security_state = security_state
 
         if should_poll and self._door_sensor_poll_task is None and self.config_entry is not None:

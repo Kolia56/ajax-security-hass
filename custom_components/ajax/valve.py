@@ -125,7 +125,7 @@ class AjaxValve(CoordinatorEntity[AjaxDataCoordinator], ValveEntity):
         space_id: str,
         device_id: str,
         valve_key: str,
-        valve_desc: dict,
+        valve_desc: dict[str, Any],
     ) -> None:
         """Initialize the Ajax valve."""
         super().__init__(coordinator)
@@ -154,7 +154,7 @@ class AjaxValve(CoordinatorEntity[AjaxDataCoordinator], ValveEntity):
         value_fn = self._valve_desc.get("value_fn")
         if value_fn:
             try:
-                return value_fn()
+                return value_fn()  # type: ignore[no-any-return]
             except Exception as err:
                 _LOGGER.error(
                     "Error getting value for valve %s: %s",

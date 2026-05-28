@@ -9,6 +9,7 @@ This module creates number entities for Ajax device settings like:
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.number import DOMAIN as NUMBER_DOMAIN, NumberEntity, NumberMode
 from homeassistant.const import DEGREE, PERCENTAGE, UnitOfElectricCurrent
@@ -286,7 +287,7 @@ class AjaxDoorPlusBaseNumber(CoordinatorEntity[AjaxDataCoordinator], NumberEntit
         self._space_id = space_id
         self._device_id = device_id
 
-    def _get_device(self):
+    def _get_device(self) -> AjaxDevice | None:
         space = self.coordinator.get_space(self._space_id)
         return space.devices.get(self._device_id) if space else None
 
@@ -323,7 +324,7 @@ class AjaxTiltDegreesNumber(AjaxDoorPlusBaseNumber):
         device = self._get_device()
         if not device:
             return None
-        return device.attributes.get("accelerometer_tilt_degrees", 5)
+        return device.attributes.get("accelerometer_tilt_degrees", 5)  # type: ignore[no-any-return]
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the tilt degrees threshold."""
@@ -384,7 +385,7 @@ class AjaxCurrentThresholdNumber(CoordinatorEntity[AjaxDataCoordinator], NumberE
         self._attr_unique_id = f"{device_id}_current_threshold"
         self._attr_translation_key = "current_threshold"
 
-    def _get_device(self):
+    def _get_device(self) -> AjaxDevice | None:
         space = self.coordinator.get_space(self._space_id)
         return space.devices.get(self._device_id) if space else None
 
@@ -460,7 +461,7 @@ class AjaxLedBrightnessV2Number(CoordinatorEntity[AjaxDataCoordinator], NumberEn
         self._attr_unique_id = f"{device_id}_led_brightness"
         self._attr_translation_key = "led_brightness_level"
 
-    def _get_device(self):
+    def _get_device(self) -> AjaxDevice | None:
         space = self.coordinator.get_space(self._space_id)
         return space.devices.get(self._device_id) if space else None
 
@@ -481,7 +482,7 @@ class AjaxLedBrightnessV2Number(CoordinatorEntity[AjaxDataCoordinator], NumberEn
         device = self._get_device()
         if not device:
             return None
-        return device.attributes.get("indicationBrightness", 8)
+        return device.attributes.get("indicationBrightness", 8)  # type: ignore[no-any-return]
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -533,7 +534,7 @@ class AjaxDimmerNumber(CoordinatorEntity[AjaxDataCoordinator], NumberEntity):
         coordinator: AjaxDataCoordinator,
         space_id: str,
         device_id: str,
-        number_def: dict,
+        number_def: dict[str, Any],
     ) -> None:
         """Initialize the dimmer number entity."""
         super().__init__(coordinator)

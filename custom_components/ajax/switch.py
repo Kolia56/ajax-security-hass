@@ -23,7 +23,7 @@ from ._discovery import connect_new_entity_signal
 from .const import DOMAIN, MANUFACTURER, SIGNAL_NEW_DEVICE
 from .coordinator import AjaxDataCoordinator
 from .devices import DEVICE_HANDLERS, LightSwitchHandler, is_dimmer_device
-from .models import AjaxDevice, DeviceType, SecurityState
+from .models import AjaxDevice, AjaxSpace, DeviceType, SecurityState
 
 _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 1
@@ -59,7 +59,7 @@ def is_lightswitch_device(device: AjaxDevice) -> bool:
     return "lightswitch" in raw_type and "dimmer" not in raw_type
 
 
-def get_device_handler(device: AjaxDevice):
+def get_device_handler(device: AjaxDevice) -> type | None:
     """Get the appropriate handler for a device.
 
     Dimmer devices are handled separately, not via handlers.
@@ -268,7 +268,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
         space_id: str,
         device_id: str,
         switch_key: str,
-        switch_desc: dict,
+        switch_desc: dict[str, Any],
     ) -> None:
         """Initialize the Ajax switch."""
         super().__init__(coordinator)
@@ -314,7 +314,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
         value_fn = self._switch_desc.get("value_fn")
         if value_fn:
             try:
-                return value_fn()
+                return value_fn()  # type: ignore[no-any-return]
             except Exception as err:
                 _LOGGER.error(
                     "Error getting value for switch %s: %s",
@@ -509,7 +509,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
                 translation_placeholders={"entity": self._switch_key, "error": str(err)},
             ) from err
 
-    async def _set_trigger_value(self, space, device, trigger_key: str, enabled: bool) -> None:
+    async def _set_trigger_value(self, space: AjaxSpace, device: AjaxDevice, trigger_key: str, enabled: bool) -> None:
         """Set a trigger value in the sirenTriggers list."""
         old_triggers = list(device.attributes.get("siren_triggers", []))
         current_triggers = list(old_triggers)
@@ -528,10 +528,12 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
             api_nested_key = self._switch_desc.get("api_nested_key")
             if api_nested_key:
                 payload = {api_nested_key: {"sirenTriggers": current_triggers}}
-                await self.coordinator.api.async_update_device_nested(space.hub_id, self._device_id, payload)
+                await self.coordinator.api.async_update_device_nested(space.hub_id, self._device_id, payload)  # type: ignore[arg-type]
             else:
                 await self.coordinator.api.async_update_device(
-                    space.hub_id, self._device_id, {"sirenTriggers": current_triggers}
+                    space.hub_id,  # type: ignore[arg-type]
+                    self._device_id,
+                    {"sirenTriggers": current_triggers},
                 )
             _LOGGER.info(
                 "Set sirenTriggers=%s for device %s",
@@ -549,7 +551,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
                 translation_placeholders={"entity": self._switch_key, "error": str(err)},
             ) from err
 
-    async def _set_settings_value(self, space, device, settings_key: str, enabled: bool) -> None:
+    async def _set_settings_value(self, space: AjaxSpace, device: AjaxDevice, settings_key: str, enabled: bool) -> None:
         """Set a settings value in the settingsSwitch list (for LightSwitch devices)."""
         old_settings = list(device.attributes.get("settingsSwitch", []))
         current_settings = list(old_settings)
@@ -566,7 +568,9 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
 
         try:
             await self.coordinator.api.async_update_device(
-                space.hub_id, self._device_id, {"settingsSwitch": current_settings}
+                space.hub_id,  # type: ignore[arg-type]
+                self._device_id,
+                {"settingsSwitch": current_settings},
             )
             _LOGGER.info(
                 "Set settingsSwitch=%s for device %s",
@@ -584,7 +588,7 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
                 translation_placeholders={"entity": self._switch_key, "error": str(err)},
             ) from err
 
-    async def _set_channel_value(self, space, device, channel: int, value: bool) -> None:
+    async def _set_channel_value(self, space: AjaxSpace, device: AjaxDevice, channel: int, value: bool) -> None:
         """Set a channel value for multi-gang LightSwitch devices."""
         # channel is 0-based (0, 1), but attribute keys are 1-based (channel_1_on, channel_2_on)
         attr_key = f"channel_{channel + 1}_on"
@@ -611,11 +615,11 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
         try:
             device_type_str = device.raw_type
             await self.coordinator.api.async_set_channel_state(
-                space.hub_id,
+                space.hub_id,  # type: ignore[arg-type]
                 self._device_id,
                 channel,
                 value,
-                device_type_str,
+                device_type_str,  # type: ignore[arg-type]
             )
             _LOGGER.info(
                 "Set %s channel %d=%s for device %s",
@@ -700,7 +704,7 @@ class AjaxDimmerSettingsSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEnt
         coordinator: AjaxDataCoordinator,
         space_id: str,
         device_id: str,
-        switch_def: dict,
+        switch_def: dict[str, Any],
     ) -> None:
         """Initialize the dimmer settings switch."""
         super().__init__(coordinator)
@@ -838,7 +842,7 @@ class AjaxDimmerBoolSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity)
         device = self._get_device()
         if not device:
             return False
-        return device.attributes.get(self._attr_key, False)
+        return device.attributes.get(self._attr_key, False)  # type: ignore[no-any-return]
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
@@ -929,7 +933,7 @@ class AjaxDimmerCalibrationSwitch(CoordinatorEntity[AjaxDataCoordinator], Switch
         if not device:
             return False
         dimmer_settings = device.attributes.get("dimmerSettings", {})
-        return dimmer_settings.get("calibration") == "ENABLED"
+        return dimmer_settings.get("calibration") == "ENABLED"  # type: ignore[no-any-return]
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on calibration."""

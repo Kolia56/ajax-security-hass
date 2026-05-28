@@ -36,7 +36,7 @@ class AjaxSQSClient:
         aws_access_key_id: str,
         aws_secret_access_key: str,
         queue_name: str,
-        event_callback: Callable[[dict], Any] | None = None,
+        event_callback: Callable[[dict[str, Any]], Any] | None = None,
         hass_loop: asyncio.AbstractEventLoop | None = None,
     ) -> None:
         """Initialize the SQS client."""
@@ -55,14 +55,14 @@ class AjaxSQSClient:
         self._thread: threading.Thread | None = None
 
     @property
-    def event_callback(self):
+    def event_callback(self) -> Callable[[dict[str, Any]], Any] | None:
         return self._callback
 
     @event_callback.setter
-    def event_callback(self, value):
+    def event_callback(self, value: Callable[[dict[str, Any]], Any] | None) -> None:
         self._callback = value
 
-    def _make_client(self):
+    def _make_client(self) -> Any:
         """Create a new SQS client context manager."""
         return self._session.create_client(
             "sqs",
@@ -86,10 +86,10 @@ class AjaxSQSClient:
     def _get_queue_url_sync(self) -> str:
         """Synchronously get queue URL (runs in executor)."""
 
-        async def _fetch():
+        async def _fetch() -> str:
             async with self._make_client() as client:
                 resp = await client.get_queue_url(QueueName=self._queue_name)
-                return resp["QueueUrl"]
+                return resp["QueueUrl"]  # type: ignore[no-any-return]
 
         return asyncio.run(_fetch())
 
@@ -164,7 +164,7 @@ class AjaxSQSClient:
                 loop.close()
                 _LOGGER.info("SQS thread ended")
 
-    async def _run_loop_async(self, _poll_count_fn) -> None:
+    async def _run_loop_async(self, _poll_count_fn: Callable[[], int]) -> None:
         """Run the poll/handle cycle with a persistent SQS client."""
         consecutive_errors = 0
         async with self._make_client() as client:
@@ -194,7 +194,7 @@ class AjaxSQSClient:
                     consecutive_errors += 1
                     await asyncio.get_running_loop().run_in_executor(None, self._stop_event.wait, backoff)
 
-    async def _poll_messages(self, client) -> list[dict]:
+    async def _poll_messages(self, client: Any) -> list[dict[str, Any]]:
         """Poll SQS for messages using an existing client."""
         response = await client.receive_message(
             QueueUrl=self._queue_url,
@@ -202,9 +202,9 @@ class AjaxSQSClient:
             WaitTimeSeconds=self.WAIT_TIME,
             VisibilityTimeout=self.VISIBILITY_TIMEOUT,
         )
-        return response.get("Messages", [])
+        return response.get("Messages", [])  # type: ignore[no-any-return]
 
-    async def _delete(self, client, receipt: str, msg_id: str) -> None:
+    async def _delete(self, client: Any, receipt: str, msg_id: str) -> None:
         """Delete a message, logging failures."""
         try:
             await client.delete_message(QueueUrl=self._queue_url, ReceiptHandle=receipt)
@@ -212,7 +212,7 @@ class AjaxSQSClient:
         except Exception as del_err:  # noqa: BLE001
             _LOGGER.error("SQS: failed to delete message %s: %s", msg_id, del_err)
 
-    async def _requeue(self, client, receipt: str, msg_id: str) -> None:
+    async def _requeue(self, client: Any, receipt: str, msg_id: str) -> None:
         """Make a message visible again so SQS can redeliver it."""
         try:
             await client.change_message_visibility(
@@ -228,7 +228,7 @@ class AjaxSQSClient:
                 requeue_err,
             )
 
-    async def _handle_message(self, client, message: dict) -> None:
+    async def _handle_message(self, client: Any, message: dict[str, Any]) -> None:
         """Process a single SQS message using the shared client."""
         receipt = message.get("ReceiptHandle")
         msg_id = message.get("MessageId", "")[:8]

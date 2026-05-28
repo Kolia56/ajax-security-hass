@@ -6,6 +6,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -20,7 +22,7 @@ from .base import AjaxDeviceHandler
 class WaterStopHandler(AjaxDeviceHandler):
     """Handler for Ajax WaterStop smart water valve."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for WaterStop."""
         sensors = []
 
@@ -59,9 +61,9 @@ class WaterStopHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for WaterStop."""
-        sensors: list[dict] = [self._battery_sensor()]
+        sensors: list[dict[str, Any]] = [self._battery_sensor()]
         if "temperature" in self.device.attributes:
             sensors.append(self._temperature_sensor())
         sensors.append(self._signal_strength_percent_sensor())
@@ -135,7 +137,7 @@ class WaterStopHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_valves(self) -> list[dict]:
+    def get_valves(self) -> list[dict[str, Any]]:
         """Return valve entities for WaterStop."""
         return [
             {

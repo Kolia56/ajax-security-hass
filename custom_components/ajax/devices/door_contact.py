@@ -8,6 +8,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 from .base import AjaxDeviceHandler
@@ -16,7 +18,7 @@ from .base import AjaxDeviceHandler
 class DoorContactHandler(AjaxDeviceHandler):
     """Handler for Ajax DoorProtect door/window contact sensors."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for door contacts."""
         sensors = []
 
@@ -91,9 +93,9 @@ class DoorContactHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for door contacts."""
-        sensors: list[dict] = [
+        sensors: list[dict[str, Any]] = [
             self._battery_sensor(),
             self._signal_strength_percent_sensor(),
         ]
@@ -138,7 +140,7 @@ class DoorContactHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for door contacts."""
         switches = []
 
@@ -272,7 +274,7 @@ class WireInputHandler(DoorContactHandler):
     TWO_EOL wiring scheme supports tamper detection via contactOneDetails.
     """
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for wired inputs.
 
         TWO_EOL wiring scheme provides tamper detection via contactOneDetails.
@@ -293,7 +295,7 @@ class WireInputHandler(DoorContactHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for wired inputs (no battery/signal)."""
         # Wired devices don't have battery or signal - skip those sensors
         # Only return temperature if available
@@ -304,7 +306,7 @@ class WireInputHandler(DoorContactHandler):
 
         return sensors
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for wired inputs."""
         switches = []
 

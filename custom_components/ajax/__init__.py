@@ -471,7 +471,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
             "video_edges": async_redact_data(all_video_edges, TO_REDACT),
         }
 
-        def write_json():
+        def write_json() -> None:
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(output_data, f, indent=2, default=str, ensure_ascii=False)
 
@@ -629,7 +629,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
         # Write to file
         output_path = Path(hass.config.path("ajax_nvr_recordings.json"))
 
-        def write_json():
+        def write_json() -> None:
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(nvr_data, f, indent=2, default=str, ensure_ascii=False)
 
@@ -726,7 +726,7 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
         # Write to file
         output_path = Path(hass.config.path("ajax_smart_locks.json"))
 
-        def write_json():
+        def write_json() -> None:
             with open(output_path, "w", encoding="utf-8") as f:
                 json.dump(smart_locks_data, f, indent=2, default=str, ensure_ascii=False)
 
@@ -885,3 +885,8 @@ async def async_remove_config_entry_device(
         known_ids.update(space.smart_locks.keys())
 
     return all(not (domain == DOMAIN and identifier in known_ids) for domain, identifier in device_entry.identifiers)
+
+
+# Re-export the typed config entry alias so platforms can `from . import AjaxConfigEntry`
+# without mypy --strict complaining about implicit re-export.
+__all__ = ["AjaxConfigEntry"]

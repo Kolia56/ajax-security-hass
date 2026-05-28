@@ -175,14 +175,14 @@ class AjaxVideoEdgeFirmwareUpdate(CoordinatorEntity[AjaxDataCoordinator], Update
             # Return the version from updateStatus if available
             new_version = update_status.get("version")
             if new_version and new_version != video_edge.firmware_version:
-                return new_version
+                return new_version  # type: ignore[no-any-return]
 
         # Check updateStatus state
         state = update_status.get("state", "IDLE")
         if state in ("DOWNLOADING", "INSTALLING", "READY"):
             new_version = update_status.get("version")
             if new_version:
-                return new_version
+                return new_version  # type: ignore[no-any-return]
 
         # No update available - return installed version
         return video_edge.firmware_version
@@ -308,7 +308,7 @@ class AjaxHubFirmwareUpdate(CoordinatorEntity[AjaxDataCoordinator], UpdateEntity
         if firmware.get("newVersionAvailable", False):
             latest = firmware.get("latestAvailableVersion")
             if latest:
-                return latest
+                return latest  # type: ignore[no-any-return]
 
         # No update available - return installed version
         return firmware.get("version")
@@ -316,7 +316,7 @@ class AjaxHubFirmwareUpdate(CoordinatorEntity[AjaxDataCoordinator], UpdateEntity
     @property
     def auto_update(self) -> bool:
         """Return True if auto-update is enabled."""
-        return self._firmware_info.get("autoupdateEnabled", False)
+        return self._firmware_info.get("autoupdateEnabled", False)  # type: ignore[no-any-return]
 
     @property
     def release_summary(self) -> str | None:

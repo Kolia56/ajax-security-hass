@@ -61,7 +61,7 @@ class AjaxDeviceHandler(ABC):
         """
         self.device = device
 
-    def get_common_sensors(self) -> list[dict]:
+    def get_common_sensors(self) -> list[dict[str, Any]]:
         """Return common sensor entities for all devices.
 
         These sensors are available on most/all device types.
@@ -82,7 +82,7 @@ class AjaxDeviceHandler(ABC):
         return sensors
 
     @abstractmethod
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entity descriptions for this device.
 
         Returns:
@@ -96,7 +96,7 @@ class AjaxDeviceHandler(ABC):
         return []
 
     @abstractmethod
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entity descriptions for this device.
 
         Returns:
@@ -111,7 +111,7 @@ class AjaxDeviceHandler(ABC):
         """
         return []
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entity descriptions for this device.
 
         Returns:
@@ -126,7 +126,7 @@ class AjaxDeviceHandler(ABC):
         """
         return []
 
-    def get_buttons(self) -> list[dict]:
+    def get_buttons(self) -> list[dict[str, Any]]:
         """Return button entity descriptions for this device.
 
         Returns:
@@ -150,7 +150,7 @@ class AjaxDeviceHandler(ABC):
         """
         return []
 
-    def get_alarm_control_panels(self) -> list[dict]:
+    def get_alarm_control_panels(self) -> list[dict[str, Any]]:
         """Return alarm control panel descriptions for this device.
 
         Usually only the Hub device creates an alarm control panel.
@@ -166,7 +166,7 @@ class AjaxDeviceHandler(ABC):
     # and optional customisation (enabled_by_default, extra flags).
     # ---------------------------------------------------------------------
 
-    def _battery_sensor(self, enabled_by_default: bool = True) -> dict:
+    def _battery_sensor(self, enabled_by_default: bool = True) -> dict[str, Any]:
         """Build a common battery percentage sensor descriptor."""
         return {
             "key": "battery",
@@ -177,7 +177,7 @@ class AjaxDeviceHandler(ABC):
             "enabled_by_default": enabled_by_default,
         }
 
-    def _tamper_binary_sensor(self, enabled_by_default: bool = True) -> dict:
+    def _tamper_binary_sensor(self, enabled_by_default: bool = True) -> dict[str, Any]:
         """Build a common tamper binary-sensor descriptor."""
         return {
             "key": "tamper",
@@ -190,7 +190,7 @@ class AjaxDeviceHandler(ABC):
         self,
         attr: str = "temperature",
         enabled_by_default: bool = True,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Build a common temperature sensor descriptor (in °C)."""
         return {
             "key": "temperature",
@@ -201,7 +201,7 @@ class AjaxDeviceHandler(ABC):
             "enabled_by_default": enabled_by_default,
         }
 
-    def _signal_strength_percent_sensor(self, enabled_by_default: bool = True) -> dict:
+    def _signal_strength_percent_sensor(self, enabled_by_default: bool = True) -> dict[str, Any]:
         """Build a common Jeweller signal-strength sensor (percentage scale)."""
         return {
             "key": "signal_strength",
@@ -212,7 +212,7 @@ class AjaxDeviceHandler(ABC):
             "enabled_by_default": enabled_by_default,
         }
 
-    def _firmware_version_sensor(self, enabled_by_default: bool = False) -> dict:
+    def _firmware_version_sensor(self, enabled_by_default: bool = False) -> dict[str, Any]:
         """Build a firmware-version diagnostic sensor descriptor."""
         return {
             "key": "firmware_version",
@@ -222,7 +222,7 @@ class AjaxDeviceHandler(ABC):
             "entity_category": "diagnostic",
         }
 
-    def _problem_binary_sensor(self, enabled_by_default: bool = True) -> dict:
+    def _problem_binary_sensor(self, enabled_by_default: bool = True) -> dict[str, Any]:
         """Build a PROBLEM binary-sensor based on device.malfunctions."""
         return {
             "key": "problem",

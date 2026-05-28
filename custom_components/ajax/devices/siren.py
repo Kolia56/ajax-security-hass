@@ -8,6 +8,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 from .base import AjaxDeviceHandler
@@ -16,7 +18,7 @@ from .base import AjaxDeviceHandler
 class SirenHandler(AjaxDeviceHandler):
     """Handler for Ajax HomeSiren sirens."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for sirens."""
         sensors = []
 
@@ -49,9 +51,9 @@ class SirenHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for sirens."""
-        sensors: list[dict] = []
+        sensors: list[dict[str, Any]] = []
         if self.device.battery_level is not None:
             sensors.append(self._battery_sensor())
         if self.device.signal_strength is not None:
@@ -63,7 +65,7 @@ class SirenHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_selects(self) -> list[dict]:
+    def get_selects(self) -> list[dict[str, Any]]:
         """Return select entities for sirens."""
         selects = []
 
@@ -111,7 +113,7 @@ class SirenHandler(AjaxDeviceHandler):
 
         return selects
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for sirens and transmitters."""
         switches = []
 
@@ -200,4 +202,4 @@ class SirenHandler(AjaxDeviceHandler):
             return led
         if isinstance(led, str):
             return led == "BLINK_WHILE_ARMED"
-        return self.device.attributes.get("blink_while_armed", False)
+        return self.device.attributes.get("blink_while_armed", False)  # type: ignore[no-any-return]

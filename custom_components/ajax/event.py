@@ -7,6 +7,7 @@ Events are fired from SQS/SSE real-time messages.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.event import DOMAIN as EVENT_DOMAIN, EventDeviceClass, EventEntity
 from homeassistant.core import HomeAssistant, callback
@@ -185,7 +186,7 @@ async def async_setup_entry(
         if not video_edge or video_edge.video_edge_type == VideoEdgeType.NVR:
             return []
 
-        ve_events: list[dict] = []
+        ve_events: list[dict[str, Any]] = []
         if video_edge.video_edge_type == VideoEdgeType.DOORBELL:
             ve_events.append(
                 {
@@ -282,7 +283,7 @@ class AjaxEventEntity(CoordinatorEntity[AjaxDataCoordinator], EventEntity):
         space_id: str,
         device_id: str,
         event_key: str,
-        event_desc: dict,
+        event_desc: dict[str, Any],
     ) -> None:
         """Initialize the event entity."""
         super().__init__(coordinator)
@@ -352,7 +353,7 @@ class AjaxEventEntity(CoordinatorEntity[AjaxDataCoordinator], EventEntity):
         return None
 
     @callback
-    def fire(self, event_type: str, event_attributes: dict | None = None) -> None:
+    def fire(self, event_type: str, event_attributes: dict[str, Any] | None = None) -> None:
         """Fire an event."""
         if event_type in self._attr_event_types:
             self._trigger_event(event_type, event_attributes)

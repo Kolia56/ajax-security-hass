@@ -6,6 +6,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 from .base import AjaxDeviceHandler
@@ -14,7 +16,7 @@ from .base import AjaxDeviceHandler
 class GlassBreakHandler(AjaxDeviceHandler):
     """Handler for Ajax GlassProtect glass break detectors."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for glass break detectors."""
         sensors = []
 
@@ -52,9 +54,9 @@ class GlassBreakHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for glass break detectors."""
-        sensors: list[dict] = [
+        sensors: list[dict[str, Any]] = [
             self._battery_sensor(),
             self._signal_strength_percent_sensor(),
         ]
@@ -84,7 +86,7 @@ class GlassBreakHandler(AjaxDeviceHandler):
         except (ValueError, TypeError):
             return str(raw)
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for glass break detectors."""
         switches = []
 

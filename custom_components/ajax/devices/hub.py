@@ -11,6 +11,8 @@ The Hub creates an alarm control panel entity and various system status sensors.
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -26,7 +28,7 @@ from .base import AjaxDeviceHandler
 class HubHandler(AjaxDeviceHandler):
     """Handler for Ajax Hub devices."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for hub."""
         sensors = [
             {
@@ -114,9 +116,9 @@ class HubHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for hub."""
-        sensors: list[dict] = [self._battery_sensor()]
+        sensors: list[dict[str, Any]] = [self._battery_sensor()]
 
         # GSM signal level
         if "gsm_signal_level" in self.device.attributes:
@@ -270,7 +272,7 @@ class HubHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_alarm_control_panels(self) -> list[dict]:
+    def get_alarm_control_panels(self) -> list[dict[str, Any]]:
         """Return alarm control panel for hub.
 
         The hub is the only device that creates an alarm control panel.

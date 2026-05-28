@@ -23,7 +23,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import SIGNAL_NEW_SMART_LOCK
 from .event_codes import DEFAULT_LANGUAGE, parse_event_code
-from .models import AjaxSmartLock
+from .models import AjaxDevice, AjaxSmartLock, AjaxSpace
 from .sqs_manager import (  # Import event mappings from SQS manager to avoid duplication
     BUTTON_EVENTS,
     DEVICE_STATUS_EVENTS,
@@ -79,7 +79,7 @@ class SSEManager(EventHandlerMixin):
         # Track scheduled call_later handles so we can cancel them on stop()
         # and strong-ref background tasks so they are not GC'd mid-flight.
         self._pending_timers: set[asyncio.TimerHandle] = set()
-        self._background_tasks: set[asyncio.Task] = set()
+        self._background_tasks: set[asyncio.Task[Any]] = set()
         # Serialise security_event handlers so overlapping events cannot
         # flip the coordinator skip-flag in a racy way.
         self._security_event_lock = asyncio.Lock()
@@ -114,7 +114,7 @@ class SSEManager(EventHandlerMixin):
         handle = self.coordinator.hass.loop.call_later(delay, callback)
         self._pending_timers.add(handle)
 
-    def _spawn_background(self, coro) -> None:
+    def _spawn_background(self, coro: Any) -> None:
         """Create a tracked background task so it cannot be GC'd mid-flight."""
         task = self.coordinator.hass.async_create_task(coro)
         self._background_tasks.add(task)
@@ -341,7 +341,7 @@ class SSEManager(EventHandlerMixin):
 
     async def _handle_security_event(
         self,
-        space,
+        space: AjaxSpace,
         event_tag: str,
         source_name: str,
         source_type: str | None = None,
@@ -363,7 +363,7 @@ class SSEManager(EventHandlerMixin):
         )
 
         # Check if this was triggered by Home Assistant
-        if self.coordinator.get_pending_ha_action(space.hub_id):
+        if self.coordinator.get_pending_ha_action(space.hub_id):  # type: ignore[arg-type]
             source_name = "Home Assistant"
             source_type = "HA"
 
@@ -405,7 +405,7 @@ class SSEManager(EventHandlerMixin):
                     # Fallback: apply SSE state directly since refresh failed
                     if state_changed:
                         space.security_state = new_state
-                        self._last_state_update[space.hub_id] = time.time()
+                        self._last_state_update[space.hub_id] = time.time()  # type: ignore[index]
                         _LOGGER.info("SSE: Fallback state update applied after refresh failure")
                 finally:
                     # Always reset the flag
@@ -416,7 +416,7 @@ class SSEManager(EventHandlerMixin):
         # This prevents race conditions where SSE updates state before refresh completes
         if state_changed and not is_group_event and not is_full_arm_disarm:
             space.security_state = new_state
-            self._last_state_update[space.hub_id] = time.time()
+            self._last_state_update[space.hub_id] = time.time()  # type: ignore[index]
 
         # Always create notification (even if state unchanged).
         # DEBUG, not INFO: source_name is the Ajax user who armed/disarmed (PII).
@@ -449,7 +449,7 @@ class SSEManager(EventHandlerMixin):
             source_type=source_type,
         )
 
-    def _find_device(self, space, source_name: str, source_id: str):
+    def _find_device(self, space: AjaxSpace, source_name: str, source_id: str) -> AjaxDevice | None:
         """Find device by name or ID.
 
         Tries multiple matching strategies similar to SQS manager.
@@ -483,7 +483,9 @@ class SSEManager(EventHandlerMixin):
             self._request_discovery_refresh(source_id)
         return None
 
-    def _handle_door_event(self, space, event_tag: str, source_name: str, source_id: str, transition: str) -> None:
+    def _handle_door_event(
+        self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str, transition: str
+    ) -> None:
         """Handle door opened/closed events."""
         action_key, is_triggered = DOOR_EVENTS[event_tag]
 
@@ -501,7 +503,7 @@ class SSEManager(EventHandlerMixin):
         else:
             _LOGGER.debug("SSE: Door device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_motion_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
+    def _handle_motion_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle motion detected events."""
         from .models import SecurityState
 
@@ -528,7 +530,7 @@ class SSEManager(EventHandlerMixin):
         else:
             _LOGGER.debug("SSE: Motion device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_smoke_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
+    def _handle_smoke_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle smoke/fire detector events."""
         from .models import SecurityState
 
@@ -551,7 +553,7 @@ class SSEManager(EventHandlerMixin):
         else:
             _LOGGER.debug("SSE: Smoke device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_flood_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
+    def _handle_flood_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle flood/leak detector events."""
         from .models import SecurityState
 
@@ -569,7 +571,7 @@ class SSEManager(EventHandlerMixin):
         else:
             _LOGGER.debug("SSE: Flood device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_glass_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
+    def _handle_glass_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle glass break events."""
         from .models import SecurityState
 
@@ -591,7 +593,9 @@ class SSEManager(EventHandlerMixin):
         else:
             _LOGGER.debug("SSE: Glass device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_tamper_event(self, space, event_tag: str, source_name: str, source_id: str, transition: str) -> None:
+    def _handle_tamper_event(
+        self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str, transition: str
+    ) -> None:
         """Handle tamper events."""
         action_key, is_triggered = TAMPER_EVENTS[event_tag]
 
@@ -617,7 +621,7 @@ class SSEManager(EventHandlerMixin):
                 source_id,
             )
 
-    def _handle_device_status_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
+    def _handle_device_status_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle device status events (online/offline, battery)."""
         action_key, is_problem = DEVICE_STATUS_EVENTS[event_tag]
 
@@ -637,7 +641,7 @@ class SSEManager(EventHandlerMixin):
                 source_id,
             )
 
-    def _handle_relay_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
+    def _handle_relay_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle relay/socket on/off events."""
         action_key, is_on = RELAY_EVENTS[event_tag]
 
@@ -648,7 +652,7 @@ class SSEManager(EventHandlerMixin):
         else:
             _LOGGER.debug("SSE: Relay device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_doorbell_event(self, space, source_name: str, source_id: str) -> None:
+    def _handle_doorbell_event(self, space: AjaxSpace, source_name: str, source_id: str) -> None:
         """Handle doorbell ring events.
 
         The Ajax Doorbell can be either a regular device or a Video Edge.
@@ -694,7 +698,7 @@ class SSEManager(EventHandlerMixin):
         else:
             _LOGGER.debug("SSE: Doorbell device not found: name=%s, id=%s", source_name, source_id)
 
-    def _handle_button_event(self, space, event_tag: str, source_name: str, source_id: str) -> None:
+    def _handle_button_event(self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str) -> None:
         """Handle button press events (single/double/long/panic/emergency)."""
         event_data = BUTTON_EVENTS.get(event_tag)
         if event_data is None:
@@ -727,7 +731,7 @@ class SSEManager(EventHandlerMixin):
 
     def _handle_wire_input_event(
         self,
-        space,
+        space: AjaxSpace,
         event_tag: str,
         source_name: str,
         source_id: str,
@@ -756,12 +760,12 @@ class SSEManager(EventHandlerMixin):
 
     def _handle_lock_event(
         self,
-        space,
+        space: AjaxSpace,
         event_tag: str,
         source_name: str,
         source_id: str,
         event_code: str,
-        event: dict,
+        event: dict[str, Any],
     ) -> None:
         """Handle smart lock events (lock/unlock, door open/close).
 
@@ -854,7 +858,7 @@ class SSEManager(EventHandlerMixin):
         smart_lock.last_event_time = datetime.now(UTC)
         smart_lock.last_sse_event_time = datetime.now(UTC)
 
-    def _handle_scenario_event(self, space, event: dict, event_tag: str) -> None:
+    def _handle_scenario_event(self, space: AjaxSpace, event: dict[str, Any], event_tag: str) -> None:
         """Handle scenario events that might be triggered by a Button.
 
         When a Button is configured in 'Control' mode, Ajax doesn't send a direct
@@ -898,7 +902,7 @@ class SSEManager(EventHandlerMixin):
 
     def _handle_video_event(
         self,
-        space,
+        space: AjaxSpace,
         event_tag: str,
         event_type_v2: str,
         source_name: str,

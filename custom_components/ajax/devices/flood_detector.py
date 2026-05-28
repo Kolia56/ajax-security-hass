@@ -7,6 +7,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 
 from .base import AjaxDeviceHandler
@@ -15,7 +17,7 @@ from .base import AjaxDeviceHandler
 class FloodDetectorHandler(AjaxDeviceHandler):
     """Handler for Ajax LeaksProtect flood/water leak detectors."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for flood detectors."""
         # Note: No translation_key needed - HA provides automatic translation for device_class
         return [
@@ -38,9 +40,9 @@ class FloodDetectorHandler(AjaxDeviceHandler):
             },
         ]
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for flood detectors."""
-        sensors: list[dict] = [
+        sensors: list[dict[str, Any]] = [
             self._battery_sensor(),
             self._signal_strength_percent_sensor(),
         ]
@@ -70,7 +72,7 @@ class FloodDetectorHandler(AjaxDeviceHandler):
 
         return sensors
 
-    def get_switches(self) -> list[dict]:
+    def get_switches(self) -> list[dict[str, Any]]:
         """Return switch entities for flood detectors."""
         switches = []
 

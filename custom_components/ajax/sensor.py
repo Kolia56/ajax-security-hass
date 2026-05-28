@@ -75,7 +75,7 @@ def format_signal_level(signal: str | None) -> str | None:
     return signal.lower()
 
 
-def format_event_text(event: dict) -> str:
+def format_event_text(event: dict[str, Any]) -> str:
     """Format an SQS event into readable text."""
     event_type = event.get("event_type", "")
     action = event.get("action", "")
@@ -149,14 +149,14 @@ def format_event_text(event: dict) -> str:
     return " ".join(parts)
 
 
-def get_last_event_text(space) -> str:
+def get_last_event_text(space: AjaxSpace) -> str:
     """Get the last event formatted as text."""
     if not space.recent_events:
         return "no_event"
     return format_event_text(space.recent_events[0])
 
 
-def get_last_event_attributes(space) -> dict[str, Any]:
+def get_last_event_attributes(space: AjaxSpace) -> dict[str, Any]:
     """Get attributes for the last event sensor."""
     if not space.recent_events:
         return {"events_count": 0}
@@ -738,7 +738,7 @@ class AjaxDeviceSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
         space_id: str,
         device_id: str,
         sensor_key: str,
-        sensor_desc: dict,
+        sensor_desc: dict[str, Any],
     ) -> None:
         """Initialize the Ajax device sensor."""
         super().__init__(coordinator)
@@ -849,7 +849,7 @@ class AjaxVideoEdgeSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
         space_id: str,
         video_edge_id: str,
         sensor_key: str,
-        sensor_desc: dict,
+        sensor_desc: dict[str, Any],
     ) -> None:
         """Initialize the Ajax video edge sensor."""
         super().__init__(coordinator)
@@ -918,7 +918,7 @@ class AjaxVideoEdgeSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
         extra_fn = self._sensor_desc.get("extra_state_attributes_fn")
         if extra_fn:
             try:
-                return extra_fn()
+                return extra_fn()  # type: ignore[no-any-return]
             except Exception as err:
                 _LOGGER.error(
                     "Error getting extra attributes for video edge sensor %s: %s",
@@ -975,7 +975,7 @@ class AjaxVideoEdgeSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
 # ==============================================================================
 # Hub-level Sensors (from hub_details)
 # ==============================================================================
-def _get_hub_sensors(space: AjaxSpace) -> list[dict]:
+def _get_hub_sensors(space: AjaxSpace) -> list[dict[str, Any]]:
     """Get hub sensor definitions based on available hub_details fields."""
     sensors = []
     hub_details = space.hub_details or {}
@@ -1083,7 +1083,7 @@ class AjaxHubSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
         coordinator: AjaxDataCoordinator,
         space_id: str,
         sensor_key: str,
-        sensor_desc: dict,
+        sensor_desc: dict[str, Any],
     ) -> None:
         """Initialize the Ajax hub sensor."""
         super().__init__(coordinator)

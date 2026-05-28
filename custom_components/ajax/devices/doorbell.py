@@ -6,6 +6,8 @@ Handles:
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.event import EventDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass
 
@@ -15,7 +17,7 @@ from .base import AjaxDeviceHandler
 class DoorbellHandler(AjaxDeviceHandler):
     """Handler for Ajax Doorbell devices."""
 
-    def get_binary_sensors(self) -> list[dict]:
+    def get_binary_sensors(self) -> list[dict[str, Any]]:
         """Return binary sensor entities for doorbell.
 
         The doorbell press itself is exposed via the event platform
@@ -23,7 +25,7 @@ class DoorbellHandler(AjaxDeviceHandler):
         """
         return [self._tamper_binary_sensor()]
 
-    def get_sensors(self) -> list[dict]:
+    def get_sensors(self) -> list[dict[str, Any]]:
         """Return sensor entities for doorbell."""
         return [
             self._battery_sensor(),
@@ -37,7 +39,7 @@ class DoorbellHandler(AjaxDeviceHandler):
             },
         ]
 
-    def get_events(self) -> list[dict]:
+    def get_events(self) -> list[dict[str, Any]]:
         """Return event entities for doorbell."""
         return [
             {

@@ -35,7 +35,7 @@ class AjaxSpacesMixin:
         sqs_manager: Any | None
         sse_manager: Any | None
         _enabled_spaces: list[str] | None
-        _space_binding_cache: dict[str, dict]
+        _space_binding_cache: dict[str, dict[str, Any]]
         _skip_state_change_event: bool
 
         def _parse_security_state(self, value: Any) -> SecurityState: ...
@@ -97,8 +97,8 @@ class AjaxSpacesMixin:
 
                 space_name = None
                 real_space_id = None
-                rooms_data: list[dict] = []
-                rooms_map: dict = {}
+                rooms_data: list[dict[str, Any]] = []
+                rooms_map: dict[str, Any] = {}
 
                 if full_refresh or is_new_space:
                     # Full refresh: use the cached space_binding resolved above
@@ -118,7 +118,7 @@ class AjaxSpacesMixin:
                     try:
                         rooms_data = await self.api.async_get_rooms(hub_id)
                         # Build room_id -> room_name mapping
-                        rooms_map = {room.get("id"): room.get("roomName") for room in rooms_data if room.get("id")}
+                        rooms_map = {str(room["id"]): room.get("roomName") for room in rooms_data if room.get("id")}
                         _LOGGER.debug(
                             "Loaded %d rooms for hub %s",
                             len(rooms_map),

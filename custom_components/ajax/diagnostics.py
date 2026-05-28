@@ -40,7 +40,7 @@ def _seconds_since(epoch: float | None) -> float | None:
     return round(time.time() - epoch, 1)
 
 
-def _runtime_snapshot(coordinator) -> dict[str, Any]:
+def _runtime_snapshot(coordinator: Any) -> dict[str, Any]:
     """Pure-Python view of the coordinator's runtime state (no IO)."""
     update_interval = coordinator.update_interval.total_seconds() if coordinator.update_interval else None
     last_exception = getattr(coordinator, "last_exception", None)
@@ -57,7 +57,7 @@ def _runtime_snapshot(coordinator) -> dict[str, Any]:
     }
 
 
-def _connectivity_snapshot(coordinator) -> dict[str, Any]:
+def _connectivity_snapshot(coordinator: Any) -> dict[str, Any]:
     """SSE / SQS / ONVIF connection status without touching the network."""
     sse = coordinator.sse_manager
     sqs = coordinator.sqs_manager
@@ -82,7 +82,7 @@ def _connectivity_snapshot(coordinator) -> dict[str, Any]:
     }
 
 
-def _cache_snapshot(coordinator) -> dict[str, Any]:
+def _cache_snapshot(coordinator: Any) -> dict[str, Any]:
     """Sizes of the short-TTL API caches (per-hub + per-space)."""
     api = coordinator.api
     return {
@@ -93,7 +93,7 @@ def _cache_snapshot(coordinator) -> dict[str, Any]:
     }
 
 
-def _spaces_summary(coordinator) -> list[dict[str, Any]]:
+def _spaces_summary(coordinator: Any) -> list[dict[str, Any]]:
     """Per-space counts (devices / video_edges / smart_locks / groups).
 
     No hub_id, room names or device names — those land in the redacted
@@ -268,7 +268,7 @@ async def get_ajax_raw_data(
     }
 
 
-def _runtime_diagnostics(coordinator) -> dict[str, Any]:
+def _runtime_diagnostics(coordinator: Any) -> dict[str, Any]:
     """The bundle of zero-IO snapshots — the part useful for triage.
 
     Lives alongside the heavy ``ajax_data`` dump so the user can grab a
