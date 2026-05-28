@@ -1555,24 +1555,24 @@
   },
   "issues": {
     "onvif_init_failed": {
-      "description": "Ajax could not start ONVIF, so local AI detections (motion, human, vehicle, pet, doorbell) are disabled and the integration falls back to cloud REST polling.\n\nError: {error}\n\nCheck the RTSP/ONVIF credentials in the integration's Configure step and that the cameras are reachable on the network.",
-      "title": "ONVIF local AI detections unavailable"
+      "description": "Ajax konnte ONVIF nicht starten — die lokale KI-Erkennung (Bewegung, Person, Fahrzeug, Tier, Türklingel) ist deaktiviert und die Integration greift auf das Cloud-REST-Polling zurück.\n\nFehler: {error}\n\nÜberprüfen Sie die RTSP-/ONVIF-Zugangsdaten im Konfigurationsschritt der Integration und ob die Kameras im Netzwerk erreichbar sind.",
+      "title": "Lokale ONVIF-KI-Erkennung nicht verfügbar"
     },
     "onvif_no_cameras": {
-      "description": "ONVIF started but no camera accepted the credentials. Local AI detections (human, vehicle, pet, doorbell ring) will not fire — the cloud REST API is the only source.\n\nVerify the RTSP/ONVIF username and password in the integration's Configure step, and that the cameras' network ports (80, 554) are reachable from Home Assistant.",
-      "title": "ONVIF: no cameras connected"
+      "description": "ONVIF wurde gestartet, aber keine Kamera hat die Zugangsdaten akzeptiert. Lokale KI-Erkennungen (Person, Fahrzeug, Tier, Türklingel) werden nicht ausgelöst — die Cloud-REST-API ist die einzige Quelle.\n\nÜberprüfen Sie den RTSP-/ONVIF-Benutzernamen und das Passwort im Konfigurationsschritt und ob die Netzwerk-Ports der Kameras (80, 554) von Home Assistant aus erreichbar sind.",
+      "title": "ONVIF: keine Kameras verbunden"
     },
     "onvif_partial_cameras": {
-      "description": "ONVIF accepted the credentials but only {connected} of {total} cameras connected. The remaining cameras will not produce local AI detections; the cloud REST API is the only source for those.\n\nCheck the network and ONVIF support on the unreachable cameras.",
-      "title": "ONVIF: only {connected}/{total} cameras connected"
+      "description": "ONVIF hat die Zugangsdaten akzeptiert, aber nur {connected} von {total} Kameras konnten sich verbinden. Die übrigen Kameras erzeugen keine lokalen KI-Erkennungen; für diese ist die Cloud-REST-API die einzige Quelle.\n\nÜberprüfen Sie das Netzwerk und die ONVIF-Unterstützung der nicht erreichbaren Kameras.",
+      "title": "ONVIF: nur {connected}/{total} Kameras verbunden"
     },
     "sqs_init_failed": {
-      "description": "Ajax could not connect to AWS SQS, so real-time event notifications are disabled and the integration falls back to REST API polling (slower).\n\nError: {error}\n\nVerify the AWS Access Key, Secret Key, and Queue Name in the integration's Configure step.",
-      "title": "AWS SQS real-time events unavailable"
+      "description": "Ajax konnte sich nicht mit AWS SQS verbinden — Echtzeit-Ereignisbenachrichtigungen sind deaktiviert und die Integration greift auf das REST-API-Polling zurück (langsamer).\n\nFehler: {error}\n\nÜberprüfen Sie den AWS Access Key, den Secret Key und den Queue-Namen im Konfigurationsschritt der Integration.",
+      "title": "AWS-SQS-Echtzeit-Ereignisse nicht verfügbar"
     },
     "sse_init_failed": {
-      "description": "Ajax could not connect to the SSE endpoint, so real-time event notifications are disabled and the integration falls back to REST API polling (slower).\n\nError: {error}\n\nVerify that the proxy URL is reachable and that the session token is valid (try Reconfigure to refresh).",
-      "title": "SSE real-time events unavailable"
+      "description": "Ajax konnte sich nicht mit dem SSE-Endpunkt verbinden — Echtzeit-Ereignisbenachrichtigungen sind deaktiviert und die Integration greift auf das REST-API-Polling zurück (langsamer).\n\nFehler: {error}\n\nStellen Sie sicher, dass die Proxy-URL erreichbar und das Sitzungstoken gültig ist (zum Aktualisieren „Neu konfigurieren“ verwenden).",
+      "title": "SSE-Echtzeit-Ereignisse nicht verfügbar"
     },
     "verify_ssl_disabled": {
       "description": "Die Ajax-Integration verbindet sich mit dem Proxy ohne SSL-Zertifikatsprüfung. Sitzungstoken und Anmeldedaten werden über einen Kanal übertragen, der nicht authentifiziert werden kann, wodurch sie Man-in-the-Middle-Angriffen ausgesetzt sind. Aktivieren Sie „SSL-Zertifikat überprüfen“ im Schritt „Neu konfigurieren“ der Integration wieder, sobald Ihr Proxy ein gültiges Zertifikat hat.",
