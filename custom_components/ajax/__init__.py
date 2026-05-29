@@ -869,10 +869,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: AjaxConfigEntry) -> bo
     )
 
     # v1.1 → v1.2 : populate unique_id from e-mail.
+    # Lower-case it to match the config flow (async_set_unique_id(email.lower())),
+    # otherwise a migrated entry with a mixed-case e-mail would not collide with a
+    # fresh setup of the same account and a duplicate entry could be created.
     if entry.version == 1 and entry.minor_version < 2:
         hass.config_entries.async_update_entry(
             entry,
-            unique_id=entry.data.get(CONF_EMAIL),
+            unique_id=(entry.data.get(CONF_EMAIL) or "").lower() or None,
             minor_version=2,
         )
         _LOGGER.info("ConfigEntry migrated to v1.2 (added unique_id)")

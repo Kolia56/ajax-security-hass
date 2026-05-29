@@ -186,8 +186,11 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 if len(self._spaces) > 1:
                     return await self.async_step_select_spaces()
 
-                # Single space or no spaces - enable all by default
-                self._entry_data[CONF_ENABLED_SPACES] = [s["id"] for s in self._spaces]
+                # Single space or no spaces - enable all by default.
+                # Leave the key unset (=> None => all enabled) when discovery
+                # returned no spaces; an empty list would disable *every* hub.
+                if self._spaces:
+                    self._entry_data[CONF_ENABLED_SPACES] = [s["id"] for s in self._spaces]
 
                 # Add discovered MAC if from DHCP discovery
                 self._add_discovered_mac_to_entry_data()
@@ -453,8 +456,12 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 if len(self._spaces) > 1:
                     return await self.async_step_select_spaces()
 
-                # Single space or no spaces - enable all by default
-                self._entry_data[CONF_ENABLED_SPACES] = [s["id"] for s in self._spaces]
+                # Single space or no spaces - enable all by default.
+                # Leave the key unset (=> None => all enabled) when discovery
+                # returned no spaces (e.g. proxy without the hubs endpoint);
+                # an empty list would disable *every* hub and create no entities.
+                if self._spaces:
+                    self._entry_data[CONF_ENABLED_SPACES] = [s["id"] for s in self._spaces]
 
                 # Add discovered MAC if from DHCP discovery
                 self._add_discovered_mac_to_entry_data()
@@ -677,6 +684,8 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
 
             except AjaxRestAuthError as err:
                 _LOGGER.error("Reauth failed: %s (type: %s)", err, err.error_type)
+                if self._api:
+                    await self._api.close()
                 error_map = {
                     "invalid_api_key": "invalid_api_key",
                     "invalid_password": "invalid_password",
@@ -686,9 +695,13 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = error_map.get(err.error_type, "invalid_auth")
             except AjaxRestApiError as err:
                 _LOGGER.error("Reauth failed: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "cannot_connect"
             except Exception as err:
                 _LOGGER.exception("Unexpected error during reauth: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "unknown"
 
         # Show password re-entry form
@@ -761,12 +774,18 @@ class AjaxConfigFlow(ConfigFlow, domain=DOMAIN):
 
             except AjaxRestAuthError as err:
                 _LOGGER.error("Reconfigure failed: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "invalid_auth"
             except AjaxRestApiError as err:
                 _LOGGER.error("Reconfigure failed: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "cannot_connect"
             except Exception as err:
                 _LOGGER.exception("Unexpected error during reconfigure: %s", err)
+                if self._api:
+                    await self._api.close()
                 errors["base"] = "unknown"
 
         # Build schema based on auth mode
