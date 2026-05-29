@@ -1,20 +1,16 @@
-# Test requirements for Ajax Security Integration
-
-# Core test framework
-pytest>=9.0.3
-pytest-asyncio>=1.4.0
+# Test requirements for the Ajax Security integration.
+#
+# pytest-homeassistant-custom-component pins the ENTIRE Home Assistant test
+# toolchain (pytest, pytest-asyncio, pytest-cov, coverage, homeassistant,
+# aiohttp, ...) to the exact versions the targeted HA release uses. Do NOT add
+# version floors for any of those here: they fight HA's exact pins and make the
+# install unresolvable (that is what kept the CI tests job disabled). Only
+# declare what phcc does not already pull in.
 pytest-homeassistant-custom-component>=0.13.333
 
-# Mocking
-pytest-mock>=3.15.1
+# Not provided by phcc:
+pytest-mock
 
-# Code coverage
-pytest-cov>=7.1.0
-coverage>=7.14.1
-
-# Async support
-aiohttp>=3.13.5
-aiobotocore>=3.7.0
-
-# Home Assistant core (for testing)
-homeassistant>=2026.5.4
+# Integration runtime dep needed to import the package under test (kept in sync
+# with manifest.json).
+aiobotocore>=2.22.0
