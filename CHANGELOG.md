@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.31.1] - 2026-05-29
+
+A full-codebase review pass: 25 runtime bugs, each adversarially verified before fixing, plus a lifecycle audit. mypy `--strict` clean, ruff clean, **429 tests** (was 411).
+
+### ⚠️ To be aware of
+- **Minimum Home Assistant is now 2024.11.** The integration already required `entry.runtime_data` (2024.6) and the modern `OptionsFlow` (2024.11); the declared minimum (`2024.1.0`) was simply wrong and let incompatible installs crash on startup. No working setup on a recent HA is affected.
+- **Socket energy/current units corrected.** The energy sensor now reports **kWh** (was mislabelled Wh) and the current sensor reports **A** (was mislabelled mA) — a 1000× display/statistics error. Energy Dashboard history recorded under the old unit will show a scale break at the upgrade.
+
+### Fixed
+- **Water-leak and glass-break sensors never fired on a real detection.** The LeaksProtect moisture sensor read a camelCase key (`leakDetected`) that nothing ever wrote, and the dedicated GlassProtect sensor only read a `state` field that is never populated. Both now read the real-time keys actually written by the SSE manager (`leak_detected`, `glass_break_detected`) and the SQS manager (`flood_alarm`, `glass_alarm`); the smoke sensor also honours the SQS `smoke_alarm` key.
+- **Socket Energy Dashboard scaling.** Energy/current sensor units now match what the coordinator stores (kWh / A) instead of being off by 1000×.
+- **Switch and valve bounced back after toggling.** The single-switch path (Socket/Relay/WallSwitch) and the WaterStop valve applied an optimistic state without protecting it, so a poll landing before the device reported its new state reverted the entity. The optimistic state is now guarded for 15 s and cleared on the error rollback.
+- **A transient hub error wiped a space.** A timeout/5xx on the per-hub fetch downgraded an already-known space to "unknown", firing a phantom state-change event and dropping its cameras/locks until the next full refresh. An existing space now keeps its state on a transient error; only a genuinely new space falls back to a placeholder.
+- **Token expiry did not trigger re-auth.** `AjaxRestAuthError` from the per-hub `get_hub`/`get_users`/`get_groups`/`get_space_by_hub` calls is now propagated so it counts toward the re-auth threshold instead of being silently degraded.
+- **`state=null` made every entity unavailable.** The night-mode parse is now null-safe (`str(state).upper()`), so a hub momentarily reporting a null state no longer raises `AttributeError` and fails the whole refresh.
+- **Config-flow session leaks.** Re-auth and reconfigure now close their aiohttp session on every error branch instead of leaking one `ClientSession` per failed attempt.
+- **Empty space discovery disabled every hub.** The direct and 2FA setup paths no longer write `enabled_spaces=[]` (which the coordinator reads as "disable all"); an absent value correctly means "all enabled".
+- **ONVIF leaks and missing alerts.** A lost subscription is no longer re-created without shutting the old PullPoint manager down (leaking its renew task); the "partial cameras connected" repair issue now triggers correctly; and the ONVIF/RTSP username is no longer written to INFO logs.
+- **Panic button cooldown burned on failure.** A failed panic call no longer consumes the 5 s cooldown, so an emergency retry stays possible after a transient API error.
+- **Smart-lock doorbell missing from the logbook.** `ajax_smart_lock_doorbell` now has a describer, so a smart-lock doorbell press produces a readable logbook entry like the Video Edge doorbell.
+- **SSE/proxy parity.** The SSE security handler now realigns the polling interval on non-full transitions (e.g. night-mode-off) and uses the same notification-action labels as the SQS transport; both managers stop accumulating spent timer handles (slow memory growth on busy camera installs).
+- **DoorProtect Plus Fibra tilt** events (`M_6F_31`) are now classified as TRIGGERED, matching the non-Fibra twin; `format_event_message` no longer truncates the device/room context.
+- **Migrated unique_id casing.** The v1.1→v1.2 migration now lower-cases the e-mail unique_id to match the config flow, so duplicate detection works for mixed-case e-mails.
+
 ## [0.31.0] - 2026-05-29
 
 A full code-review pass over the whole integration: 46 confirmed findings fixed, each adversarially verified, plus four agent-introduced regressions caught and corrected during a diff-verification pass. mypy `--strict` clean (58 files), ruff clean, **342 tests** (was 328).
