@@ -1155,8 +1155,8 @@
       "waterstop_external_power": {
         "name": "Stroombron",
         "state": {
-          "supply": "Externe voeding",
-          "no_supply": "Geen externe voeding"
+          "no_supply": "Geen externe voeding",
+          "supply": "Externe voeding"
         }
       },
       "waterstop_motor_state": {

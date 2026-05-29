@@ -1155,8 +1155,8 @@
       "waterstop_external_power": {
         "name": "Джерело живлення",
         "state": {
-          "supply": "Зовнішнє живлення",
-          "no_supply": "Немає зовнішнього живлення"
+          "no_supply": "Немає зовнішнього живлення",
+          "supply": "Зовнішнє живлення"
         }
       },
       "waterstop_motor_state": {

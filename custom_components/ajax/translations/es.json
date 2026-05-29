@@ -1155,8 +1155,8 @@
       "waterstop_external_power": {
         "name": "Fuente de alimentación",
         "state": {
-          "supply": "Alimentación externa",
-          "no_supply": "Sin alimentación externa"
+          "no_supply": "Sin alimentación externa",
+          "supply": "Alimentación externa"
         }
       },
       "waterstop_motor_state": {

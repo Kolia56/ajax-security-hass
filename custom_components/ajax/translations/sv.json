@@ -1155,8 +1155,8 @@
       "waterstop_external_power": {
         "name": "Strömkälla",
         "state": {
-          "supply": "Extern strömförsörjning",
-          "no_supply": "Ingen extern strömförsörjning"
+          "no_supply": "Ingen extern strömförsörjning",
+          "supply": "Extern strömförsörjning"
         }
       },
       "waterstop_motor_state": {
