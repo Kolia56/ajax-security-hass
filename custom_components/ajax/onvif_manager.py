@@ -40,6 +40,11 @@ class AjaxOnvifManager:
         self._password = password
         self._event_callback = event_callback
         self._clients: dict[str, AjaxOnvifClient] = {}
+        # IDs of the cameras the manager is *trying* to connect (non-NVR),
+        # tracked independently of success so target_count stays the true
+        # denominator even when a camera fails to connect (failed clients are
+        # never inserted into _clients). See target_count / connected_count.
+        self._target_ids: set[str] = set()
         # Serialise add/remove so concurrent callers cannot duplicate clients.
         self._clients_lock = asyncio.Lock()
 
@@ -54,9 +59,12 @@ class AjaxOnvifManager:
 
         Excludes NVRs (intentionally skipped — see ``async_start``). Use
         this as the denominator in repair issues so an NVR doesn't make
-        the count look like a 2/3 failure to the user.
+        the count look like a 2/3 failure to the user. Counts targeted
+        cameras regardless of connection success, so a camera that fails to
+        connect (never added to ``_clients``) still makes ``connected_count <
+        target_count`` and triggers the partial-cameras repair issue.
         """
-        return len(self._clients)
+        return len(self._target_ids)
 
     def get_client(self, video_edge_id: str) -> AjaxOnvifClient | None:
         """Get ONVIF client for a video edge device."""
@@ -147,11 +155,12 @@ class AjaxOnvifManager:
             _LOGGER.info("ONVIF: Credentials not configured - skipping local video detection")
             return
 
-        _LOGGER.info("ONVIF: Starting with credentials (user=%s)", self._username)
+        _LOGGER.info("ONVIF: Starting with configured credentials")
 
         nvrs = [ve for ve in video_edges if ve.video_edge_type == VideoEdgeType.NVR]
         cameras = [ve for ve in video_edges if ve.video_edge_type != VideoEdgeType.NVR]
         targets = cameras
+        self._target_ids = {ve.id for ve in targets}
 
         if nvrs:
             _LOGGER.info(
@@ -205,6 +214,7 @@ class AjaxOnvifManager:
         targets = [ve for ve in video_edges if ve.video_edge_type != VideoEdgeType.NVR]
 
         current_ids = {ve.id for ve in targets}
+        self._target_ids = current_ids
         existing_ids = set(self._clients.keys())
 
         # Remove devices no longer in targets

@@ -157,6 +157,16 @@ class AjaxOnvifClient:
         try:
             _LOGGER.info("ONVIF: Creating PullPoint subscription for %s...", self.video_edge.name)
 
+            # Tear down any previous manager before re-subscribing (this method is
+            # re-entered by the poll loop on subscription loss). Without this the
+            # old manager keeps its renew timer task and PullPoint subscription
+            # alive, leaking one per network blip until async_stop().
+            old_manager = self._pullpoint_manager
+            self._pullpoint_manager = None
+            if old_manager is not None:
+                with contextlib.suppress(Exception):
+                    await old_manager.shutdown()
+
             # Create PullPoint manager (like HA's official ONVIF integration)
             # subscription_lost_callback is called when subscription expires
             self._pullpoint_manager = await self._camera.create_pullpoint_manager(

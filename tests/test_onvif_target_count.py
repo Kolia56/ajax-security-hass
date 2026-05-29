@@ -33,30 +33,41 @@ for name in ("onvif", "onvif.client", "onvif.exceptions", "zeep", "zeep.exceptio
 from custom_components.ajax.onvif_manager import AjaxOnvifManager  # noqa: E402
 
 
-def _make_manager(client_states: dict[str, bool]) -> AjaxOnvifManager:
-    """Build a manager populated with fake clients (each with a ``connected`` bool)."""
+def _make_manager(target_ids: set[str], connected_ids: set[str]) -> AjaxOnvifManager:
+    """Build a manager modelling the real runtime state.
+
+    ``target_ids`` is the set of non-NVR cameras the manager is trying to
+    connect (``async_start`` records this regardless of success). Only the
+    cameras that actually connected appear in ``_clients`` — a failed
+    connection is dropped, never inserted, exactly as in production.
+    """
     mgr = AjaxOnvifManager(username="u", password="p", event_callback=lambda _e: None)
-    for client_id, connected in client_states.items():
-        mgr._clients[client_id] = SimpleNamespace(connected=connected)  # type: ignore[assignment]
+    mgr._target_ids = set(target_ids)
+    for client_id in connected_ids:
+        mgr._clients[client_id] = SimpleNamespace(connected=True)  # type: ignore[assignment]
     return mgr
 
 
-def test_target_count_returns_zero_when_no_clients() -> None:
-    assert _make_manager({}).target_count == 0
+def test_target_count_returns_zero_when_no_targets() -> None:
+    assert _make_manager(set(), set()).target_count == 0
 
 
 def test_target_count_excludes_nvrs_by_design() -> None:
-    """`async_start` never registers NVR clients — so target_count = camera count.
+    """`async_start` never targets NVRs — so target_count = camera count.
 
-    A user with 2 cameras + 1 NVR has 2 in `_clients` (the NVR is skipped),
-    so target_count must be 2 — never 3.
+    A user with 2 cameras + 1 NVR has 2 targets (the NVR is skipped), so
+    target_count must be 2 — never 3.
     """
-    mgr = _make_manager({"cam1": True, "cam2": True})
+    mgr = _make_manager({"cam1", "cam2"}, {"cam1", "cam2"})
     assert mgr.target_count == 2
     assert mgr.connected_count == 2
 
 
 def test_connected_count_under_target_means_partial() -> None:
-    mgr = _make_manager({"cam1": True, "cam2": False, "cam3": True})
+    """A camera that fails to connect stays in _target_ids but not _clients.
+
+    This is the real partial-failure state the repair issue must detect.
+    """
+    mgr = _make_manager({"cam1", "cam2", "cam3"}, {"cam1", "cam3"})
     assert mgr.target_count == 3
     assert mgr.connected_count == 2
