@@ -328,76 +328,93 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
         _LOGGER.info("Force arming via service call")
 
         entries = await _extract_config_entry(call)
-        entry = entries[0]
-        coordinator = entry.runtime_data
-        if not coordinator.account or not coordinator.account.spaces:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="no_hubs_found",
-            )
-        target_spaces = _resolve_target_spaces(call, coordinator)
-        if not target_spaces:
+        any_target_resolved = False
+        failures: list[tuple[str, str]] = []
+        for entry in entries:
+            coordinator = entry.runtime_data
+            if not coordinator.account or not coordinator.account.spaces:
+                continue
+            target_spaces = _resolve_target_spaces(call, coordinator)
+            if not target_spaces:
+                continue
+            any_target_resolved = True
+            for hub_id in target_spaces:
+                try:
+                    await coordinator.async_arm_space(hub_id)
+                    await coordinator.async_request_refresh()
+                    _LOGGER.info("Force armed hub %s", hub_id)
+                except Exception as err:
+                    _LOGGER.error("Failed to force arm hub %s: %s", hub_id, err)
+                    failures.append((hub_id, str(err)))
+
+        if not any_target_resolved:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_target",
             )
-        for hub_id in target_spaces:
-            try:
-                await coordinator.api.async_arm(hub_id, ignore_problems=True)
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Force armed hub %s", hub_id)
-            except Exception as err:
-                _LOGGER.error("Failed to force arm hub %s: %s", hub_id, err)
-                raise HomeAssistantError(
-                    translation_domain=DOMAIN,
-                    translation_key="force_arm_failed",
-                    translation_placeholders={"hub_id": hub_id, "error": str(err)},
-                ) from err
+        if failures:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="force_arm_failed",
+                translation_placeholders={
+                    "hub_id": ", ".join(hub_id for hub_id, _ in failures),
+                    "error": "; ".join(f"{hub_id}: {error}" for hub_id, error in failures),
+                },
+            )
 
     async def handle_force_arm_night(call: ServiceCall) -> None:
         """Handle force arm night mode service call."""
         _LOGGER.info("Force arming night mode via service call")
 
         entries = await _extract_config_entry(call)
-        entry = entries[0]
-        coordinator = entry.runtime_data
-        if not coordinator.account or not coordinator.account.spaces:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="no_hubs_found",
-            )
-        target_spaces = _resolve_target_spaces(call, coordinator)
-        if not target_spaces:
+        any_target_resolved = False
+        failures: list[tuple[str, str]] = []
+        for entry in entries:
+            coordinator = entry.runtime_data
+            if not coordinator.account or not coordinator.account.spaces:
+                continue
+            target_spaces = _resolve_target_spaces(call, coordinator)
+            if not target_spaces:
+                continue
+            any_target_resolved = True
+            for hub_id in target_spaces:
+                try:
+                    await coordinator.async_arm_night_mode(hub_id, force=True)
+                    await coordinator.async_request_refresh()
+                    _LOGGER.info("Force armed night mode hub %s", hub_id)
+                except Exception as err:
+                    _LOGGER.error("Failed to force arm night mode hub %s: %s", hub_id, err)
+                    failures.append((hub_id, str(err)))
+
+        if not any_target_resolved:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_target",
             )
-        for hub_id in target_spaces:
-            try:
-                await coordinator.api.async_night_mode(hub_id, enabled=True)
-                await coordinator.async_request_refresh()
-                _LOGGER.info("Force armed night mode hub %s", hub_id)
-            except Exception as err:
-                _LOGGER.error("Failed to force arm night mode hub %s: %s", hub_id, err)
-                raise HomeAssistantError(
-                    translation_domain=DOMAIN,
-                    translation_key="force_arm_night_failed",
-                    translation_placeholders={"hub_id": hub_id, "error": str(err)},
-                ) from err
+        if failures:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="force_arm_night_failed",
+                translation_placeholders={
+                    "hub_id": ", ".join(hub_id for hub_id, _ in failures),
+                    "error": "; ".join(f"{hub_id}: {error}" for hub_id, error in failures),
+                },
+            )
 
     async def handle_get_raw_devices(call: ServiceCall) -> None:
         """Handle get raw devices service call - get full raw API data for all devices."""
         _LOGGER.info("Getting full raw data for all devices, cameras, and video edges")
 
-        all_devices = []
-        all_cameras = []
-        all_video_edges = []
+        all_devices: list[dict[str, Any]] = []
+        all_cameras: list[dict[str, Any]] = []
+        all_video_edges: list[dict[str, Any]] = []
         hub_count = 0
 
         entries = await _extract_config_entry(call)
-        entry = entries[0]
-        coordinator = entry.runtime_data
-        if coordinator.account:
+        for entry in entries:
+            coordinator = entry.runtime_data
+            if not coordinator.account:
+                continue
             for _space_id, space in coordinator.account.spaces.items():
                 hub_id = space.hub_id
                 if hub_id:
@@ -540,9 +557,9 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
         _LOGGER.info("Forcing full metadata refresh via service call")
 
         entries = await _extract_config_entry(call)
-        entry = entries[0]
-        coordinator = entry.runtime_data
-        await coordinator.async_force_metadata_refresh()
+        for entry in entries:
+            coordinator = entry.runtime_data
+            await coordinator.async_force_metadata_refresh()
 
         async_create(
             hass,
@@ -565,73 +582,79 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
         _LOGGER.info("Getting NVR recordings data for diagnostic purposes")
 
         entries = await _extract_config_entry(call)
-        entry = entries[0]
-        coordinator = entry.runtime_data
 
         # Find NVRs and their cameras
         nvr_data: list[dict[str, Any]] = []
 
-        for _space_id, space in coordinator.data.spaces.items():
-            for ve_id, video_edge in space.video_edges.items():
-                if video_edge.video_edge_type.value == "NVR":
-                    # Found an NVR
-                    recordings_list: list[dict[str, Any]] = []
-                    nvr_info: dict[str, Any] = {
-                        "nvr_id": ve_id,
-                        "nvr_name": video_edge.name,
-                        "channels": video_edge.channels or [],
-                        "recordings": recordings_list,
-                    }
+        for entry in entries:
+            coordinator = entry.runtime_data
+            for _space_id, space in coordinator.data.spaces.items():
+                for ve_id, video_edge in space.video_edges.items():
+                    if video_edge.video_edge_type.value == "NVR":
+                        # Found an NVR
+                        recordings_list: list[dict[str, Any]] = []
+                        nvr_info: dict[str, Any] = {
+                            "nvr_id": ve_id,
+                            "nvr_name": video_edge.name,
+                            "channels": video_edge.channels or [],
+                            "recordings": recordings_list,
+                        }
 
-                    # Get recordings for the last 24 hours
-                    end_time = datetime.now(UTC)
-                    start_time = end_time - timedelta(hours=24)
+                        # Get recordings for the last 24 hours
+                        end_time = datetime.now(UTC)
+                        start_time = end_time - timedelta(hours=24)
 
-                    # Try to get recordings for each channel
-                    for channel in video_edge.channels or []:
-                        camera_id = channel.get("id") if isinstance(channel, dict) else None
-                        if camera_id:
-                            try:
-                                recordings = await coordinator.api.async_get_nvr_recordings(
-                                    nvr_id=ve_id,
-                                    camera_id=camera_id,
-                                    start=start_time.isoformat(),
-                                    end=end_time.isoformat(),
-                                )
-                                nvr_info["recordings"].append(
-                                    {
-                                        "camera_id": camera_id,
-                                        "camera_name": channel.get("name", "Unknown"),
-                                        "data": recordings,
-                                    }
-                                )
-                                _LOGGER.info(
-                                    "Got %d recordings for camera %s",
-                                    len(recordings) if isinstance(recordings, list) else 1,
-                                    camera_id,
-                                )
-                            except Exception as err:
-                                _LOGGER.warning(
-                                    "Failed to get recordings for camera %s: %s",
-                                    camera_id,
-                                    err,
-                                )
-                                nvr_info["recordings"].append(
-                                    {
-                                        "camera_id": camera_id,
-                                        "camera_name": channel.get("name", "Unknown"),
-                                        "error": str(err),
-                                    }
-                                )
+                        # Try to get recordings for each channel
+                        for channel in video_edge.channels or []:
+                            camera_id = channel.get("id") if isinstance(channel, dict) else None
+                            if camera_id:
+                                try:
+                                    recordings = await coordinator.api.async_get_nvr_recordings(
+                                        nvr_id=ve_id,
+                                        camera_id=camera_id,
+                                        start=start_time.isoformat(),
+                                        end=end_time.isoformat(),
+                                    )
+                                    nvr_info["recordings"].append(
+                                        {
+                                            "camera_id": camera_id,
+                                            "camera_name": channel.get("name", "Unknown"),
+                                            "data": recordings,
+                                        }
+                                    )
+                                    _LOGGER.info(
+                                        "Got %d recordings for camera %s",
+                                        len(recordings) if isinstance(recordings, list) else 1,
+                                        camera_id,
+                                    )
+                                except Exception as err:
+                                    _LOGGER.warning(
+                                        "Failed to get recordings for camera %s: %s",
+                                        camera_id,
+                                        err,
+                                    )
+                                    nvr_info["recordings"].append(
+                                        {
+                                            "camera_id": camera_id,
+                                            "camera_name": channel.get("name", "Unknown"),
+                                            "error": str(err),
+                                        }
+                                    )
 
-                    nvr_data.append(nvr_info)
+                        nvr_data.append(nvr_info)
 
-        # Write to file
+        # Write to file.
+        # Redact sensitive fields before writing so the file is safe to share.
+        from homeassistant.components.diagnostics import async_redact_data
+
+        from .diagnostics import TO_REDACT
+
         output_path = Path(hass.config.path("ajax_nvr_recordings.json"))
+        redacted_nvr_data = async_redact_data(nvr_data, TO_REDACT)
 
         def write_json() -> None:
             with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(nvr_data, f, indent=2, default=str, ensure_ascii=False)
+                json.dump(redacted_nvr_data, f, indent=2, default=str, ensure_ascii=False)
 
         await hass.async_add_executor_job(write_json)
 
@@ -671,12 +694,13 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
         _LOGGER.info("Getting smart lock data for diagnostic purposes")
 
         entries = await _extract_config_entry(call)
-        entry = entries[0]
-        coordinator = entry.runtime_data
 
         smart_locks_data: list[dict[str, Any]] = []
 
-        if coordinator.account:
+        for entry in entries:
+            coordinator = entry.runtime_data
+            if not coordinator.account:
+                continue
             for _space_id, space in coordinator.account.spaces.items():
                 real_space_id = space.real_space_id
                 if not real_space_id:
@@ -723,12 +747,18 @@ async def _async_setup_services(hass: HomeAssistant) -> None:
                         }
                     )
 
-        # Write to file
+        # Write to file.
+        # Redact sensitive fields before writing so the file is safe to share.
+        from homeassistant.components.diagnostics import async_redact_data
+
+        from .diagnostics import TO_REDACT
+
         output_path = Path(hass.config.path("ajax_smart_locks.json"))
+        redacted_smart_locks = async_redact_data(smart_locks_data, TO_REDACT)
 
         def write_json() -> None:
             with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(smart_locks_data, f, indent=2, default=str, ensure_ascii=False)
+                json.dump(redacted_smart_locks, f, indent=2, default=str, ensure_ascii=False)
 
         await hass.async_add_executor_job(write_json)
 

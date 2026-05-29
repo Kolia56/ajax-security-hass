@@ -362,8 +362,16 @@ class SSEManager(EventHandlerMixin):
             state_changed,
         )
 
-        # Check if this was triggered by Home Assistant
-        if self.coordinator.get_pending_ha_action(space.hub_id):  # type: ignore[arg-type]
+        # Check if this was triggered by Home Assistant.
+        # Use the non-consuming peek (has_pending_ha_action) — NOT the
+        # consuming get_pending_ha_action — so that when Ajax emits two
+        # state-mapped events for a single HA-initiated arm/disarm (e.g.
+        # 'arm' then 'armwithmalfunctions', or a per-group event followed
+        # by the system event) BOTH stay attributed to Home Assistant.
+        # Consuming the flag on the first event would attribute the second
+        # to the raw Ajax user/keypad name and fire a misleading
+        # 'armed/disarmed by <user>' notification/bus event (#parity SQS).
+        if self.coordinator.has_pending_ha_action(space.hub_id):  # type: ignore[arg-type]
             source_name = "Home Assistant"
             source_type = "HA"
 
@@ -387,8 +395,9 @@ class SSEManager(EventHandlerMixin):
             # fires a duplicate ajax_armed/ajax_disarmed bus event (#133).
             async with self._security_event_lock:
                 try:
-                    # Skip REST-side event creation until the refresh is done
-                    self.coordinator._skip_state_change_event = True
+                    # Skip REST-side event creation for THIS hub until the refresh is done
+                    if space.hub_id:
+                        self.coordinator._skipped_state_change_hubs.add(space.hub_id)
                     # Small delay to let Ajax backend process the change
                     # Reduced from 1.0s to 0.3s for faster real-time updates
                     await asyncio.sleep(0.3)
@@ -408,8 +417,9 @@ class SSEManager(EventHandlerMixin):
                         self._last_state_update[space.hub_id] = time.time()  # type: ignore[index]
                         _LOGGER.info("SSE: Fallback state update applied after refresh failure")
                 finally:
-                    # Always reset the flag
-                    self.coordinator._skip_state_change_event = False
+                    # Always clear the per-hub skip flag
+                    if space.hub_id:
+                        self.coordinator._skipped_state_change_hubs.discard(space.hub_id)
 
         # Update state immediately only for events that don't trigger a refresh
         # For group and full arm/disarm events, the metadata refresh will update the state
@@ -447,6 +457,67 @@ class SSEManager(EventHandlerMixin):
             new_state,
             source_name=source_name,
             source_type=source_type,
+        )
+
+    def _record_alarm_event(
+        self,
+        space: AjaxSpace,
+        action_key: str,
+        source_name: str,
+        room_name: str = "",
+    ) -> None:
+        """Append an alarm-class event to history and raise a notification.
+
+        Restores parity with the SQS transport: SQS appends every event to
+        ``space.recent_events`` and raises a persistent dashboard
+        notification for alarm-class events. In proxy (SSE) mode the
+        per-device alarm handlers previously only flipped device attributes
+        and set ``security_state=TRIGGERED``, so an intrusion/smoke/flood
+        produced no recent_events entry and no persistent notification.
+
+        Self-contained: mirrors SQS's history append + alarm notification
+        using only existing coordinator helpers (``_create_sqs_notification``)
+        and the translated message catalogue, so no cross-file refactor is
+        required.
+
+        Args:
+            space: The space the alarm belongs to.
+            action_key: Translation key for the alarm (e.g. ``smoke_detected``).
+            source_name: Device/user name reported by the event (may be PII).
+            room_name: Room name, when known.
+        """
+        from .event_codes import get_event_message
+
+        ha_language = self.coordinator.hass.config.language or "en"
+        lang_map = {"fr": "fr", "es": "es", "en": "en"}
+        language = lang_map.get(ha_language[:2], "en")
+        message = get_event_message(action_key, language)
+
+        # Mirror SQS _add_event_to_history: insert most-recent-first, cap at 10.
+        event: dict[str, Any] = {
+            "action": action_key,
+            "message": message,
+            "is_alarm": True,
+            "source_name": source_name,
+            "room_name": room_name,
+            "hub_id": space.hub_id or space.id,
+            "space_id": space.id,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "event_time": datetime.now(UTC),
+        }
+        space.recent_events.insert(0, event)
+        space.recent_events = space.recent_events[:10]
+
+        # Raise the persistent alarm notification via the existing coordinator
+        # helper. The action key is non-arming, so the ALARMS_ONLY filter still
+        # shows it; only the NONE filter (and disabled persistent notifications)
+        # suppress it — matching SQS _create_alarm_notification semantics.
+        self._spawn_background(
+            self.coordinator._create_sqs_notification(
+                action=action_key,
+                source_name=source_name,
+                space_name=space.name,
+            )
         )
 
     def _find_device(self, space: AjaxSpace, source_name: str, source_id: str) -> AjaxDevice | None:
@@ -487,6 +558,8 @@ class SSEManager(EventHandlerMixin):
         self, space: AjaxSpace, event_tag: str, source_name: str, source_id: str, transition: str
     ) -> None:
         """Handle door opened/closed events."""
+        from .models import SecurityState
+
         action_key, is_triggered = DOOR_EVENTS[event_tag]
 
         # Use transition to determine actual state
@@ -500,6 +573,17 @@ class SSEManager(EventHandlerMixin):
             dev.attributes["door_opened"] = is_triggered
             dev.attributes["door_opened_at"] = datetime.now(UTC).isoformat()
             _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
+
+            # Parity with SQS: a door opening while the space is armed is an
+            # alarm-class event — record it in history and raise a persistent
+            # notification (does NOT change security_state, mirroring SQS's
+            # door handler which never sets TRIGGERED).
+            if is_triggered and space.security_state in (
+                SecurityState.ARMED,
+                SecurityState.NIGHT_MODE,
+                SecurityState.PARTIALLY_ARMED,
+            ):
+                self._record_alarm_event(space, action_key, dev.name)
         else:
             _LOGGER.debug("SSE: Door device not found: name=%s, id=%s", source_name, source_id)
 
@@ -527,6 +611,8 @@ class SSEManager(EventHandlerMixin):
                     dev.name,
                     space.security_state.value,
                 )
+                # Parity with SQS: history entry + persistent alarm notification
+                self._record_alarm_event(space, action_key, dev.name)
         else:
             _LOGGER.debug("SSE: Motion device not found: name=%s, id=%s", source_name, source_id)
 
@@ -547,9 +633,12 @@ class SSEManager(EventHandlerMixin):
             _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
 
             # Smoke/fire alarms trigger regardless of arm state (life safety)
-            if is_triggered and space.security_state != SecurityState.TRIGGERED:
-                space.security_state = SecurityState.TRIGGERED
-                _LOGGER.info("SSE: Alarm TRIGGERED by smoke/fire on %s", dev.name)
+            if is_triggered:
+                if space.security_state != SecurityState.TRIGGERED:
+                    space.security_state = SecurityState.TRIGGERED
+                    _LOGGER.info("SSE: Alarm TRIGGERED by smoke/fire on %s", dev.name)
+                # Parity with SQS: history entry + persistent alarm notification
+                self._record_alarm_event(space, action_key, dev.name)
         else:
             _LOGGER.debug("SSE: Smoke device not found: name=%s, id=%s", source_name, source_id)
 
@@ -565,9 +654,12 @@ class SSEManager(EventHandlerMixin):
             _LOGGER.info("SSE instant: %s -> %s", dev.name, action_key)
 
             # Flood alarms trigger regardless of arm state (life safety)
-            if is_triggered and space.security_state != SecurityState.TRIGGERED:
-                space.security_state = SecurityState.TRIGGERED
-                _LOGGER.info("SSE: Alarm TRIGGERED by flood on %s", dev.name)
+            if is_triggered:
+                if space.security_state != SecurityState.TRIGGERED:
+                    space.security_state = SecurityState.TRIGGERED
+                    _LOGGER.info("SSE: Alarm TRIGGERED by flood on %s", dev.name)
+                # Parity with SQS: history entry + persistent alarm notification
+                self._record_alarm_event(space, action_key, dev.name)
         else:
             _LOGGER.debug("SSE: Flood device not found: name=%s, id=%s", source_name, source_id)
 
@@ -590,6 +682,8 @@ class SSEManager(EventHandlerMixin):
             ):
                 space.security_state = SecurityState.TRIGGERED
                 _LOGGER.info("SSE: Alarm TRIGGERED by glass break on %s", dev.name)
+                # Parity with SQS: history entry + persistent alarm notification
+                self._record_alarm_event(space, action_key, dev.name)
         else:
             _LOGGER.debug("SSE: Glass device not found: name=%s, id=%s", source_name, source_id)
 

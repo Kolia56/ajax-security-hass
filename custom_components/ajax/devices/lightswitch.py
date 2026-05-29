@@ -160,12 +160,12 @@ class LightSwitchHandler(AjaxDeviceHandler):
             )
 
         # Night mode arm
-        if "nightModeArm" in self.device.attributes:
+        if "night_mode_arm" in self.device.attributes:
             switches.append(
                 {
                     "key": "night_mode",
                     "translation_key": "night_mode",
-                    "value_fn": lambda: self.device.attributes.get("nightModeArm", False),
+                    "value_fn": lambda: self.device.attributes.get("night_mode_arm", False),
                     "api_key": "nightModeArm",
                     "api_value_on": True,
                     "api_value_off": False,

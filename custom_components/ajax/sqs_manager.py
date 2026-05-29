@@ -603,8 +603,9 @@ class SQSManager(EventHandlerMixin):
             # fires a duplicate ajax_armed/ajax_disarmed bus event (#133).
             async with self._security_event_lock:
                 try:
-                    # Skip REST-side event creation until the refresh is done
-                    self.coordinator._skip_state_change_event = True
+                    # Skip REST-side event creation for THIS hub until the refresh is done
+                    if space.hub_id:
+                        self.coordinator._skipped_state_change_hubs.add(space.hub_id)
                     # Wait for Ajax backend to process the change before refreshing
                     # Without this delay, the API may return stale state
                     await asyncio.sleep(1.0)
@@ -613,8 +614,9 @@ class SQSManager(EventHandlerMixin):
                 except Exception as err:
                     _LOGGER.error("SQS: Metadata refresh failed after security event: %s", err)
                 finally:
-                    # Always reset the flag
-                    self.coordinator._skip_state_change_event = False
+                    # Always clear the per-hub skip flag
+                    if space.hub_id:
+                        self.coordinator._skipped_state_change_hubs.discard(space.hub_id)
 
         # Skip state update if HA action is pending (protect optimistic update)
         # But still record the event in history and create notification
@@ -1043,6 +1045,7 @@ class SQSManager(EventHandlerMixin):
         from .const import (
             CONF_NOTIFICATION_FILTER,
             CONF_PERSISTENT_NOTIFICATION,
+            NOTIFICATION_FILTER_ALL,
             NOTIFICATION_FILTER_NONE,
         )
 
@@ -1054,7 +1057,7 @@ class SQSManager(EventHandlerMixin):
             return
 
         # Check notification filter - alarm notifications are shown for all filters except NONE
-        notification_filter = options.get(CONF_NOTIFICATION_FILTER, NOTIFICATION_FILTER_NONE)
+        notification_filter = options.get(CONF_NOTIFICATION_FILTER, NOTIFICATION_FILTER_ALL)
         if notification_filter == NOTIFICATION_FILTER_NONE:
             return
 
@@ -1062,12 +1065,14 @@ class SQSManager(EventHandlerMixin):
         room = event_record.get("room_name", "")
         message = event_record.get("message", "")
 
-        # Build notification message
+        # Build notification message. Persistent notifications render markdown,
+        # so source/room (user-editable Ajax device/room labels) must be escaped
+        # to neutralise [text](javascript:...) injection and stray formatting.
         parts = [f"**{message}**"]
         if source:
-            parts.append(f"Source: {source}")
+            parts.append(f"Source: {self.coordinator._escape_markdown(source)}")
         if room:
-            parts.append(f"Room: {room}")
+            parts.append(f"Room: {self.coordinator._escape_markdown(room)}")
 
         notification_message = "\n".join(parts)
 

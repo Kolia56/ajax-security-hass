@@ -286,6 +286,15 @@ EVENT_MESSAGES: dict[str, dict[str, str]] = {
         "sv": "Frånkopplat automatiskt",
         "uk": "Автоматично знято",
     },
+    "arm_failed": {
+        "fr": "Échec d'armement",
+        "en": "Arming failed",
+        "es": "Error al armar",
+        "de": "Schärfen fehlgeschlagen",
+        "nl": "Inschakelen mislukt",
+        "sv": "Tillkoppling misslyckades",
+        "uk": "Помилка постановки на охорону",
+    },
     "night_mode_auto": {
         "fr": "Mode nuit activé automatiquement",
         "en": "Night mode activated automatically",
@@ -1599,7 +1608,6 @@ _EVENT_CODE_TRANSITIONS: dict[str, str] = {
     "M_0F_31": "TRIGGERED",
     # Arm/disarm events are one-shot state changes, treat as TRIGGERED.
     "M_22_20": "TRIGGERED",
-    "M_22_21": "TRIGGERED",
     "M_22_28": "TRIGGERED",
     "M_22_29": "TRIGGERED",
     "M_22_2B": "TRIGGERED",

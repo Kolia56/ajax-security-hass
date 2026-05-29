@@ -13,6 +13,7 @@ is installed.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -199,6 +200,12 @@ class AjaxOnvifMixin:
 
         except Exception as err:
             _LOGGER.warning("Failed to initialize ONVIF: %s", err)
+            # Tear down any already-connected clients before dropping the
+            # reference — otherwise their long-lived poll tasks / PullPoint
+            # subscriptions are orphaned with no owner to cancel them on unload.
+            if self.onvif_manager:
+                with contextlib.suppress(Exception):
+                    await self.onvif_manager.async_stop()
             self.onvif_manager = None
             ir.async_create_issue(
                 self.hass,

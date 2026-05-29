@@ -14,10 +14,15 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+
 from .api import AjaxRestApiError, AjaxRestAuthError
+from .const import SIGNAL_NEW_GROUP, SIGNAL_NEW_SPACE
 from .models import AjaxGroup, AjaxRoom, AjaxSpace, GroupState, SecurityState
 
 if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+
     from .api import AjaxRestApi
     from .models import AjaxAccount
 
@@ -31,12 +36,14 @@ class AjaxSpacesMixin:
     if TYPE_CHECKING:
         account: AjaxAccount | None
         api: AjaxRestApi
+        hass: HomeAssistant
         all_discovered_spaces: dict[str, str]
         sqs_manager: Any | None
         sse_manager: Any | None
         _enabled_spaces: list[str] | None
         _space_binding_cache: dict[str, dict[str, Any]]
-        _skip_state_change_event: bool
+        _skipped_state_change_hubs: set[str]
+        _initial_load_done: bool
 
         def _parse_security_state(self, value: Any) -> SecurityState: ...
         def has_pending_ha_action(self, hub_id: str) -> bool: ...
@@ -173,6 +180,12 @@ class AjaxSpacesMixin:
                 hub_details = {}
                 rooms_data = []
                 rooms_map = {}
+                # Names assigned inside the try block before the failing await
+                # never got bound; initialize them so the fall-through to the
+                # space create/update below does not raise UnboundLocalError.
+                is_new_space = hub_id not in self.account.spaces
+                real_space_id = None
+                space_name = None
 
             # Use hub_id as space_id since we're mapping 1:1
             space_id = hub_id
@@ -198,6 +211,12 @@ class AjaxSpacesMixin:
 
                 # Set initial polling interval based on security state
                 self._update_polling_interval(security_state)
+
+                # Fan out a discovery signal for spaces added after the initial
+                # load so the alarm_control_panel platform creates the panel
+                # live instead of waiting for a reload.
+                if self._initial_load_done:
+                    async_dispatcher_send(self.hass, SIGNAL_NEW_SPACE, space_id, space_id)
             else:
                 # Existing space - update name, hub_id, hub_details, and potentially state
                 space = self.account.spaces[space_id]
@@ -282,6 +301,11 @@ class AjaxSpacesMixin:
                                 bulk_arm_involved=group_data.get("bulkArmInvolved", False),
                                 bulk_disarm_involved=group_data.get("bulkDisarmInvolved", False),
                             )
+                            # Fan out a discovery signal for groups added after
+                            # the initial load so the alarm_control_panel platform
+                            # creates the group panel live instead of on reload.
+                            if existing_group is None and self._initial_load_done:
+                                async_dispatcher_send(self.hass, SIGNAL_NEW_GROUP, space_id, group_id)
                     # Log group states for debugging
                     group_states = [f"{g.name}={g.state.value}" for g in space.groups.values()]
                     _LOGGER.debug(
@@ -300,7 +324,11 @@ class AjaxSpacesMixin:
                 # Check real-time event protection (don't overwrite recent updates)
                 sqs_protected = self.sqs_manager and self.sqs_manager.is_state_protected(hub_id)
                 sse_protected = self.sse_manager and self.sse_manager.is_state_protected(hub_id)
-                if sqs_protected or sse_protected:
+                # Protect optimistic updates from a user-triggered arm/disarm just
+                # like the group-level path does — otherwise a stale REST poll
+                # landing within the 10 s window can revert a HA disarm/arm.
+                ha_protected = self.has_pending_ha_action(hub_id)
+                if sqs_protected or sse_protected or ha_protected:
                     _LOGGER.debug(
                         "Hub %s: REST has %s but real-time event recently set %s (protected)",
                         hub_id,
@@ -319,8 +347,9 @@ class AjaxSpacesMixin:
                     # Update polling interval based on new state
                     self._update_polling_interval(security_state)
 
-                    # Create event from state change (skip if SQS already created it)
-                    if self._skip_state_change_event:
-                        _LOGGER.debug("Skipping state change event (SQS already created it)")
+                    # Create event from state change (skip only for the hub
+                    # whose SSE/SQS handler already created the event).
+                    if hub_id in self._skipped_state_change_hubs:
+                        _LOGGER.debug("Skipping state change event for %s (SSE/SQS already created it)", hub_id)
                     else:
                         self._create_event_from_state_change(space, old_state, security_state)

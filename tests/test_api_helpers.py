@@ -115,6 +115,37 @@ def test_get_base_url_proxy_secure_always_routes_through_proxy() -> None:
 
 
 # ---------------------------------------------------------------------------
+# _parse_retry_after — must tolerate HTTP-date headers (RFC 7231/9110) without
+# crashing the retry path (code-review MEDIUM finding).
+# ---------------------------------------------------------------------------
+
+
+def test_parse_retry_after_integer_seconds() -> None:
+    assert AjaxRestApi._parse_retry_after("120") == 120
+
+
+def test_parse_retry_after_missing_uses_default() -> None:
+    assert AjaxRestApi._parse_retry_after(None) == 60
+    assert AjaxRestApi._parse_retry_after(None, default=30) == 30
+
+
+def test_parse_retry_after_http_date_does_not_raise() -> None:
+    """A bare int() would raise ValueError here and crash the back-off path."""
+    # A far-future HTTP-date → a positive (non-raising) delay.
+    delay = AjaxRestApi._parse_retry_after("Wed, 21 Oct 2099 07:28:00 GMT")
+    assert isinstance(delay, int)
+    assert delay > 0
+
+
+def test_parse_retry_after_past_date_clamps_to_zero() -> None:
+    assert AjaxRestApi._parse_retry_after("Wed, 21 Oct 2015 07:28:00 GMT") == 0
+
+
+def test_parse_retry_after_garbage_uses_default() -> None:
+    assert AjaxRestApi._parse_retry_after("not-a-date-or-number") == 60
+
+
+# ---------------------------------------------------------------------------
 # _calculate_backoff
 # ---------------------------------------------------------------------------
 
@@ -131,15 +162,29 @@ def test_calculate_backoff_capped_at_max() -> None:
 
 
 # ---------------------------------------------------------------------------
-# bypass_cache_next
+# bypass_cache_next — opens a short time window so EVERY cache-backed getter
+# in the upcoming refresh cycle bypasses its cache (not just the first one).
 # ---------------------------------------------------------------------------
 
 
-def test_bypass_cache_next_sets_flag() -> None:
+def test_bypass_cache_next_opens_window() -> None:
     api = AjaxRestApi(api_key="k", email="u@example.com", password="p")
-    assert api._bypass_cache_once is False
+    # No window open initially.
+    assert api._cache_bypass_active() is False
     api.bypass_cache_next()
-    assert api._bypass_cache_once is True
+    # Window is now open — and stays open across multiple getter checks
+    # within the same refresh cycle (the old one-shot flag failed here).
+    assert api._cache_bypass_active() is True
+    assert api._cache_bypass_active() is True
+
+
+def test_bypass_cache_window_expires() -> None:
+    """The window auto-expires so caches resume after the refresh cycle."""
+    api = AjaxRestApi(api_key="k", email="u@example.com", password="p")
+    api.bypass_cache_next()
+    # Simulate the window having elapsed.
+    api._bypass_cache_until = time.time() - 1.0
+    assert api._cache_bypass_active() is False
 
 
 # ---------------------------------------------------------------------------

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -163,7 +163,6 @@ class AjaxDevice:
     attributes: dict[str, Any] = field(default_factory=dict)
 
     # Real-time events from notifications
-    last_notification: AjaxNotification | None = None
     last_trigger_time: datetime | None = None
 
     # Photo data for camera devices (MotionCam, etc.)
@@ -217,39 +216,6 @@ class AjaxDevice:
     def is_low_battery(self) -> bool:
         """Check if device has low battery."""
         return self.battery_level is not None and self.battery_level < 20
-
-    @property
-    def is_triggered(self) -> bool:
-        """Check if device is currently triggered based on notifications."""
-        if not self.last_notification:
-            return False
-
-        # Check notification type and timing
-        # Motion/door sensors auto-reset after a short time
-        if self.last_trigger_time:
-            # Make sure both timestamps are timezone-aware
-            now = datetime.now(UTC)
-            trigger_time = self.last_trigger_time
-            if trigger_time.tzinfo is None:
-                trigger_time = trigger_time.replace(tzinfo=UTC)
-
-            # Auto-reset after 30 seconds
-            if (now - trigger_time) > timedelta(seconds=30):
-                return False
-
-        # Check notification message for trigger keywords
-        message = self.last_notification.message.lower() if self.last_notification.message else ""
-        title = self.last_notification.title.lower() if self.last_notification.title else ""
-
-        trigger_keywords = [
-            "motion",
-            "detected",
-            "triggered",
-            "opened",
-            "alarm",
-            "movement",
-        ]
-        return any(keyword in message or keyword in title for keyword in trigger_keywords)
 
 
 class VideoEdgeType(Enum):

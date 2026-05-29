@@ -1133,7 +1133,8 @@
           "idle": "Inactief",
           "need_format": "Formatteren vereist",
           "none": "Geen",
-          "ready": "Gereed"
+          "ready": "Gereed",
+          "unknown": "Onbekend"
         }
       },
       "video_edge_storage_temperature": {
@@ -1154,16 +1155,16 @@
       "waterstop_external_power": {
         "name": "Stroombron",
         "state": {
-          "battery": "Batterij",
           "supply": "Externe voeding",
-          "unknown": "Onbekend"
+          "no_supply": "Geen externe voeding"
         }
       },
       "waterstop_motor_state": {
         "name": "Motorstatus",
         "state": {
           "off": "Gestopt",
-          "on": "Draaiend"
+          "rotate_to_closing": "Sluiten",
+          "rotate_to_open": "Openen"
         }
       },
       "waterstop_prevention_period": {

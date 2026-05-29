@@ -216,10 +216,88 @@ def test_transmitter_handler_emits_tamper_and_external_contact() -> None:
     assert {"tamper", "external_contact"} <= _keys(sensors)
 
 
+def test_transmitter_night_mode_reads_normalized_attribute_key() -> None:
+    """Regression (code-review HIGH): the night_mode switch must read the
+    coordinator-normalized 'night_mode_arm' key, not the raw 'nightModeArm'
+    (which is never stored), otherwise it permanently reads OFF.
+    """
+    handler = TransmitterHandler(_device(DeviceType.TRANSMITTER, {"night_mode_arm": True}))
+    night = next(s for s in handler.get_switches() if s["key"] == "night_mode")
+    assert night["value_fn"]() is True
+
+    # And it stays OFF (not crashing / not reading the raw key) when normalized off.
+    handler_off = TransmitterHandler(_device(DeviceType.TRANSMITTER, {"night_mode_arm": False}))
+    night_off = next(s for s in handler_off.get_switches() if s["key"] == "night_mode")
+    assert night_off["value_fn"]() is False
+
+
 def test_waterstop_handler_returns_problem_descriptor() -> None:
     handler = WaterStopHandler(_device(DeviceType.WATERSTOP))
     sensors = handler.get_binary_sensors()
     assert "problem" in _keys(sensors)
+
+
+@pytest.mark.parametrize(
+    "api_value,expected",
+    [
+        ("OFF", "off"),
+        ("ROTATE_TO_CLOSING", "rotate_to_closing"),
+        ("ROTATE_TO_OPEN", "rotate_to_open"),
+    ],
+)
+def test_waterstop_motor_state_value_is_always_in_options(api_value: str, expected: str) -> None:
+    """Regression (code-review): the motor_state ENUM must emit a value that
+    is one of its declared options for every API enum (OFF / ROTATE_TO_CLOSING
+    / ROTATE_TO_OPEN); an off-list value makes HA reject the state.
+    """
+    handler = WaterStopHandler(_device(DeviceType.WATERSTOP, {"motorState": api_value}))
+    spec = next(s for s in handler.get_sensors() if s["key"] == "motor_state")
+    value = spec["value_fn"]()
+    assert value == expected
+    assert value in spec["options"]
+
+
+@pytest.mark.parametrize(
+    "api_value,expected",
+    [
+        ("SUPPLY", "supply"),
+        ("NO_SUPPLY", "no_supply"),
+    ],
+)
+def test_waterstop_external_power_value_is_always_in_options(api_value: str, expected: str) -> None:
+    """Regression (code-review): extPower ENUM emits SUPPLY / NO_SUPPLY — both
+    must be declared options so the diagnostic sensor never shows a raw key.
+    """
+    handler = WaterStopHandler(_device(DeviceType.WATERSTOP, {"extPower": api_value}))
+    spec = next(s for s in handler.get_sensors() if s["key"] == "external_power")
+    value = spec["value_fn"]()
+    assert value == expected
+    assert value in spec["options"]
+
+
+@pytest.mark.parametrize(
+    "api_minutes,expected",
+    [
+        (1, "1"),
+        (3, "3"),  # real StreetSiren/HomeSiren payloads report 3 == 3 minutes
+        (15, "15"),
+        (6, "5"),  # off-list value snaps to the nearest option
+        (11, "10"),  # snaps down to the nearest declared option
+        (99, "15"),  # clamps to the largest option, never an invalid state
+    ],
+)
+def test_siren_alarm_duration_reads_minutes_and_snaps_to_option(api_minutes: int, expected: str) -> None:
+    """Regression (code-review): alarmDuration is reported in MINUTES, not
+    seconds. An earlier /60 conversion produced "0" (off-list); the read must
+    map 1:1 and snap any off-list value to the nearest declared option.
+    """
+    handler = SirenHandler(_device(DeviceType.SIREN, {"alarm_duration": api_minutes}))
+    spec = next(s for s in handler.get_selects() if s["key"] == "alarm_duration")
+    value = spec["value_fn"]()
+    assert value == expected
+    assert value in spec["options"]
+    # api_transform round-trips the selected minutes straight back (no x60).
+    assert spec["api_transform"](expected) == int(expected)
 
 
 @pytest.mark.parametrize(

@@ -907,6 +907,8 @@ class AjaxVideoEdgeSensor(CoordinatorEntity[AjaxDataCoordinator], SensorEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
+        if not self.coordinator.last_update_success:
+            return False
         video_edge = self._get_video_edge()
         if video_edge is None:
             return False

@@ -172,7 +172,7 @@ class TransmitterHandler(AjaxDeviceHandler):
             {
                 "key": "night_mode",
                 "translation_key": "night_mode",
-                "value_fn": lambda: self.device.attributes.get("nightModeArm", False),
+                "value_fn": lambda: self.device.attributes.get("night_mode_arm", False),
                 "api_key": "nightModeArm",
                 "api_nested_key": "wiredDeviceSettings",
                 "enabled_by_default": True,

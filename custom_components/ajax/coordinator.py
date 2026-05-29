@@ -121,7 +121,6 @@ class AjaxDataCoordinator(
         self.all_discovered_spaces: dict[str, str] = {}  # space_id -> name (for options flow)
         # Cached space_binding responses to avoid repeated per-tick API calls.
         self._space_binding_cache: dict[str, dict[str, Any]] = {}  # hub_id -> space_binding
-        self._fast_poll_tasks: dict[str, asyncio.Task[Any]] = {}  # device_id -> fast polling task for door sensors
         self._door_sensor_poll_task: asyncio.Task[Any] | None = (
             None  # Continuous door sensor polling when disarmed or in night mode
         )
@@ -182,8 +181,11 @@ class AjaxDataCoordinator(
         # Event entity registry: device_id -> AjaxEventEntity
         self._event_entities: dict[str, Any] = {}
 
-        # Flag to skip state change event creation when SQS already created the event
-        self._skip_state_change_event: bool = False
+        # Hub IDs for which a SSE/SQS handler is mid-refresh and has already
+        # created the state-change event — keyed per hub so the REST poller
+        # only suppresses its duplicate for the affected hub, not every hub
+        # processed in the same tick.
+        self._skipped_state_change_hubs: set[str] = set()
 
         # Flag to bypass proxy cache on next refresh (after SSE event or user action)
         self._bypass_cache_next_refresh: bool = False
@@ -299,6 +301,16 @@ class AjaxDataCoordinator(
             should_poll: True to start polling, False to stop
             security_state: Current security state (used to filter sensors in night mode)
         """
+        # The polling task is shared across ALL spaces, so a single armed space
+        # must not cancel it while another space is still disarmed/night. Only
+        # stop when NO space needs polling. (This call is made per-space with
+        # just that space's state, so re-scan every space here.)
+        if not should_poll and self.account is not None:
+            should_poll = any(
+                space.security_state in (SecurityState.DISARMED, SecurityState.NIGHT_MODE)
+                for space in self.account.spaces.values()
+            )
+
         # Check if fast polling is enabled (can be disabled to reduce API calls)
         # Also disable fast polling in proxy mode to reduce load on shared proxy
         if not self._door_sensor_fast_poll_enabled or self._sse_url:
@@ -358,7 +370,7 @@ class AjaxDataCoordinator(
                             device
                             for device in space.devices.values()
                             if device.type in (DeviceType.DOOR_CONTACT, DeviceType.TRANSMITTER, DeviceType.WIRE_INPUT)
-                            and not device.attributes.get("night_mode_arm", True)
+                            and not device.attributes.get("night_mode_arm", False)
                         ]
                     else:
                         # Skip for other armed states
@@ -651,62 +663,6 @@ class AjaxDataCoordinator(
                 _LOGGER.warning("Connection to Ajax API lost: %s", err)
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
-    async def _async_fast_poll_door_sensor(self, space_id: str, device_id: str) -> None:
-        """Fast poll a door sensor after opening to quickly detect closure."""
-        poll_interval = 3  # Poll every 3 seconds
-        max_duration = 120  # Stop after 2 minutes
-        start_time = asyncio.get_running_loop().time()
-
-        try:
-            while True:
-                elapsed = asyncio.get_running_loop().time() - start_time
-                if elapsed > max_duration:
-                    break
-
-                try:
-                    if self.account is None:
-                        break
-                    space = self.account.spaces.get(space_id)
-                    if not space or not space.hub_id:
-                        break
-                    devices_data = await self.api.async_get_devices(space.hub_id)
-
-                    device_found = False
-                    for device_data in devices_data:
-                        if device_data.get("id") == device_id:
-                            device_found = True
-
-                            if device_id in space.devices:
-                                device = space.devices[device_id]
-                                # Normalize attributes from API
-                                api_attrs = device_data.get("attributes", {})
-                                normalized_attrs = self._normalize_device_attributes(api_attrs, device.type)
-                                device.attributes.update(normalized_attrs)
-
-                                # Check door state (after normalization)
-                                door_opened = device.attributes.get("door_opened", False)
-
-                                if not door_opened:
-                                    if self.account is not None:
-                                        self.async_set_updated_data(self.account)
-                                    if device_id in self._fast_poll_tasks:
-                                        del self._fast_poll_tasks[device_id]
-                                    break
-
-                    if not device_found:
-                        break
-
-                except (AjaxRestApiError, AjaxRestAuthError) as err:
-                    _LOGGER.error("Error in fast polling for door sensor %s: %s", device_id, err)
-
-                await asyncio.sleep(poll_interval)
-
-        except asyncio.CancelledError:
-            raise
-        finally:
-            if device_id in self._fast_poll_tasks:
-                del self._fast_poll_tasks[device_id]
-
     # Account / smart-lock store / SSE / SQS bootstrap live in
     # ``_coordinator_init.AjaxBootstrapMixin``.
 
@@ -782,15 +738,6 @@ class AjaxDataCoordinator(
                 await self.onvif_manager.async_stop()
             except Exception as err:
                 _LOGGER.error("Error stopping ONVIF Manager: %s", err)
-
-        # Stop all fast poll tasks
-        for task in self._fast_poll_tasks.values():
-            if not task.done():
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
-
-        self._fast_poll_tasks.clear()
 
         # Stop door sensor polling task
         if self._door_sensor_poll_task is not None:

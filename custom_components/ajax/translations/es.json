@@ -1133,7 +1133,8 @@
           "idle": "Inactivo",
           "need_format": "Formateo necesario",
           "none": "Ninguno",
-          "ready": "Listo"
+          "ready": "Listo",
+          "unknown": "Desconocido"
         }
       },
       "video_edge_storage_temperature": {
@@ -1154,16 +1155,16 @@
       "waterstop_external_power": {
         "name": "Fuente de alimentación",
         "state": {
-          "battery": "Batería",
           "supply": "Alimentación externa",
-          "unknown": "Desconocido"
+          "no_supply": "Sin alimentación externa"
         }
       },
       "waterstop_motor_state": {
         "name": "Estado del motor",
         "state": {
           "off": "Detenido",
-          "on": "En marcha"
+          "rotate_to_closing": "Cerrando",
+          "rotate_to_open": "Abriendo"
         }
       },
       "waterstop_prevention_period": {

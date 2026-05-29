@@ -461,6 +461,10 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
             "blinkWhileArmed": "blink_while_armed",
             "chimesEnabled": "chimes_enabled",
             "indicatorLightEnabled": "indicator_light_enabled",
+            # Siren "blink while armed" switch writes via v2sirenIndicatorLightMode
+            # but its state is read from led_indication (poll target) — map the
+            # optimistic write there so the toggle doesn't bounce back.
+            "v2sirenIndicatorLightMode": "led_indication",
         }
         attr_key = attr_key_map.get(api_key, api_key)
         old_value = device.attributes.get(attr_key)
@@ -605,8 +609,16 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
         device.attributes["channelStatuses"] = current_statuses
 
         # Mark device as having pending optimistic update (prevent polling overwrite)
-        # Use 15 seconds to give enough time for the device to report state
-        device.attributes["_optimistic_until"] = time.time() + 15.0
+        # Use 15 seconds to give enough time for the device to report state.
+        # A multi-gang LightSwitch is ONE shared device object, so track the
+        # optimistic expiry PER channel and derive the device-wide guard from the
+        # latest channel expiry. This prevents a rollback on one channel from
+        # clearing the guard while another channel's update is still in flight.
+        expiry = time.time() + 15.0
+        channel_expiry: dict[int, float] = device.attributes.get("_channel_optimistic_until", {})
+        channel_expiry[channel] = expiry
+        device.attributes["_channel_optimistic_until"] = channel_expiry
+        device.attributes["_optimistic_until"] = max(channel_expiry.values())
 
         self.async_write_ha_state()
         # Notify other channel switches of state change
@@ -643,7 +655,17 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
             elif not value and channel_str_on not in current_statuses:
                 current_statuses.append(channel_str_on)
             device.attributes["channelStatuses"] = current_statuses
-            device.attributes.pop("_optimistic_until", None)
+            # Only clear THIS channel's optimistic guard; preserve the device-wide
+            # guard if another channel still has an in-flight optimistic update,
+            # otherwise a poll could overwrite that channel's optimistic state.
+            channel_expiry = device.attributes.get("_channel_optimistic_until", {})
+            channel_expiry.pop(channel, None)
+            if channel_expiry:
+                device.attributes["_channel_optimistic_until"] = channel_expiry
+                device.attributes["_optimistic_until"] = max(channel_expiry.values())
+            else:
+                device.attributes.pop("_channel_optimistic_until", None)
+                device.attributes.pop("_optimistic_until", None)
             self.async_write_ha_state()
             self.coordinator.async_update_listeners()
             await self.coordinator.async_request_refresh()

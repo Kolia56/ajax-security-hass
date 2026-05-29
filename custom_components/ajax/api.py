@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 import time
+from email.utils import parsedate_to_datetime
 from typing import Any
 from urllib.parse import urlencode, urlsplit
 
@@ -139,8 +140,13 @@ class AjaxRestApi:
         # Proxy cache info (from X-Cache-TTL and X-Cache headers)
         self.last_cache_ttl: int | None = None
         self.last_cache_hit: bool = False
-        # Flag to bypass cache on next request (set via bypass_cache_next()).
-        self._bypass_cache_once: bool = False
+        # Short time-window during which the proxy cache and the in-memory
+        # caches are bypassed (set via bypass_cache_next()). A one-shot boolean
+        # would be consumed by the FIRST request of a refresh cycle (the hub
+        # list), never reaching the device/space getters whose freshness the
+        # bypass actually targets. A short window safely covers one full refresh
+        # cycle (which completes well under 1s) and auto-expires.
+        self._bypass_cache_until: float = 0.0
 
         # Rate limiting state
         # (bypass_cache_next() is a public helper; see below.)
@@ -224,11 +230,19 @@ class AjaxRestApi:
         return self.session
 
     def bypass_cache_next(self) -> None:
-        """Force the next request to skip the proxy cache.
+        """Force the upcoming refresh cycle to skip every cache layer.
 
         Public API used by the coordinator after SSE/SQS events or user actions.
+        Opens a short 2s window during which both the proxy cache (via the
+        X-Cache-Control: no-cache header) and the in-memory caches are bypassed,
+        so the device/space getters that run later in the same refresh reach the
+        real endpoint instead of serving stale state.
         """
-        self._bypass_cache_once = True
+        self._bypass_cache_until = time.time() + 2.0
+
+    def _cache_bypass_active(self) -> bool:
+        """Return True while the cache-bypass window is open."""
+        return time.time() < self._bypass_cache_until
 
     async def close(self) -> None:
         """Close the session if we own it."""
@@ -279,6 +293,37 @@ class AjaxRestApi:
         """
         delay: float = RETRY_BACKOFF_BASE * (2**attempt)
         return min(delay, RETRY_BACKOFF_MAX)
+
+    @staticmethod
+    def _parse_retry_after(value: str | None, default: int = 60) -> int:
+        """Parse a Retry-After header value into a number of seconds.
+
+        Per RFC 7231/9110 the header may be either a number of seconds or an
+        HTTP-date. An unparsable value falls back to ``default`` instead of
+        raising (a bare ``int()`` raises ValueError on an HTTP-date, which
+        would crash the retry path exactly when the server asks us to back off).
+
+        Args:
+            value: Raw header value (may be None when absent)
+            default: Fallback in seconds when the value is missing or invalid
+
+        Returns:
+            Delay in seconds (never negative)
+        """
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except ValueError:
+            pass
+        try:
+            retry_dt = parsedate_to_datetime(value)
+        except (TypeError, ValueError):
+            return default
+        delta = retry_dt.timestamp() - time.time()
+        if delta <= 0:
+            return 0
+        return int(delta)
 
     async def async_login(self) -> str:
         """Login with email and SHA256(password) to get session token.
@@ -734,13 +779,11 @@ class AjaxRestApi:
         # Add user ID for proxy rate limiting by user (not just IP)
         if self.user_id and self.proxy_mode == AUTH_MODE_PROXY_SECURE:
             headers["X-User-Id"] = self.user_id
-        # Bypass proxy cache if requested (after SSE events or user actions)
-        # Atomically read and reset the one-time flag to avoid race conditions
-        # between concurrent requests
-        bypass_once = self._bypass_cache_once
-        if bypass_once:
-            self._bypass_cache_once = False
-        if (bypass_cache or bypass_once) and self.proxy_mode == AUTH_MODE_PROXY_SECURE:
+        # Bypass proxy cache if requested (after SSE events or user actions).
+        # The bypass is a short time-window (not a one-shot flag) so that EVERY
+        # request in the refresh cycle gets the no-cache header, not just the
+        # first one.
+        if (bypass_cache or self._cache_bypass_active()) and self.proxy_mode == AUTH_MODE_PROXY_SECURE:
             headers["X-Cache-Control"] = "no-cache"
 
         # Capture token version BEFORE the request to detect if another
@@ -780,7 +823,7 @@ class AjaxRestApi:
                     raise AjaxRestAuthError("Access denied")
                 elif response.status == 429:
                     # Rate limited by server - retry with backoff
-                    retry_after = int(response.headers.get("Retry-After", "60"))
+                    retry_after = self._parse_retry_after(response.headers.get("Retry-After"))
                     if _retry_count < MAX_RETRIES:
                         # Cap retry_after to reasonable max (don't wait 60s on first retry)
                         wait_time = min(retry_after, 5 + (_retry_count * 5))
@@ -988,7 +1031,7 @@ class AjaxRestApi:
         # Serve from the short-lived cache unless a cache bypass is pending
         # (bypass must reach the real endpoint to get fresh state).
         cache_key = (hub_id, enrich)
-        if not self._bypass_cache_once:
+        if not self._cache_bypass_active():
             cached = self._devices_cache.get(cache_key)
             if cached and (time.time() - cached[0]) < self._devices_cache_ttl:
                 return cached[1]
@@ -1246,9 +1289,12 @@ class AjaxRestApi:
         Returns:
             Space dictionary with devices array
         """
-        cached = self._space_cache.get(space_id)
-        if cached and (time.time() - cached[0]) < self._space_cache_ttl:
-            return cached[1]
+        # Skip the in-memory cache while a bypass window is open so the fresh
+        # space payload (which feeds video-edges and smart-locks) is fetched.
+        if not self._cache_bypass_active():
+            cached = self._space_cache.get(space_id)
+            if cached and (time.time() - cached[0]) < self._space_cache_ttl:
+                return cached[1]
         data = await self._request("GET", f"user/{self.user_id}/spaces/{space_id}")
         self._space_cache[space_id] = (time.time(), data)
         return data  # type: ignore[no-any-return]
@@ -1730,7 +1776,7 @@ class AjaxRestApi:
 
                 if response.status == 429:
                     # Rate limited by server - retry with backoff (same as _request)
-                    retry_after = int(response.headers.get("Retry-After", "60"))
+                    retry_after = self._parse_retry_after(response.headers.get("Retry-After"))
                     if _retry_count < MAX_RETRIES:
                         wait_time = min(retry_after, 5 + (_retry_count * 5))
                         _LOGGER.warning(

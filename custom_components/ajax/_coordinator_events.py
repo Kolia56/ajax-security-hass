@@ -224,7 +224,7 @@ class AjaxEventDispatchMixin:
             self.hass,
             message,
             title=title,
-            notification_id=f"ajax_{action}_{int(time.time())}",
+            notification_id=f"ajax_{action}_{space_name}_{source_name}_{int(time.time())}",
         )
 
     @staticmethod

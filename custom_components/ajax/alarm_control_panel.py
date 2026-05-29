@@ -18,7 +18,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import AjaxConfigEntry
-from .const import DOMAIN, MANUFACTURER
+from ._discovery import connect_new_entity_signal
+from .const import DOMAIN, MANUFACTURER, SIGNAL_NEW_GROUP, SIGNAL_NEW_SPACE
 from .coordinator import AjaxDataCoordinator
 from .models import GroupState, SecurityState
 
@@ -56,6 +57,34 @@ async def async_setup_entry(
         _LOGGER.info("Added %d Ajax alarm control panel(s)", len(entities))
     else:
         _LOGGER.info("No Ajax spaces found, no alarm panels created (yet)")
+
+    def _build_space(space_id: str, _obj_id: str) -> list[tuple[str, AlarmControlPanelEntity]]:
+        """Build the main panel for a space discovered after setup."""
+        return [(f"{entry.entry_id}_alarm_{space_id}", AjaxAlarmControlPanel(coordinator, entry, space_id))]
+
+    def _build_group(space_id: str, group_id: str) -> list[tuple[str, AlarmControlPanelEntity]]:
+        """Build a group panel for a group discovered after setup."""
+        return [
+            (
+                f"{entry.entry_id}_group_alarm_{group_id}",
+                AjaxGroupAlarmControlPanel(coordinator, entry, space_id, group_id),
+            )
+        ]
+
+    # Live discovery: create panels for spaces/groups added after setup,
+    # mirroring the SIGNAL_NEW_DEVICE pattern (deduped against the registry).
+    connect_new_entity_signal(
+        hass, entry, SIGNAL_NEW_SPACE, "alarm_control_panel", async_add_entities, _build_space, label="alarm panels"
+    )
+    connect_new_entity_signal(
+        hass,
+        entry,
+        SIGNAL_NEW_GROUP,
+        "alarm_control_panel",
+        async_add_entities,
+        _build_group,
+        label="group alarm panels",
+    )
 
 
 class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControlPanelEntity):
@@ -164,7 +193,9 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
 
         # Optimistic update - change state immediately
         space = self.coordinator.get_space(self._space_id)
+        previous_state: SecurityState | None = None
         if space:
+            previous_state = space.security_state
             space.security_state = SecurityState.DISARMED
             self.async_write_ha_state()
 
@@ -172,7 +203,12 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
             await self.coordinator.async_disarm_space(self._space_id)
         except Exception as err:
             _LOGGER.error("Failed to disarm: %s", err)
-            # Revert on error - refresh from API with cache bypass
+            # Restore the pre-action state synchronously so the panel does not
+            # keep showing the optimistic (wrong) state during the debounced
+            # bypass refresh, then trigger that refresh as a fallback.
+            if space and previous_state is not None:
+                space.security_state = previous_state
+                self.async_write_ha_state()
             await self.coordinator.async_request_refresh_bypass_cache()
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -186,7 +222,9 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
 
         # Optimistic update - change state immediately
         space = self.coordinator.get_space(self._space_id)
+        previous_state: SecurityState | None = None
         if space:
+            previous_state = space.security_state
             space.security_state = SecurityState.ARMED
             self.async_write_ha_state()
 
@@ -194,7 +232,12 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
             await self.coordinator.async_arm_space(self._space_id)
         except Exception as err:
             _LOGGER.error("Failed to arm: %s", err)
-            # Revert on error - refresh from API with cache bypass
+            # Restore the pre-action state synchronously so the panel does not
+            # keep showing the optimistic (wrong) state during the debounced
+            # bypass refresh, then trigger that refresh as a fallback.
+            if space and previous_state is not None:
+                space.security_state = previous_state
+                self.async_write_ha_state()
             await self.coordinator.async_request_refresh_bypass_cache()
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -208,7 +251,9 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
 
         # Optimistic update - change state immediately
         space = self.coordinator.get_space(self._space_id)
+        previous_state: SecurityState | None = None
         if space:
+            previous_state = space.security_state
             space.security_state = SecurityState.NIGHT_MODE
             self.async_write_ha_state()
 
@@ -216,7 +261,12 @@ class AjaxAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmControl
             await self.coordinator.async_arm_night_mode(self._space_id)
         except Exception as err:
             _LOGGER.error("Failed to arm night mode: %s", err)
-            # Revert on error - refresh from API with cache bypass
+            # Restore the pre-action state synchronously so the panel does not
+            # keep showing the optimistic (wrong) state during the debounced
+            # bypass refresh, then trigger that refresh as a fallback.
+            if space and previous_state is not None:
+                space.security_state = previous_state
+                self.async_write_ha_state()
             await self.coordinator.async_request_refresh_bypass_cache()
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -373,7 +423,9 @@ class AjaxGroupAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmCo
 
         # Optimistic update
         group = self.coordinator.get_group(self._space_id, self._group_id)
+        previous_state: GroupState | None = None
         if group:
+            previous_state = group.state
             group.state = GroupState.DISARMED
             self.async_write_ha_state()
 
@@ -381,6 +433,12 @@ class AjaxGroupAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmCo
             await self.coordinator.async_disarm_group(self._space_id, self._group_id)
         except Exception as err:
             _LOGGER.error("Failed to disarm group: %s", err)
+            # Restore the pre-action state synchronously so the panel does not
+            # keep showing the optimistic (wrong) state during the debounced
+            # bypass refresh, then trigger that refresh as a fallback.
+            if group and previous_state is not None:
+                group.state = previous_state
+                self.async_write_ha_state()
             await self.coordinator.async_request_refresh_bypass_cache()
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -394,7 +452,9 @@ class AjaxGroupAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmCo
 
         # Optimistic update
         group = self.coordinator.get_group(self._space_id, self._group_id)
+        previous_state: GroupState | None = None
         if group:
+            previous_state = group.state
             group.state = GroupState.ARMED
             self.async_write_ha_state()
 
@@ -402,6 +462,12 @@ class AjaxGroupAlarmControlPanel(CoordinatorEntity[AjaxDataCoordinator], AlarmCo
             await self.coordinator.async_arm_group(self._space_id, self._group_id)
         except Exception as err:
             _LOGGER.error("Failed to arm group: %s", err)
+            # Restore the pre-action state synchronously so the panel does not
+            # keep showing the optimistic (wrong) state during the debounced
+            # bypass refresh, then trigger that refresh as a fallback.
+            if group and previous_state is not None:
+                group.state = previous_state
+                self.async_write_ha_state()
             await self.coordinator.async_request_refresh_bypass_cache()
             raise HomeAssistantError(
                 translation_domain=DOMAIN,

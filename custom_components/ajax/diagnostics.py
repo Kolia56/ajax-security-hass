@@ -57,6 +57,20 @@ def _runtime_snapshot(coordinator: Any) -> dict[str, Any]:
     }
 
 
+def _sqs_connected(sqs_client: Any) -> bool:
+    """Whether the SQS receiver thread is alive and holds a queue URL.
+
+    ``AjaxSQSClient`` exposes no ``is_connected`` accessor, so derive the
+    connection state from its existing attributes (mirroring the logic of
+    ``AjaxSSEClient.is_connected``).
+    """
+    if sqs_client is None:
+        return False
+    thread = getattr(sqs_client, "_thread", None)
+    queue_url = getattr(sqs_client, "_queue_url", None)
+    return thread is not None and thread.is_alive() and queue_url is not None
+
+
 def _connectivity_snapshot(coordinator: Any) -> dict[str, Any]:
     """SSE / SQS / ONVIF connection status without touching the network."""
     sse = coordinator.sse_manager
@@ -72,7 +86,7 @@ def _connectivity_snapshot(coordinator: Any) -> dict[str, Any]:
         },
         "sqs": {
             "enabled": sqs is not None,
-            "connected": getattr(sqs_client, "is_connected", lambda: False)() if sqs_client else False,
+            "connected": _sqs_connected(sqs_client),
             "seconds_since_last_event": _seconds_since(getattr(sqs, "_last_event_time", None)) if sqs else None,
         },
         "onvif": {
@@ -146,6 +160,12 @@ TO_REDACT = {
     "ip_address",
     "ipAddress",
     "ip",
+    "address",
+    "ssid",
+    "gateway",
+    "netmask",
+    "dns",
+    "networkInterface",
     "discovered_macs",
     "X-Api-Key",
     "X-Session-Token",

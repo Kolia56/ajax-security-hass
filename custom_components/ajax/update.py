@@ -149,6 +149,11 @@ class AjaxVideoEdgeFirmwareUpdate(CoordinatorEntity[AjaxDataCoordinator], Update
         return space.video_edges.get(self._video_edge_id)
 
     @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self.coordinator.last_update_success and self._video_edge is not None
+
+    @property
     def installed_version(self) -> str | None:
         """Return the current firmware version."""
         video_edge = self._video_edge
@@ -287,6 +292,11 @@ class AjaxHubFirmwareUpdate(CoordinatorEntity[AjaxDataCoordinator], UpdateEntity
         if not space or not space.hub_details:
             return {}
         return space.hub_details.get("firmware") or {}
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self.coordinator.last_update_success and bool(self._firmware_info)
 
     @property
     def installed_version(self) -> str | None:

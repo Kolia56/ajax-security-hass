@@ -333,9 +333,7 @@ class AjaxOnvifClient:
             channel_id, rule = self._extract_source_info(message_data)
 
             # Parse based on topic
-            event = self._parse_event(topic, message_data, channel_id)
-            if event and rule:
-                event.rule = rule
+            event = self._parse_event(topic, message_data, channel_id, rule)
 
             if event and self._event_callback:
                 # Filter duplicate events using state cache
@@ -385,13 +383,16 @@ class AjaxOnvifClient:
             _LOGGER.debug("%s: Error extracting source info: %s", self.video_edge.name, err)
         return channel_id, rule
 
-    def _parse_event(self, topic: str, message_data: Any, channel_id: str) -> OnvifDetectionEvent | None:
+    def _parse_event(
+        self, topic: str, message_data: Any, channel_id: str, rule: str = ""
+    ) -> OnvifDetectionEvent | None:
         """Parse ONVIF event into detection event.
 
         Args:
             topic: The event topic
             message_data: The message data
             channel_id: The channel ID
+            rule: The detection zone/rule name
 
         Returns:
             OnvifDetectionEvent if parsed successfully, None otherwise
@@ -436,6 +437,7 @@ class AjaxOnvifClient:
                         channel_id=channel_id,
                         detection_type=det_type,
                         active=is_active,
+                        rule=rule,
                     )
                     if first_event is None and is_active:
                         first_event = evt
@@ -457,6 +459,7 @@ class AjaxOnvifClient:
                     channel_id=channel_id,
                     detection_type="VIDEO_MOTION",
                     active=detected,
+                    rule=rule,
                 )
 
             # Parse VideoSource/MotionAlarm (alternative motion detection topic)
@@ -469,6 +472,7 @@ class AjaxOnvifClient:
                     channel_id=channel_id,
                     detection_type="VIDEO_MOTION",
                     active=state,
+                    rule=rule,
                 )
 
             # Parse Ajax Line Crossing Detection
@@ -485,6 +489,7 @@ class AjaxOnvifClient:
                     channel_id=channel_id,
                     detection_type="VIDEO_LINE_CROSSING",
                     active=active,
+                    rule=rule,
                 )
 
             # Parse Ajax Doorbell Ring
@@ -497,6 +502,7 @@ class AjaxOnvifClient:
                     channel_id=channel_id,
                     detection_type="DOORBELL_RING",
                     active=detected,
+                    rule=rule,
                 )
 
         except Exception as err:

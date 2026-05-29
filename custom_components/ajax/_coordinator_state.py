@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
+from .api import AjaxRestAuthError
 from .const import DOMAIN, SIGNAL_NEW_SMART_LOCK, SIGNAL_NEW_VIDEO_EDGE
 from .models import (
     AjaxSmartLock,
@@ -447,6 +448,10 @@ class AjaxStateUpdaterMixin:
                         space_id,
                     )
 
+        except AjaxRestAuthError:
+            # Token expiry must propagate so it counts toward the reauth
+            # threshold in the coordinator; do not swallow it here.
+            raise
         except Exception as err:
             _LOGGER.warning("Error updating video edges for space %s: %s", space_id, err)
 
@@ -543,6 +548,10 @@ class AjaxStateUpdaterMixin:
 
                         del space.smart_locks[sl_id]
 
+        except AjaxRestAuthError:
+            # Token expiry must propagate so it counts toward the reauth
+            # threshold in the coordinator; do not swallow it here.
+            raise
         except Exception as err:
             _LOGGER.warning("Error updating smart locks for space %s: %s", space_id, err)
 

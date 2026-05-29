@@ -159,3 +159,38 @@ def test_get_recording_nvr_id_tolerates_malformed_channel_payloads() -> None:
     ]
     space.video_edges["nvr1"] = nvr
     assert space.get_recording_nvr_id("cam1") is None
+
+
+# ---------------------------------------------------------------------------
+# VideoEdgeHandler._get_channel_by_id — two-pass id-vs-index lookup
+# ---------------------------------------------------------------------------
+
+
+def test_get_channel_by_id_prefers_explicit_id_over_position() -> None:
+    """Regression (code-review): channels can arrive out of positional order
+    (e.g. after a camera is removed). An explicit-id match must win over a
+    same-iteration index fallback so we never return the wrong channel.
+    """
+    from custom_components.ajax.devices import VideoEdgeHandler
+
+    nvr = AjaxVideoEdge(id="nvr1", name="NVR", space_id="s1", video_edge_type=VideoEdgeType.NVR)
+    # Position 0 holds id "2"; the channel whose id is "0" sits at position 1.
+    nvr.channels = [
+        {"id": "2", "marker": "wrong"},
+        {"id": "0", "marker": "right"},
+    ]
+    handler = VideoEdgeHandler(nvr)
+    channel = handler._get_channel_by_id("0")
+    assert channel is not None
+    assert channel["marker"] == "right"
+
+
+def test_get_channel_by_id_falls_back_to_index_when_no_explicit_id() -> None:
+    """Channels created without an explicit "id" are addressed by position."""
+    from custom_components.ajax.devices import VideoEdgeHandler
+
+    nvr = AjaxVideoEdge(id="nvr1", name="NVR", space_id="s1", video_edge_type=VideoEdgeType.NVR)
+    nvr.channels = [{"marker": "first"}, {"marker": "second"}]
+    handler = VideoEdgeHandler(nvr)
+    assert handler._get_channel_by_id("1") == {"marker": "second"}
+    assert handler._get_channel_by_id("9") is None

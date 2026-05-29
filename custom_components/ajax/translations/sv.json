@@ -1133,7 +1133,8 @@
           "idle": "Inaktiv",
           "need_format": "Formatering krävs",
           "none": "Ingen",
-          "ready": "Redo"
+          "ready": "Redo",
+          "unknown": "Okänt"
         }
       },
       "video_edge_storage_temperature": {
@@ -1154,16 +1155,16 @@
       "waterstop_external_power": {
         "name": "Strömkälla",
         "state": {
-          "battery": "Batteri",
           "supply": "Extern strömförsörjning",
-          "unknown": "Okänt"
+          "no_supply": "Ingen extern strömförsörjning"
         }
       },
       "waterstop_motor_state": {
         "name": "Motorstatus",
         "state": {
           "off": "Stoppad",
-          "on": "Igång"
+          "rotate_to_closing": "Stänger",
+          "rotate_to_open": "Öppnar"
         }
       },
       "waterstop_prevention_period": {

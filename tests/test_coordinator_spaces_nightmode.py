@@ -24,6 +24,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from custom_components.ajax._coordinator_spaces import AjaxSpacesMixin
+from custom_components.ajax.api import AjaxRestApiError
 from custom_components.ajax.models import AjaxAccount, SecurityState
 
 
@@ -54,7 +55,11 @@ def _make_mixin(
     mixin.all_discovered_spaces = {}
     mixin._space_binding_cache = {}
     mixin._enabled_spaces = None
-    mixin._skip_state_change_event = False
+    mixin._skipped_state_change_hubs = set()
+    # Initial load NOT done → the new-space/new-group discovery signals are
+    # skipped (they need a real hass dispatcher), keeping this test focused
+    # on the night-mode state path.
+    mixin._initial_load_done = False
     mixin.sse_manager = None
     mixin.sqs_manager = None
 
@@ -123,3 +128,44 @@ async def test_security_state_is_imported_at_runtime() -> None:
 
     assert hasattr(mod, "SecurityState"), "SecurityState must be importable at runtime"
     assert mod.SecurityState is SecurityState
+
+
+# ---------------------------------------------------------------------------
+# Regression: hub-details fetch failure must degrade gracefully, not crash the
+# whole refresh tick with UnboundLocalError (code-review HIGH finding).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("full_refresh", [True, False])
+@pytest.mark.asyncio
+async def test_hub_details_failure_does_not_raise_unbound_local(full_refresh: bool) -> None:
+    """If async_get_hub raises a transient API error, the except handler must
+    leave is_new_space / real_space_id bound so the fall-through space
+    create/update does not raise UnboundLocalError and crash the tick.
+    """
+    mixin, account = _make_mixin(hub_state="DISARMED")
+    mixin.api.async_get_hub = AsyncMock(side_effect=AjaxRestApiError("transient 429"))
+
+    # Must NOT raise (UnboundLocalError would propagate past the AjaxRestApiError
+    # handlers in _async_update_data and flip last_update_success=False).
+    await mixin._async_update_spaces_from_hubs(full_refresh=full_refresh)
+
+    # The space is still created, degraded to NONE rather than crashing.
+    space = account.spaces["hub1"]
+    assert space.security_state is SecurityState.NONE
+
+
+@pytest.mark.asyncio
+async def test_hub_details_failure_on_existing_space_keeps_it() -> None:
+    """A transient hub-details failure for an already-known space must not crash;
+    the space remains and is degraded, not removed.
+    """
+    mixin, account = _make_mixin(hub_state="DISARMED_NIGHT_MODE_ON")
+    # First successful tick creates the space in NIGHT_MODE.
+    await mixin._async_update_spaces_from_hubs(full_refresh=True)
+    assert account.spaces["hub1"].security_state is SecurityState.NIGHT_MODE
+
+    # Next tick: hub-details fetch fails — must not raise.
+    mixin.api.async_get_hub = AsyncMock(side_effect=AjaxRestApiError("boom"))
+    await mixin._async_update_spaces_from_hubs(full_refresh=False)
+    assert "hub1" in account.spaces  # space survived the failure

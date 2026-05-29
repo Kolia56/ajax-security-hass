@@ -246,17 +246,22 @@ class SmokeDetectorHandler(AjaxDeviceHandler):
                 )
 
             # CO trigger
+            # FireProtect2 variants expose either "CO" and/or "CCO" (critical CO) as
+            # distinct sirenTriggers tokens. The single switch must read and toggle the
+            # *same* token, otherwise turning it off removes one token while value_fn
+            # still sees the other and the switch snaps back on. Bind to whichever token
+            # the device actually reports (preferring "CO" when both are present).
+            co_trigger_key = "CCO" if "CCO" in siren_triggers and "CO" not in siren_triggers else "CO"
             if "CO" in siren_triggers or "CCO" in siren_triggers or "coAlarm" in self.device.attributes:
                 switches.append(
                     {
                         "key": "siren_trigger_co",
                         "translation_key": "siren_trigger_co",
-                        "value_fn": lambda: (
-                            "CO" in self.device.attributes.get("siren_triggers", [])
-                            or "CCO" in self.device.attributes.get("siren_triggers", [])
+                        "value_fn": (
+                            lambda key=co_trigger_key: key in self.device.attributes.get("siren_triggers", [])
                         ),
                         "api_key": "sirenTriggers",
-                        "trigger_key": "CO",
+                        "trigger_key": co_trigger_key,
                         "enabled_by_default": True,
                         "bypass_security_check": True,
                     }

@@ -97,16 +97,20 @@ class SirenHandler(AjaxDeviceHandler):
                 }
             )
 
-        # Alarm duration (in minutes)
+        # Alarm duration. The Ajax API reports alarmDuration directly in
+        # MINUTES (verified against real StreetSiren/HomeSiren payloads:
+        # alarmDuration=3 means 3 minutes), so the value maps 1:1 onto the
+        # option list. The read snaps to the nearest option so an
+        # out-of-list value never leaves the select showing an invalid state.
         if "alarm_duration" in self.device.attributes:
             selects.append(
                 {
                     "key": "alarm_duration",
                     "translation_key": "alarm_duration_select",
                     "options": ["1", "2", "3", "5", "10", "15"],
-                    "value_fn": lambda: str(self.device.attributes.get("alarm_duration", 3)),
+                    "value_fn": self._get_alarm_duration_option,
                     "api_key": "alarmDuration",
-                    "api_transform": lambda x: int(x) if str(x).isdigit() else 3,
+                    "api_transform": self._alarm_duration_to_api,
                     "enabled_by_default": True,
                 }
             )
@@ -194,6 +198,32 @@ class SirenHandler(AjaxDeviceHandler):
             )
 
         return switches
+
+    # Discrete minute options offered by the select.
+    _ALARM_DURATION_OPTIONS = (1, 2, 3, 5, 10, 15)
+
+    def _get_alarm_duration_option(self) -> str:
+        """Return the current alarm duration (minutes) snapped to the nearest option.
+
+        The API value is in minutes; snapping guarantees ``current_option`` is
+        always one of the declared options even if the hub reports an
+        off-list value (HA rejects an out-of-options state).
+        """
+        raw = self.device.attributes.get("alarm_duration", 3)
+        try:
+            minutes = int(raw)
+        except (TypeError, ValueError):
+            minutes = 3
+        nearest = min(self._ALARM_DURATION_OPTIONS, key=lambda opt: abs(opt - minutes))
+        return str(nearest)
+
+    @staticmethod
+    def _alarm_duration_to_api(value: Any) -> int:
+        """Convert the selected minutes option to the API value (minutes)."""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 3
 
     def _get_blink_state(self) -> bool:
         """Get the blink while armed state."""

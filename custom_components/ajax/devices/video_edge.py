@@ -64,9 +64,12 @@ def _parse_iso_duration_to_timestamp(duration: str | None) -> datetime | None:
     if days == 0 and hours == 0 and minutes == 0 and seconds == 0:
         return None
 
-    # Calculate the start time by subtracting the uptime from now
+    # Calculate the start time by subtracting the uptime from now.
+    # Normalize to whole minutes (drop sub-minute components) so the derived
+    # boot time stays stable across polls instead of jittering on every read,
+    # which would otherwise inflate the recorder history with meaningless churn.
     uptime_delta = timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
-    start_time = datetime.now(UTC) - uptime_delta
+    start_time = (datetime.now(UTC) - uptime_delta).replace(second=0, microsecond=0)
 
     return start_time
 
@@ -396,7 +399,7 @@ class VideoEdgeHandler:
                         "key": "storage_status",
                         "translation_key": "video_edge_storage_status",
                         "device_class": SensorDeviceClass.ENUM,
-                        "options": ["ready", "idle", "need_format", "formatting", "none"],
+                        "options": ["ready", "idle", "need_format", "formatting", "none", "unknown"],
                         "value_fn": lambda: self._get_storage_status(),
                         "enabled_by_default": True,
                         "entity_category": "diagnostic",
@@ -535,8 +538,10 @@ class VideoEdgeHandler:
         channel = self._get_channel_by_id(channel_id)
         if channel:
             mode = channel.get("recordMode", "UNKNOWN")
-            # Convert API value to translation key (lowercase)
-            return RECORD_MODE_TRANSLATIONS.get(mode, mode.lower())  # type: ignore[no-any-return]
+            # Convert API value to translation key. Fall back to "unknown"
+            # (an in-options value) for any unmapped enum so the ENUM sensor
+            # never emits an out-of-options state that HA would reject.
+            return RECORD_MODE_TRANSLATIONS.get(mode, "unknown")
         return None
 
     def _get_channel_record_policy(self, channel_id: str) -> str | None:
@@ -544,8 +549,10 @@ class VideoEdgeHandler:
         channel = self._get_channel_by_id(channel_id)
         if channel:
             policy = channel.get("recordPolicy", "UNKNOWN")
-            # Convert API value to translation key (lowercase)
-            return RECORD_POLICY_TRANSLATIONS.get(policy, policy.lower())  # type: ignore[no-any-return]
+            # Convert API value to translation key. Fall back to "unknown"
+            # (an in-options value) for any unmapped enum so the ENUM sensor
+            # never emits an out-of-options state that HA would reject.
+            return RECORD_POLICY_TRANSLATIONS.get(policy, "unknown")
         return None
 
     def _get_storage_status(self) -> str:
@@ -554,21 +561,32 @@ class VideoEdgeHandler:
         if storage_devices and len(storage_devices) > 0:
             status = storage_devices[0].get("status", {})
             state = status.get("state", "NONE")
-            return STORAGE_STATUS_TRANSLATIONS.get(state, state.lower())  # type: ignore[no-any-return]
+            # Fall back to "unknown" (an in-options value) for any unmapped enum
+            # so the ENUM sensor never emits an out-of-options state HA rejects.
+            return STORAGE_STATUS_TRANSLATIONS.get(state, "unknown")
         return "none"
 
     def _get_channel_by_id(self, channel_id: str) -> dict[str, Any] | None:
-        """Get channel dict by ID from current video_edge.channels."""
+        """Get channel dict by ID from current video_edge.channels.
+
+        Two passes so an index-based fallback can never shadow a genuine
+        id match: Ajax channel ids are numeric strings ("0","1","2"...) and
+        may arrive out of positional order (e.g. after a camera is removed),
+        in which case a same-iteration index check could match the wrong
+        channel before the loop reaches the real id.
+        """
         channels = self.video_edge.channels
         if not isinstance(channels, list):
             return None
+        # Pass 1: exact explicit-id match wins.
+        for channel in channels:
+            if isinstance(channel, dict) and channel.get("id") == channel_id:
+                return channel
+        # Pass 2: positional fallback for dict channels created without an
+        # explicit "id" (assigned channel_id=str(i) at creation time).
         for i, channel in enumerate(channels):
-            if isinstance(channel, dict):
-                if channel.get("id") == channel_id:
-                    return channel
-            elif str(i) == channel_id:
-                # Fallback for index-based ID
-                return channel if isinstance(channel, dict) else None
+            if str(i) == channel_id and isinstance(channel, dict):
+                return channel
         return None
 
     def _has_detection_by_id(self, channel_id: str, detection_type: str) -> bool:

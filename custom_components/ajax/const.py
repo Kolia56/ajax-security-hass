@@ -92,3 +92,5 @@ METADATA_REFRESH_INTERVAL = 3600  # Full metadata refresh every hour (rooms, use
 SIGNAL_NEW_DEVICE = f"{DOMAIN}_new_device"
 SIGNAL_NEW_VIDEO_EDGE = f"{DOMAIN}_new_video_edge"
 SIGNAL_NEW_SMART_LOCK = f"{DOMAIN}_new_smart_lock"
+SIGNAL_NEW_SPACE = f"{DOMAIN}_new_space"
+SIGNAL_NEW_GROUP = f"{DOMAIN}_new_group"

@@ -1133,7 +1133,8 @@
           "idle": "Очікування",
           "need_format": "Потрібне форматування",
           "none": "Немає",
-          "ready": "Готове"
+          "ready": "Готове",
+          "unknown": "Невідомо"
         }
       },
       "video_edge_storage_temperature": {
@@ -1154,16 +1155,16 @@
       "waterstop_external_power": {
         "name": "Джерело живлення",
         "state": {
-          "battery": "Батарея",
           "supply": "Зовнішнє живлення",
-          "unknown": "Невідомо"
+          "no_supply": "Немає зовнішнього живлення"
         }
       },
       "waterstop_motor_state": {
         "name": "Стан мотора",
         "state": {
           "off": "Зупинено",
-          "on": "Працює"
+          "rotate_to_closing": "Закривається",
+          "rotate_to_open": "Відкривається"
         }
       },
       "waterstop_prevention_period": {

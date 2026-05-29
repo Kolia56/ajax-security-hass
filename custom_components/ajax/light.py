@@ -7,6 +7,7 @@ This module creates light entities for:
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from homeassistant.components.light import (
@@ -190,9 +191,13 @@ class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
         had_statuses = "channelStatuses" in device.attributes
         old_statuses = device.attributes.get("channelStatuses")
 
-        # Optimistic update
+        # Optimistic update (guard against polling overwrite for 15 seconds:
+        # mark_optimistic protects actualBrightnessCh1, _optimistic_until
+        # protects channelStatuses in the device poller)
         device.attributes["actualBrightnessCh1"] = brightness_percent
         device.attributes["channelStatuses"] = ["CHANNEL_1_ON"]
+        device.mark_optimistic("actualBrightnessCh1", 15.0)
+        device.attributes["_optimistic_until"] = time.time() + 15.0
         self.async_write_ha_state()
 
         try:
@@ -204,7 +209,7 @@ class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
             _LOGGER.debug("Dimmer %s turned on at %d%%", self._device_id, brightness_percent)
         except Exception as err:
             _LOGGER.error("Failed to turn on dimmer %s: %s", self._device_id, err)
-            # Rollback on error
+            # Rollback on error (also clear optimistic guards so polling can correct)
             if had_brightness:
                 device.attributes["actualBrightnessCh1"] = old_brightness
             else:
@@ -213,6 +218,8 @@ class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
                 device.attributes["channelStatuses"] = old_statuses
             else:
                 device.attributes.pop("channelStatuses", None)
+            device.attributes.get("_optimistic_attrs", {}).pop("actualBrightnessCh1", None)
+            device.attributes.pop("_optimistic_until", None)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
             raise HomeAssistantError(
@@ -237,9 +244,13 @@ class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
         had_statuses = "channelStatuses" in device.attributes
         old_statuses = device.attributes.get("channelStatuses")
 
-        # Optimistic update
+        # Optimistic update (guard against polling overwrite for 15 seconds:
+        # mark_optimistic protects actualBrightnessCh1, _optimistic_until
+        # protects channelStatuses in the device poller)
         device.attributes["actualBrightnessCh1"] = 0
         device.attributes["channelStatuses"] = []
+        device.mark_optimistic("actualBrightnessCh1", 15.0)
+        device.attributes["_optimistic_until"] = time.time() + 15.0
         self.async_write_ha_state()
 
         try:
@@ -251,7 +262,7 @@ class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
             _LOGGER.debug("Dimmer %s turned off", self._device_id)
         except Exception as err:
             _LOGGER.error("Failed to turn off dimmer %s: %s", self._device_id, err)
-            # Rollback on error
+            # Rollback on error (also clear optimistic guards so polling can correct)
             if had_brightness:
                 device.attributes["actualBrightnessCh1"] = old_brightness
             else:
@@ -260,6 +271,8 @@ class AjaxDimmerLight(CoordinatorEntity[AjaxDataCoordinator], LightEntity):
                 device.attributes["channelStatuses"] = old_statuses
             else:
                 device.attributes.pop("channelStatuses", None)
+            device.attributes.get("_optimistic_attrs", {}).pop("actualBrightnessCh1", None)
+            device.attributes.pop("_optimistic_until", None)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
             raise HomeAssistantError(

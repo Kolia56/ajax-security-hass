@@ -548,7 +548,7 @@ class AjaxHubBinarySensor(CoordinatorEntity[AjaxDataCoordinator], BinarySensorEn
         "external_power": {
             "device_class": BinarySensorDeviceClass.PLUG,
             "translation_key": "external_power",
-            "value_fn": lambda hd: hd.get("battery", {}).get("state") != "DISCHARGED" if hd.get("battery") else None,
+            "value_fn": lambda hd: hd.get("externallyPowered"),
         },
     }
 

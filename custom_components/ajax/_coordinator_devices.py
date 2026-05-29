@@ -115,6 +115,14 @@ class AjaxDevicesMixin:
         new_devices_count = 0
         processed_ids: set[str] = set()  # Track processed IDs to skip duplicates
 
+        # Rebuild room membership from scratch every poll. device_ids is only
+        # appended to (guarded by "not in"), so without this reset a device
+        # moved between rooms would stay counted in its old room and a deleted
+        # device would leave a stale id behind, inflating the per-room
+        # device_count surfaced in the alarm panel attributes.
+        for room in space.rooms.values():
+            room.device_ids.clear()
+
         for device_summary in devices_list:
             device_id = device_summary.get("id")
             if not device_id:
@@ -370,10 +378,11 @@ class AjaxDevicesMixin:
                 device.attributes["beep_volume_level"] = device_data.get("beepVolumeLevel")
             if "alarmDuration" in device_data:
                 device.attributes["alarm_duration"] = device_data.get("alarmDuration")
-            if "v2sirenIndicatorLightMode" in device_data:
-                device.attributes["led_indication"] = device_data.get("v2sirenIndicatorLightMode")
-            elif "blinkWhileArmed" in device_data:
-                device.attributes["led_indication"] = device_data.get("blinkWhileArmed")
+            if not device.is_optimistic("led_indication"):
+                if "v2sirenIndicatorLightMode" in device_data:
+                    device.attributes["led_indication"] = device_data.get("v2sirenIndicatorLightMode")
+                elif "blinkWhileArmed" in device_data:
+                    device.attributes["led_indication"] = device_data.get("blinkWhileArmed")
             # Siren beep/chime settings
             if "beepOnArmDisarm" in device_data:
                 device.attributes["beep_on_arm_disarm"] = device_data.get("beepOnArmDisarm")
@@ -573,8 +582,10 @@ class AjaxDevicesMixin:
                     device.attributes["channel_1_on"] = "CHANNEL_1_ON" in channel_statuses
                     device.attributes["channel_2_on"] = "CHANNEL_2_ON" in channel_statuses
 
-            # LightSwitchDimmer: Parse brightness attributes (at root level)
-            if "actualBrightnessCh1" in device_data:
+            # LightSwitchDimmer: Parse brightness attributes (at root level).
+            # Honour the optimistic guard light.py sets on turn_on/off so a poll
+            # landing inside the TTL window does not revert the user's change.
+            if "actualBrightnessCh1" in device_data and not device.is_optimistic("actualBrightnessCh1"):
                 device.attributes["actualBrightnessCh1"] = device_data.get("actualBrightnessCh1")
             if "minBrightnessLimitCh1" in device_data:
                 device.attributes["minBrightnessLimitCh1"] = device_data.get("minBrightnessLimitCh1")
@@ -663,7 +674,25 @@ class AjaxDevicesMixin:
         # Safety: only remove if API returned at least some devices (avoid wiping on empty response)
         if processed_ids and space.devices:
             existing_device_ids = set(space.devices.keys())
-            removed_device_ids = existing_device_ids - processed_ids
+            absent_device_ids = existing_device_ids - processed_ids
+
+            # A single non-empty-but-partial 200 response (e.g. a caching proxy
+            # serving a truncated device list) must not permanently delete
+            # devices and their HA registry entries. Require the device to be
+            # absent for several consecutive polls before removing it; a device
+            # that reappears resets its counter.
+            absent_threshold = 3
+            removed_device_ids: set[str] = set()
+            for device_id in existing_device_ids:
+                device = space.devices[device_id]
+                if device_id in absent_device_ids:
+                    count = device.attributes.get("_absent_poll_count", 0) + 1
+                    device.attributes["_absent_poll_count"] = count
+                    if count >= absent_threshold:
+                        removed_device_ids.add(device_id)
+                else:
+                    # Device is present again — clear any stale absence counter.
+                    device.attributes.pop("_absent_poll_count", None)
 
             if removed_device_ids:
                 device_registry = dr.async_get(self.hass)
