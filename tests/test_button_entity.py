@@ -53,3 +53,20 @@ async def test_panic_button_propagates_coordinator_failure() -> None:
     button.coordinator.async_press_panic_button = AsyncMock(side_effect=RuntimeError("api down"))
     with pytest.raises(RuntimeError):
         await button.async_press()
+
+
+@pytest.mark.asyncio
+async def test_panic_button_failed_press_does_not_consume_cooldown() -> None:
+    """A failed panic must NOT burn the cooldown — an emergency retry has to be
+    possible immediately after a transient API failure.
+    """
+    button = _make_panic()
+    button.coordinator.async_press_panic_button = AsyncMock(side_effect=RuntimeError("api down"))
+    with pytest.raises(RuntimeError):
+        await button.async_press()  # first press fails
+
+    # The cooldown timestamp was restored, so a retry reaches the coordinator
+    # again instead of being rejected by the cooldown guard.
+    button.coordinator.async_press_panic_button = AsyncMock()
+    await button.async_press()
+    button.coordinator.async_press_panic_button.assert_awaited_once_with("s1")

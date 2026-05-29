@@ -83,6 +83,7 @@ class AjaxPanicButton(CoordinatorEntity[AjaxDataCoordinator], ButtonEntity):
                 translation_key="panic_cooldown",
                 translation_placeholders={"seconds": str(int(PANIC_COOLDOWN_SECONDS))},
             )
+        previous_ts = self._last_press_ts
         self._last_press_ts = now
 
         _LOGGER.warning("Panic button pressed for space %s", self._space_id)
@@ -90,6 +91,9 @@ class AjaxPanicButton(CoordinatorEntity[AjaxDataCoordinator], ButtonEntity):
         try:
             await self.coordinator.async_press_panic_button(self._space_id)
         except Exception as err:
+            # The panic never fired — don't burn the cooldown, so the user can
+            # retry immediately after a transient API failure during an emergency.
+            self._last_press_ts = previous_ts
             _LOGGER.error("Failed to trigger panic: %s", err)
             raise
 
