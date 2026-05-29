@@ -370,9 +370,12 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
                 return
 
             # Standard single switch (Socket, Relay, single-gang WallSwitch)
-            # Optimistic update
+            # Optimistic update. mark_optimistic protects ``is_on`` from being
+            # overwritten by a poll arriving before the device reports its new
+            # switchState/socketState (otherwise the switch bounces back).
             old_value = device.attributes.get("is_on")
             device.attributes["is_on"] = value
+            device.mark_optimistic("is_on", 15.0)
             self.async_write_ha_state()
 
             try:
@@ -403,8 +406,10 @@ class AjaxSwitch(CoordinatorEntity[AjaxDataCoordinator], SwitchEntity):
                     self._device_id,
                     err,
                 )
-                # Revert optimistic update on error
+                # Revert optimistic update on error and clear the guard so the
+                # next poll can correct the restored value immediately.
                 device.attributes["is_on"] = old_value
+                device.attributes.get("_optimistic_attrs", {}).pop("is_on", None)
                 self.async_write_ha_state()
                 await self.coordinator.async_request_refresh()
                 raise HomeAssistantError(

@@ -467,9 +467,10 @@ class AjaxDevicesMixin:
             if "indication" in device_data:
                 device.attributes["indication"] = device_data.get("indication")
 
-            # WaterStop specific attributes (smart water valve)
+            # WaterStop specific attributes (smart water valve).
+            # ``valveState`` is handled separately so an in-flight optimistic
+            # open/close is not bounced back by a poll (see AjaxValve._set_valve_state).
             waterstop_attrs = [
-                "valveState",
                 "motorState",
                 "tempProtectState",
                 "extPower",
@@ -483,9 +484,13 @@ class AjaxDevicesMixin:
             for attr in waterstop_attrs:
                 if attr in device_data:
                     device.attributes[attr] = device_data.get(attr)
+            if "valveState" in device_data and not device.is_optimistic("valveState"):
+                device.attributes["valveState"] = device_data.get("valveState")
 
-            # Socket/Relay/WallSwitch: Parse switchState to is_on (direct from enriched data)
-            if "switchState" in device_data:
+            # Socket/Relay/WallSwitch: Parse switchState to is_on (direct from enriched data).
+            # Skip while an optimistic toggle is in flight, otherwise a poll arriving
+            # before the device reports its new state bounces the switch back.
+            if "switchState" in device_data and not device.is_optimistic("is_on"):
                 switch_state = device_data["switchState"]
                 # switchState is a list: [] = on, ["SWITCHED_OFF"] = off
                 # Device is OFF only if SWITCHED_OFF is explicitly in the list
@@ -496,7 +501,7 @@ class AjaxDevicesMixin:
 
             # SocketOutlet (Type E/F): Parse socketState to is_on
             # socketState is a list: ["FIRST_CHANNEL_ON"] = on, [] or ["FIRST_CHANNEL_OFF"] = off
-            if "socketState" in device_data:
+            if "socketState" in device_data and not device.is_optimistic("is_on"):
                 socket_state = device_data["socketState"]
                 if isinstance(socket_state, list):
                     device.attributes["is_on"] = "FIRST_CHANNEL_ON" in socket_state

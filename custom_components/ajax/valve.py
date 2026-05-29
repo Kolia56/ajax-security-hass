@@ -198,9 +198,11 @@ class AjaxValve(CoordinatorEntity[AjaxDataCoordinator], ValveEntity):
         if not space.hub_id:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="hub_not_found")
 
-        # Optimistic update
+        # Optimistic update. mark_optimistic protects ``valveState`` from being
+        # overwritten by a poll arriving before the valve reports its new state.
         old_value = device.attributes.get("valveState")
         device.attributes["valveState"] = "OPEN" if open_valve else "CLOSED"
+        device.mark_optimistic("valveState", 15.0)
         self.async_write_ha_state()
 
         try:
@@ -221,11 +223,13 @@ class AjaxValve(CoordinatorEntity[AjaxDataCoordinator], ValveEntity):
                 self._device_id,
                 err,
             )
-            # Revert optimistic update on error (drop key if previously unset)
+            # Revert optimistic update on error (drop key if previously unset) and
+            # clear the guard so the next poll can correct the restored value.
             if old_value is None:
                 device.attributes.pop("valveState", None)
             else:
                 device.attributes["valveState"] = old_value
+            device.attributes.get("_optimistic_attrs", {}).pop("valveState", None)
             self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
             raise HomeAssistantError(
