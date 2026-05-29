@@ -15,11 +15,11 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from .api import AjaxRestApiError, AjaxRestAuthError
-from .models import AjaxGroup, AjaxRoom, AjaxSpace, GroupState
+from .models import AjaxGroup, AjaxRoom, AjaxSpace, GroupState, SecurityState
 
 if TYPE_CHECKING:
     from .api import AjaxRestApi
-    from .models import AjaxAccount, SecurityState
+    from .models import AjaxAccount
 
 _LOGGER = logging.getLogger(__name__)
 

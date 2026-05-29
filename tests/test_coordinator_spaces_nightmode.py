@@ -1,0 +1,125 @@
+"""Regression test for issue #149.
+
+The coordinator split (v0.29.0) moved ``_async_update_spaces_from_hubs``
+into ``_coordinator_spaces.py`` but left ``SecurityState`` imported only
+under ``TYPE_CHECKING``. The night-mode branch references
+``SecurityState.NIGHT_MODE`` at runtime, so the moment a hub reported
+night mode the whole coordinator refresh raised
+``NameError: name 'SecurityState' is not defined`` and every Ajax entity
+went unavailable until night mode was turned off.
+
+mypy --strict did NOT catch this (it evaluates ``TYPE_CHECKING`` as True,
+so the name *looks* defined), and the existing tests only exercised
+``_parse_security_state`` in a different mixin — never the night-mode
+branch of ``_async_update_spaces_from_hubs``.
+
+These tests drive the real method against a mocked API so a re-import
+regression fails loudly here, independently of the ruff TC004 guard.
+"""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+from custom_components.ajax._coordinator_spaces import AjaxSpacesMixin
+from custom_components.ajax.models import AjaxAccount, SecurityState
+
+
+def _make_mixin(
+    *, hub_state: str, groups_enabled: bool = False, night_flag: bool = False
+) -> tuple[AjaxSpacesMixin, AjaxAccount]:
+    """Build a bare AjaxSpacesMixin wired to a mocked API + empty account."""
+    mixin = object.__new__(AjaxSpacesMixin)
+
+    account = AjaxAccount(user_id="u1", name="user", email="u@example.com")
+
+    hub_details: dict = {"state": hub_state, "groupsEnabled": groups_enabled}
+    if night_flag:
+        # Alternate night-mode trigger: a dedicated boolean field rather than
+        # the NIGHT_MODE_ON substring. Also reaches the buggy line 166.
+        hub_details["nightMode"] = True
+
+    api = MagicMock()
+    api.async_get_hubs = AsyncMock(return_value=[{"hubId": "hub1", "hubName": "Maison"}])
+    api.async_get_space_by_hub = AsyncMock(return_value={"id": "real1", "name": "Maison"})
+    api.async_get_hub = AsyncMock(return_value=hub_details)
+    api.async_get_rooms = AsyncMock(return_value=[])
+    api.async_get_users = AsyncMock(return_value=[])
+    api.async_get_groups = AsyncMock(return_value=[{"id": "g1", "groupName": "Group 1", "state": "ARMED"}])
+
+    mixin.account = account
+    mixin.api = api
+    mixin.all_discovered_spaces = {}
+    mixin._space_binding_cache = {}
+    mixin._enabled_spaces = None
+    mixin._skip_state_change_event = False
+    mixin.sse_manager = None
+    mixin.sqs_manager = None
+
+    # Methods provided by sibling mixins in the real coordinator.
+    mixin._update_polling_interval = MagicMock()
+    mixin.has_pending_ha_action = MagicMock(return_value=False)
+    mixin._create_event_from_state_change = MagicMock()
+    # Real parser would map the string; the night-mode branch short-circuits
+    # before calling it, but the disarmed branch needs a working impl.
+    mixin._parse_security_state = MagicMock(return_value=SecurityState.DISARMED)
+
+    return mixin, account
+
+
+@pytest.mark.asyncio
+async def test_night_mode_does_not_raise_nameerror() -> None:
+    """#149: a hub in night mode must NOT raise NameError on SecurityState.
+
+    This is the exact failure path: state contains NIGHT_MODE_ON, so the
+    code hits ``security_state = SecurityState.NIGHT_MODE`` at runtime.
+    """
+    mixin, account = _make_mixin(hub_state="DISARMED_NIGHT_MODE_ON")
+    # Must not raise.
+    await mixin._async_update_spaces_from_hubs(full_refresh=True)
+    assert account.spaces["hub1"].security_state is SecurityState.NIGHT_MODE
+
+
+@pytest.mark.asyncio
+async def test_night_mode_with_groups_enabled_is_the_149_repro() -> None:
+    """The user's exact configuration: night mode + groups enabled."""
+    mixin, account = _make_mixin(hub_state="DISARMED_NIGHT_MODE_ON", groups_enabled=True)
+    await mixin._async_update_spaces_from_hubs(full_refresh=True)
+    space = account.spaces["hub1"]
+    assert space.security_state is SecurityState.NIGHT_MODE
+    assert space.group_mode_enabled is True
+    # Groups were fetched and parsed without error.
+    assert "g1" in space.groups
+
+
+@pytest.mark.asyncio
+async def test_night_mode_via_boolean_flag_also_hits_buggy_line() -> None:
+    """The ``nightMode: True`` field is an alternate trigger of the same
+    runtime ``SecurityState.NIGHT_MODE`` assignment that broke #149.
+    """
+    mixin, account = _make_mixin(hub_state="DISARMED", night_flag=True)
+    await mixin._async_update_spaces_from_hubs(full_refresh=True)
+    assert account.spaces["hub1"].security_state is SecurityState.NIGHT_MODE
+
+
+@pytest.mark.asyncio
+async def test_non_night_mode_path_still_works() -> None:
+    """The disarmed branch (calls _parse_security_state) must keep working."""
+    mixin, account = _make_mixin(hub_state="DISARMED_NIGHT_MODE_OFF")
+    await mixin._async_update_spaces_from_hubs(full_refresh=True)
+    # _parse_security_state was consulted (night mode NOT active).
+    mixin._parse_security_state.assert_called_once()
+    assert account.spaces["hub1"].security_state is SecurityState.DISARMED
+
+
+@pytest.mark.asyncio
+async def test_security_state_is_imported_at_runtime() -> None:
+    """Guard the import directly: SecurityState must be a runtime attribute
+    of the module, not a TYPE_CHECKING-only name.
+    """
+    import custom_components.ajax._coordinator_spaces as mod
+
+    assert hasattr(mod, "SecurityState"), "SecurityState must be importable at runtime"
+    assert mod.SecurityState is SecurityState
