@@ -1605,7 +1605,8 @@ _EVENT_CODE_TRANSITIONS: dict[str, str] = {
     # Unsuccessful arming is always a single TRIGGERED-like event.
     "M_22_24": "TRIGGERED",
     # Tilt detection event fires as TRIGGERED even though ends with odd hex.
-    "M_0F_31": "TRIGGERED",
+    "M_0F_31": "TRIGGERED",  # DoorProtect Plus
+    "M_6F_31": "TRIGGERED",  # DoorProtect Plus Fibra (same tilt event, Fibra bus)
     # Arm/disarm events are one-shot state changes, treat as TRIGGERED.
     "M_22_20": "TRIGGERED",
     "M_22_28": "TRIGGERED",
@@ -1867,4 +1868,4 @@ def format_event_message(
             in_word = {"fr": "dans", "en": "in", "es": "en"}.get(language, "in")
             parts.append(f"{in_word} {room_name}")
 
-    return ": ".join(parts[:2]) if len(parts) > 1 else parts[0] if parts else message
+    return ": ".join(parts) if parts else message
