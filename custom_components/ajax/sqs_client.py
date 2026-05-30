@@ -16,10 +16,41 @@ try:
 
     HAS_AIOBOTOCORE = True
 except ImportError:
+    # aiobotocore may simply not be installed *yet*. On a fresh HACS install
+    # Home Assistant installs the requirement in the background, and this module
+    # can be imported during that window — freezing the flag False for the whole
+    # session. ``_ensure_aiobotocore`` re-attempts the import at client-init time
+    # so SQS self-recovers without a manual restart. ``ClientError`` is a real
+    # exception placeholder so the receive loop's ``except ClientError`` stays
+    # valid; it is replaced by the genuine class once the import succeeds.
     HAS_AIOBOTOCORE = False
     get_session = None
+    ClientError = Exception
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _ensure_aiobotocore() -> bool:
+    """Return True if aiobotocore is importable, retrying a deferred import.
+
+    The module-level import can run before Home Assistant finishes installing
+    the ``aiobotocore`` requirement on a fresh install, leaving the flag stuck
+    False for the session. Re-attempting the import here lets a later SQS init
+    pick the dependency up once it lands on disk — no restart needed.
+    """
+    global HAS_AIOBOTOCORE, get_session, ClientError
+    if HAS_AIOBOTOCORE:
+        return True
+    try:
+        from aiobotocore.session import get_session as _get_session
+        from botocore.exceptions import ClientError as _ClientError
+    except ImportError:
+        return False
+    get_session = _get_session
+    ClientError = _ClientError
+    HAS_AIOBOTOCORE = True
+    _LOGGER.debug("aiobotocore became available after a deferred install")
+    return True
 
 
 class AjaxSQSClient:
@@ -40,7 +71,7 @@ class AjaxSQSClient:
         hass_loop: asyncio.AbstractEventLoop | None = None,
     ) -> None:
         """Initialize the SQS client."""
-        if not HAS_AIOBOTOCORE:
+        if not _ensure_aiobotocore():
             raise ImportError("aiobotocore required")
 
         self._access_key = aws_access_key_id
