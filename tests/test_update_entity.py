@@ -234,7 +234,8 @@ def test_hub_init_builds_device_info_and_space_keyed_unique_id() -> None:
             "hubSubtype": "HUB_2_PLUS",
             "color": "black",
             "firmware": {"version": "9.5"},
-            "hardwareVersions": {"pcb": "12"},
+            # Real API sends pcb as an int; the device registry requires a string.
+            "hardwareVersions": {"pcb": 12},
         },
     )
     ent = AjaxHubFirmwareUpdate(coordinator=MagicMock(), space=space)
@@ -242,4 +243,6 @@ def test_hub_init_builds_device_info_and_space_keyed_unique_id() -> None:
     assert ent._attr_unique_id == "s1_firmware_update"
     assert ent._attr_device_info["model"] == "Hub 2 Plus (Black)"
     assert ent._attr_device_info["sw_version"] == "9.5"
-    assert ent._attr_device_info["hw_version"] == "12"
+    # Formatted as a string (matching the alarm panel), never the raw int.
+    assert ent._attr_device_info["hw_version"] == "PCB rev.12"
+    assert isinstance(ent._attr_device_info["hw_version"], str)

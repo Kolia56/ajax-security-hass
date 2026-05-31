@@ -265,10 +265,14 @@ class AjaxHubFirmwareUpdate(CoordinatorEntity[AjaxDataCoordinator], UpdateEntity
         if space.hub_details and space.hub_details.get("firmware"):
             firmware_version = space.hub_details["firmware"].get("version")
 
-        # Get hardware version
+        # Get hardware version. The device registry requires a string, and this
+        # describes the same hub device as the alarm panel — format it identically
+        # ("PCB rev.<n>") so the two platforms don't flip-flop the registry entry.
         hw_version = None
         if space.hub_details and space.hub_details.get("hardwareVersions"):
-            hw_version = space.hub_details["hardwareVersions"].get("pcb")
+            pcb = space.hub_details["hardwareVersions"].get("pcb")
+            if pcb:
+                hw_version = f"PCB rev.{pcb}"
 
         # Device info - always keyed by space.id for stable registry entries.
         self._attr_device_info = DeviceInfo(
