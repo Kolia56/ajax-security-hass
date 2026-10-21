@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.38.3] - 2026-10-21
+
+### Changed
+- **Compatible with Home Assistant 2026.10.** The config flow, options and service schemas are aligned with the new typing introduced by Home Assistant 2026.10. No behaviour change.
+- `onvif-zeep-async` now requires 4.3.0 or newer.
+
+### Documentation
+- **Switching from proxy mode to direct mode (#247).** The README explains why the mode can't be changed in place, how to get the SQS credentials together with the API key, what survives the switch (entity IDs) and what doesn't (device IDs, manual renames and customisations), and the steps to follow.
+- The README now states that direct mode accepts the 6-digit two-factor code, not only the setup key.
+
 ## [0.38.2] - 2026-09-28
 
 ### Fixed
